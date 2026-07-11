@@ -1,3 +1,56 @@
 <resources>
     <string name="app_name">elo</string>
+    <string name="inicio">Início</string>
+    <string name="vitrine">Vitrine</string>
+    <string name="pedidos">Pedidos</string>
+    <string name="perfil">Perfil</string>
+    <string name="profissional">Profissional</string>
+
+    <!-- Modo profissional -->
+    <string name="painel">Painel</string>
+    <string name="orcamentos">Orçamentos</string>
+    <string name="publicar">Publicar</string>
+    <string name="perfil_pro">Perfil Pro</string>
+    <string name="cliente">Cliente</string>
+    <string name="modo_profissional_ativo">Modo Profissional ativo</string>
+
+    <string name="title_activity_inicio">Inicio</string>
+    <string name="trabalhos_recentes_profissional">Trabalhos recentes dos profissionais</string>
+    <string name="ver_perfil">Ver perfil</string>
+    <string name="categoria_todos">Todos</string>
+
+    <!-- Pedidos -->
+    <string name="meus_pedidos">Meus pedidos</string>
+    <string name="acompanhe_seus_servicos">Acompanhe seus serviços</string>
+    <string name="conversar">Conversar</string>
+    <string name="avaliar">Avaliar</string>
+    <string name="ver_detalhes">Ver detalhes</string>
+    <string name="revisar">Revisar</string>
+    <string name="fechar">Fechar</string>
+    <string name="contato">Contato</string>
+    <string name="ligar">Ligar</string>
+    <string name="whatsapp">WhatsApp</string>
+    <string name="numero_de_telefone">Número de telefone</string>
+    <string name="numero_verificado_plataforma">Número verificado pela plataforma</string>
+    <string name="detalhes_do_pedido">Detalhes do pedido</string>
+    <string name="informacoes_da_solicitacao">Informações da solicitação</string>
+    <string name="descricao">Descrição</string>
+    <string name="categoria">Categoria</string>
+    <string name="data">Data</string>
+    <string name="valor">Valor</string>
+    <string name="orcamento_final">Orçamento final</string>
+    <string name="revise_e_decida">Revise e decida</string>
+    <string name="servico">Serviço</string>
+    <string name="horario">Horário</string>
+    <string name="mao_de_obra">Mão de obra</string>
+    <string name="material_incluso">Material incluso</string>
+    <string name="deslocamento">Deslocamento</string>
+    <string name="total">Total</string>
+    <string name="recusar">Recusar</string>
+    <string name="aceitar_orcamento">Aceitar orçamento</string>
+    <string name="avaliacoes">avaliações</string>
+    <string name="avaliar_profissional">Avaliar profissional</string>
+    <string name="experiencia_com">Como foi sua experiência com %1$s?</string>
+    <string name="avaliacao_placeholder">Profissional pontual, serviço impecável…</string>
+    <string name="publicar_avaliacao">Publicar avaliação</string>
 </resources>
