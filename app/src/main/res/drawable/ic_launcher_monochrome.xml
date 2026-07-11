@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Camada monocromática (ícones temáticos, Android 13+). A cor é ignorada pelo
+  sistema, que aplica o próprio tom sobre a silhueta dos dois anéis.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="108dp"
+        android:height="108dp"
+        android:viewportWidth="108"
+        android:viewportHeight="108">
+    <path
+            android:pathData="M26,54 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0 Z"
+            android:fillColor="#00000000"
+            android:strokeColor="#000000"
+            android:strokeWidth="9" />
+    <path
+            android:pathData="M46,54 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0 Z"
+            android:fillColor="#00000000"
+            android:strokeColor="#000000"
+            android:strokeWidth="9" />
+</vector>

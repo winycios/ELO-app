@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Tema base no modo escuro: janela escura para não haver flash branco
+         entre a splash e o primeiro frame do Compose. -->
+    <style name="Theme.Elo" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/elo_fundo_dark</item>
+    </style>
+</resources>

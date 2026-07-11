@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cores de marca do Elo (usadas por temas Android / splash / ícone) -->
+    <color name="elo_tinta_escura">#16181F</color>
+    <color name="elo_coral">#F2603E</color>
+    <color name="elo_teal">#12A788</color>
+    <color name="elo_fundo">#F6F7F9</color>
+    <color name="elo_fundo_dark">#121317</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>
