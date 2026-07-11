@@ -53,4 +53,18 @@
     <string name="experiencia_com">Como foi sua experiência com %1$s?</string>
     <string name="avaliacao_placeholder">Profissional pontual, serviço impecável…</string>
     <string name="publicar_avaliacao">Publicar avaliação</string>
+
+    <!-- Orçamentos (profissional) -->
+    <string name="solicitacoes_de_clientes">Solicitações de clientes para você</string>
+    <string name="aba_novos">Novos</string>
+    <string name="aba_aprovado">Aprovado</string>
+    <string name="aba_historico">Histórico</string>
+    <string name="recusar_orcamento">Recusar</string>
+    <string name="analisar_orcamento">Orçamentar</string>
+    <string name="conversar_com_cliente">Conversar com cliente</string>
+    <string name="ver_detalhes_do_servico">Ver detalhes do serviço</string>
+    <string name="chat">Chat</string>
+    <string name="avaliar_cliente">Avaliar cliente</string>
+    <string name="enviar_orcamento">Enviar orçamento</string>
+    <string name="adicionar_categoria">ADICIONAR CATEGORIA</string>
 </resources>

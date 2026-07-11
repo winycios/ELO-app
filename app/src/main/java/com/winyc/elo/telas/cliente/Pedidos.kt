@@ -203,7 +203,12 @@ fun PedidosScreen(modifier: Modifier = Modifier) {
     }
 
     contatoDe?.let { pedido ->
-        ContatoSheet(pedido = pedido, onFechar = { contatoDe = null })
+        ContatoSheet(
+            nome = pedido.profissional,
+            subtitulo = pedido.categoria,
+            telefone = pedido.telefone,
+            onFechar = { contatoDe = null },
+        )
     }
     detalhesDe?.let { pedido ->
         DetalhesPedidoSheet(pedido = pedido, onFechar = { detalhesDe = null })

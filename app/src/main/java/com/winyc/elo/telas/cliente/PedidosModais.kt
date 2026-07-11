@@ -93,14 +93,16 @@ private fun esconderEntao(scope: CoroutineScope, sheetState: SheetState, aoFim: 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ContatoSheet(
-    pedido: Pedido,
+    nome: String,
+    subtitulo: String,
+    telefone: String,
     onFechar: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
-    val digitos = pedido.telefone.filter { it.isDigit() }
+    val digitos = telefone.filter { it.isDigit() }
     val coroutineScope = rememberCoroutineScope()
 
     ModalBottomSheet(
@@ -123,12 +125,12 @@ internal fun ContatoSheet(
             )
 
             Spacer(Modifier.size(16.dp))
-            AvatarComStatusOnline(pedido.profissional)
+            AvatarComStatusOnline(nome)
 
             Spacer(Modifier.size(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = pedido.profissional,
+                    text = nome,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -140,7 +142,7 @@ internal fun ContatoSheet(
                     modifier = Modifier.size(18.dp),
                 )
             }
-            CategoriaChip(pedido.categoria)
+            CategoriaChip(subtitulo)
 
             Spacer(Modifier.size(20.dp))
             Row(
@@ -158,7 +160,7 @@ internal fun ContatoSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = pedido.telefone,
+                        text = telefone,
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -168,7 +170,7 @@ internal fun ContatoSheet(
                         coroutineScope.launch {
                             clipboard.setClipEntry(
                                 ClipData.newPlainText(
-                                    "Telefone", pedido.telefone
+                                    "Telefone", telefone
                                 ).toClipEntry()
                             )
                         }
@@ -485,6 +487,7 @@ internal fun OrcamentoFinalSheet(
 internal fun AvaliarSheet(
     nome: String,
     onFechar: () -> Unit,
+    titulo: String = "Avaliar profissional",
     onPublicar: (nota: Int, comentario: String) -> Unit = { _, _ -> },
     sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
@@ -501,7 +504,7 @@ internal fun AvaliarSheet(
                 .navigationBarsPadding(),
         ) {
             Text(
-                text = stringResource(R.string.avaliar_profissional),
+                text = titulo,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
