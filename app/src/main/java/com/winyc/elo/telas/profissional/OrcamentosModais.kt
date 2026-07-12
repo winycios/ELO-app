@@ -109,7 +109,8 @@ private fun paraNumero(texto: String): Double {
     return limpo.toDoubleOrNull() ?: 0.0
 }
 
-private fun formatarBRL(valor: Double): String = "R$ %,.2f".format(Locale.forLanguageTag("pt-BR"), valor)
+private fun formatarBRL(valor: Double): String =
+    "R$ %,.2f".format(Locale.forLanguageTag("pt-BR"), valor)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,8 +127,13 @@ internal fun EnviarOrcamentoSheet(
 
     val total = itens.sumOf { paraNumero(it.valor) }
 
-    ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
-        Column(modifier = Modifier.fillMaxHeight(0.92f)) {
+    ModalBottomSheet(
+        onDismissRequest = onFechar,
+        sheetState = sheetState,
+        sheetGesturesEnabled = false,
+        dragHandle = null,
+    ) {
+        Column(modifier = Modifier.fillMaxHeight(0.92f).padding(vertical = 20.dp)) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                 CabecalhoSheet(
                     titulo = "Enviar orçamento final",
@@ -156,8 +162,16 @@ internal fun EnviarOrcamentoSheet(
                     AvatarCliente(orc.cliente, tamanho = 44.dp)
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(orc.cliente, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text(orc.servico, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            orc.cliente,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            orc.servico,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -181,7 +195,8 @@ internal fun EnviarOrcamentoSheet(
                     }
                 }
 
-                Text(stringResource(id = R.string.adicionar_categoria),
+                Text(
+                    stringResource(id = R.string.adicionar_categoria),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
@@ -204,7 +219,11 @@ internal fun EnviarOrcamentoSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                                RoundedCornerShape(12.dp)
+                            ),
                     ) {
                         itens.forEachIndexed { i, item ->
                             if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -279,7 +298,11 @@ internal fun EnviarOrcamentoSheet(
                     Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (total > 0) "${stringResource(R.string.enviar_orcamento)} · ${formatarBRL(total)}"
+                        if (total > 0) "${stringResource(R.string.enviar_orcamento)} · ${
+                            formatarBRL(
+                                total
+                            )
+                        }"
                         else stringResource(R.string.enviar_orcamento),
                     )
                 }
@@ -296,7 +319,12 @@ private fun ItemCustoRow(item: ItemCusto, onValor: (String) -> Unit, onRemover: 
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(item.icone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+        Icon(
+            item.icone,
+            null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(Modifier.width(10.dp))
         Text(
             item.nome,
@@ -304,7 +332,11 @@ private fun ItemCustoRow(item: ItemCusto, onValor: (String) -> Unit, onRemover: 
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
-        Text("R$", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "R$",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.width(6.dp))
         OutlinedTextField(
             value = item.valor,
@@ -340,8 +372,17 @@ private fun ResumoOrcamento(itens: List<ItemCusto>, total: Double) {
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
-                Text(item.nome, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                Text(formatarBRL(paraNumero(item.valor)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    item.nome,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    formatarBRL(paraNumero(item.valor)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
         Row(
@@ -354,9 +395,18 @@ private fun ResumoOrcamento(itens: List<ItemCusto>, total: Double) {
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Paid, null, tint = Verde, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Total do orçamento", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    "Total do orçamento",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
-            Text(formatarBRL(total), style = MaterialTheme.typography.titleMedium, color = Verde, fontWeight = FontWeight.Bold)
+            Text(
+                formatarBRL(total),
+                style = MaterialTheme.typography.titleMedium,
+                color = Verde,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -452,7 +502,12 @@ private fun BannerDica(texto: String) {
             .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(12.dp),
     ) {
-        Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+        Icon(
+            Icons.Outlined.AutoAwesome,
+            null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(Modifier.width(8.dp))
         Text(
             texto,
@@ -505,13 +560,30 @@ internal fun DetalhesServicoSheet(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(orc.cliente, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(
+                                orc.cliente,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                             Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Filled.Star, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(14.dp))
+                            Icon(
+                                Icons.Filled.Star,
+                                null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(14.dp)
+                            )
                             Spacer(Modifier.width(2.dp))
-                            Text(orc.avaliacao.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                orc.avaliacao.toString(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Text("Cliente", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Cliente",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -523,19 +595,48 @@ internal fun DetalhesServicoSheet(
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Valor total aprovado", style = MaterialTheme.typography.bodyMedium, color = Verde, modifier = Modifier.weight(1f))
-                    Text(orc.valor, style = MaterialTheme.typography.titleMedium, color = Verde, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Valor total aprovado",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Verde,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        orc.valor,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Verde,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 SecaoLabel("Descrição do serviço", icone = Icons.Outlined.Description)
-                Text(orc.descricao, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    orc.descricao,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CaixaInfo(Icons.Outlined.NearMe, "Distância", orc.distancia, Modifier.weight(1f))
+                    CaixaInfo(
+                        Icons.Outlined.NearMe,
+                        "Distância",
+                        orc.distancia,
+                        Modifier.weight(1f)
+                    )
                     CaixaInfo(Icons.Outlined.Schedule, "Horário", orc.horario, Modifier.weight(1f))
                 }
-                CaixaInfo(Icons.Outlined.LocationOn, "Endereço", orc.endereco, Modifier.fillMaxWidth())
-                CaixaInfo(Icons.Outlined.CalendarToday, "Data agendada", orc.dataAgendada, Modifier.fillMaxWidth())
+                CaixaInfo(
+                    Icons.Outlined.LocationOn,
+                    "Endereço",
+                    orc.endereco,
+                    Modifier.fillMaxWidth()
+                )
+                CaixaInfo(
+                    Icons.Outlined.CalendarToday,
+                    "Data agendada",
+                    orc.dataAgendada,
+                    Modifier.fillMaxWidth()
+                )
 
                 SecaoLabel("Composição do valor", icone = Icons.Outlined.Paid)
                 orc.itens.forEach { item ->
@@ -549,8 +650,18 @@ internal fun DetalhesServicoSheet(
                         .background(Verde.copy(alpha = 0.10f))
                         .padding(12.dp),
                 ) {
-                    Text("Total", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    Text(orc.valor, style = MaterialTheme.typography.titleMedium, color = Verde, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Total",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        orc.valor,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Verde,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 if (orc.observacoes.isNotBlank()) {
@@ -564,11 +675,25 @@ internal fun DetalhesServicoSheet(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.StickyNote2, null, tint = Ambar, modifier = Modifier.size(15.dp))
+                            Icon(
+                                Icons.Outlined.StickyNote2,
+                                null,
+                                tint = Ambar,
+                                modifier = Modifier.size(15.dp)
+                            )
                             Spacer(Modifier.width(6.dp))
-                            Text("OBSERVAÇÕES", style = MaterialTheme.typography.labelSmall, color = Ambar, fontWeight = FontWeight.Medium)
+                            Text(
+                                "OBSERVAÇÕES",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Ambar,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
-                        Text(orc.observacoes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            orc.observacoes,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
                 Spacer(Modifier.size(2.dp))
@@ -608,8 +733,16 @@ private fun CabecalhoSheet(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(titulo, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                titulo,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                subtitulo,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         IconButton(
             onClick = onFechar,
@@ -617,7 +750,12 @@ private fun CabecalhoSheet(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            Icon(Icons.Outlined.Close, "Fechar", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Icon(
+                Icons.Outlined.Close,
+                "Fechar",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
@@ -626,7 +764,12 @@ private fun CabecalhoSheet(
 private fun SecaoLabel(texto: String, icone: ImageVector? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (icone != null) {
-            Icon(icone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            Icon(
+                icone,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
             Spacer(Modifier.width(6.dp))
         }
         Text(
@@ -639,7 +782,12 @@ private fun SecaoLabel(texto: String, icone: ImageVector? = null) {
 }
 
 @Composable
-private fun CaixaInfo(icone: ImageVector, rotulo: String, valor: String, modifier: Modifier = Modifier) {
+private fun CaixaInfo(
+    icone: ImageVector,
+    rotulo: String,
+    valor: String,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -647,12 +795,25 @@ private fun CaixaInfo(icone: ImageVector, rotulo: String, valor: String, modifie
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+            Icon(
+                icone,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp)
+            )
             Spacer(Modifier.width(6.dp))
-            Text(rotulo.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                rotulo.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Spacer(Modifier.size(4.dp))
-        Text(valor, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            valor,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -663,7 +824,16 @@ private fun LinhaValor(rotulo: String, valor: String) {
             .fillMaxWidth()
             .padding(vertical = 8.dp),
     ) {
-        Text(rotulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        Text(valor, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            rotulo,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            valor,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

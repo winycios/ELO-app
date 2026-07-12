@@ -77,6 +77,7 @@ internal data class PerfilPublico(
 internal data class ServicoPro(
     val id: Int,
     val categoria: String,
+    val tempoExpe: Int,
     val titulo: String,
     val descricao: String,
     val faixaPreco: String,
@@ -95,21 +96,21 @@ private val PERFIL_INICIAL = PerfilPublico(
 
 private val SERVICOS_INICIAIS = listOf(
     ServicoPro(
-        1, "Instalações", "Instalação elétrica residencial",
+        1, "Instalações", 2,"Instalação elétrica residencial",
         "Instalação completa de tomadas, interruptores, luminárias e quadros de distribuição.",
-        "R$ 150 - R$ 400",
+        "150",
         listOf("Material de qualidade", "Garantia de 90 dias", "Mesmo dia"),
     ),
     ServicoPro(
-        2, "Instalações", "Manutenção e reparo elétrico",
+        2, "Assistência Técnica", 1,"Manutenção e reparo elétrico",
         "Diagnóstico e conserto de curto-circuito, disjuntores queimados, fiação antiga.",
-        "R$ 100 - R$ 250",
+        "100",
         listOf("Atendimento emergencial", "Orçamento transparente"),
     ),
     ServicoPro(
-        3, "Instalações", "Instalação de chuveiro",
+        3, "Instalações", 5,"Instalação de chuveiro",
         "Troca e instalação de chuveiros elétricos 110V/220V com dimensionamento correto.",
-        "R$ 120 - R$ 180",
+        "120",
         listOf("Disjuntor dedicado", "Segurança garantida"),
     ),
 )
@@ -129,7 +130,10 @@ fun PerfilProScreen(modifier: Modifier = Modifier) {
     val servicos = remember { mutableStateListOf<ServicoPro>().apply { addAll(SERVICOS_INICIAIS) } }
     var sheet by remember { mutableStateOf<SheetPro?>(null) }
 
-    val categorias = servicos.map { it.categoria }.distinct().size
+    val areasDistintas = servicos.map { it.categoria }.distinct()
+    val categorias = areasDistintas.size
+    // Se o profissional atua em mais de uma área, lista todas separadas por vírgula.
+    val areas = if (areasDistintas.isEmpty()) perfil.profissao else areasDistintas.joinToString(", ")
 
     LazyColumn(
         modifier = modifier
@@ -139,7 +143,7 @@ fun PerfilProScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            CabecalhoPro(perfil = perfil, onEditar = { sheet = SheetPro.EditarPerfil })
+            CabecalhoPro(perfil = perfil, areas = areas, onEditar = { sheet = SheetPro.EditarPerfil })
         }
         item { CardEstatisticas() }
         item { CardDisponibilidade(disponivel = disponivel, onMudar = { disponivel = it }) }
@@ -206,7 +210,7 @@ fun PerfilProScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CabecalhoPro(perfil: PerfilPublico, onEditar: () -> Unit) {
+private fun CabecalhoPro(perfil: PerfilPublico, areas: String, onEditar: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -217,7 +221,10 @@ private fun CabecalhoPro(perfil: PerfilPublico, onEditar: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AvatarCliente(perfil.nome, tamanho = 64.dp)
                 Spacer(Modifier.width(14.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             perfil.nome,
@@ -233,7 +240,7 @@ private fun CabecalhoPro(perfil: PerfilPublico, onEditar: () -> Unit) {
                         )
                     }
                     Text(
-                        perfil.profissao,
+                        areas,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                     )

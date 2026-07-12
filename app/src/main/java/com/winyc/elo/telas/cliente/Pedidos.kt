@@ -95,7 +95,7 @@ internal data class Pedido(
     val maoDeObra: String,
     val material: String,
     val deslocamento: String,
-    val total: String,
+    val total: String?,
 )
 
 private val PEDIDOS = listOf(
@@ -104,7 +104,7 @@ private val PEDIDOS = listOf(
         servico = "Limpeza completa do apartamento", status = StatusPedido.EmAndamento,
         telefone = "(11) 98812-4471", data = "20/04/2026", horario = "09:00",
         endereco = "Rua das Acácias, 45 - Moema", avaliacao = 4.8, numAvaliacoes = 189,
-        maoDeObra = "R$ 120,00", material = "R$ 0,00", deslocamento = "R$ 15,00", total = "R$ 135,00",
+        maoDeObra = "R$ 120,00", material = "R$ 0,00", deslocamento = "R$ 15,00", total = null,
     ),
     Pedido(
         profissional = "Carlos Silva", categoria = "Eletricista",
@@ -282,7 +282,7 @@ private fun PedidoCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (pedido.status == StatusPedido.OrcamentoFinal) {
-                BannerOrcamento(pedido.total, onRevisar)
+                BannerOrcamento(pedido.total ?: "Em analise", onRevisar)
             }
         }
 

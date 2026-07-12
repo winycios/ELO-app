@@ -36,6 +36,8 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -91,9 +93,14 @@ internal fun EditarPerfilPublicoSheet(
     var area by rememberSaveable { mutableStateOf(perfil.area) }
     val tags = remember { mutableStateListOf<String>().apply { addAll(perfil.tags) } }
 
-    ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onFechar,
+        sheetState = sheetState,
+        sheetGesturesEnabled = false,
+        dragHandle = null,
+    ) {
         Column(modifier = Modifier.fillMaxHeight(0.92f)) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
                 CabecalhoSheetPro(
                     titulo = stringResource(R.string.pro_editar_perfil_publico),
                     subtitulo = stringResource(R.string.pro_editar_sub),
@@ -135,6 +142,7 @@ internal fun EditarPerfilPublicoSheet(
                             placeholder = { Text(stringResource(R.string.pro_url_foto_hint)) },
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                             colors = coresCampo(),
                         )
                     }
@@ -197,8 +205,13 @@ internal fun MeusServicosSheet(
     var editando by remember { mutableStateOf<ServicoPro?>(null) }
     var criando by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
-        Box(modifier = Modifier.fillMaxHeight(0.92f)) {
+    ModalBottomSheet(
+        onDismissRequest = onFechar,
+        sheetState = sheetState,
+        sheetGesturesEnabled = false,
+        dragHandle = null,
+    ) {
+        Box(modifier = Modifier.fillMaxHeight(0.92f).padding(vertical = 20.dp)) {
             when {
                 criando -> FormServico(
                     inicial = null,
@@ -240,6 +253,12 @@ private fun ListaServicos(
     onEditar: (ServicoPro) -> Unit,
     onExcluir: (ServicoPro) -> Unit,
 ) {
+    // Áreas em que o profissional atua; a lista abre filtrada pela primeira.
+    val areas = servicos.map { it.categoria }.distinct()
+    var areaSelecionada by rememberSaveable { mutableStateOf<String?>(null) }
+    val areaAtual = areaSelecionada?.takeIf { it in areas } ?: areas.firstOrNull()
+    val visiveis = servicos.filter { it.categoria == areaAtual }
+
     Column(modifier = Modifier.fillMaxHeight()) {
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             CabecalhoSheetPro(
@@ -257,12 +276,22 @@ private fun ListaServicos(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Spacer(Modifier.size(2.dp))
+
+            // Filtro por área de atuação.
+            if (areas.isNotEmpty()) {
+                FiltroAreas(
+                    areas = areas,
+                    selecionada = areaAtual,
+                    onSelecionar = { areaSelecionada = it },
+                )
+            }
+
             Text(
-                stringResource(R.string.pro_servicos_qtd, servicos.size),
+                stringResource(R.string.pro_servicos_qtd, visiveis.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            servicos.forEach { servico ->
+            visiveis.forEach { servico ->
                 CardServico(
                     servico = servico,
                     onEditar = { onEditar(servico) },
@@ -283,6 +312,39 @@ private fun ListaServicos(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.pro_adicionar_servico))
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun FiltroAreas(
+    areas: List<String>,
+    selecionada: String?,
+    onSelecionar: (String) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        areas.forEach { area ->
+            val sel = area == selecionada
+            FilterChip(
+                selected = sel,
+                onClick = { onSelecionar(area) },
+                label = { Text(area, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal) },
+                shape = CircleShape,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = sel,
+                    borderColor = MaterialTheme.colorScheme.outline,
+                    selectedBorderColor = Color.Transparent,
+                ),
+            )
         }
     }
 }
@@ -323,7 +385,7 @@ private fun CardServico(servico: ServicoPro, onEditar: () -> Unit, onExcluir: ()
         )
 
         Text(
-            servico.faixaPreco,
+            stringResource(R.string.a_partir_de, servico.faixaPreco),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
@@ -425,6 +487,7 @@ private fun FormServico(
     }
     var titulo by rememberSaveable { mutableStateOf(inicial?.titulo ?: "") }
     var descricao by rememberSaveable { mutableStateOf(inicial?.descricao ?: "") }
+    var tempoExpe by rememberSaveable { mutableStateOf(inicial?.tempoExpe?.toString() ?: "") }
     var faixaPreco by rememberSaveable { mutableStateOf(inicial?.faixaPreco ?: "") }
     val pontos = remember { mutableStateListOf<String>().apply { inicial?.let { addAll(it.pontos) } } }
     val dias = remember { DiaSemana.entries.map { DiaEstado(it) } }
@@ -460,6 +523,9 @@ private fun FormServico(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
+
+                // Tempo de experiencia
+                CampoPro(stringResource(R.string.tempo_experiencia, stringResource(it.labelRes)), tempoExpe, { tempoExpe = it }, "", tipoCampo = KeyboardType.Number)
             }
 
             // 2. Serviço específico (só depois de escolher a área)
@@ -499,7 +565,7 @@ private fun FormServico(
             Text(stringResource(R.string.pro_imagens_dica), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             // Faixa de preço
-            CampoPro(stringResource(R.string.pro_faixa_preco), faixaPreco, { faixaPreco = it }, stringResource(R.string.pro_faixa_preco_hint))
+            CampoPro(stringResource(R.string.a_partir) + " R$", faixaPreco, { faixaPreco = it }, "300", tipoCampo = KeyboardType.Number)
 
             // Principais pontos
             ChipsEditaveis(
@@ -531,6 +597,7 @@ private fun FormServico(
                             descricao = descricao.trim(),
                             faixaPreco = faixaPreco.trim(),
                             pontos = pontos.toList(),
+                            tempoExpe = tempoExpe.toIntOrNull() ?: 0,
                         )
                     )
                 },
@@ -808,6 +875,7 @@ private fun CampoPro(
     placeholder: String,
     modifier: Modifier = Modifier,
     linhas: Int = 1,
+    tipoCampo: KeyboardType = KeyboardType.Text,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -821,6 +889,7 @@ private fun CampoPro(
             singleLine = linhas == 1,
             minLines = linhas,
             shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = tipoCampo),
             colors = coresCampo(),
         )
     }

@@ -84,11 +84,13 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.winyc.elo.R
 import com.winyc.elo.ui.theme.EloTheme
 
 /* ============================ Modelo (mock) ============================ */
@@ -97,7 +99,6 @@ private data class ServicoPro(
     val numero: Int,
     val nome: String,
     val precoMin: Int,
-    val precoMax: Int,
     val descricao: String,
     val diferenciais: List<String>,
 )
@@ -127,7 +128,7 @@ private val Vermelho = Color(0xFFE05353)
 private const val CATEGORIA_DEMO = "Eletricista"
 private const val AVALIACAO_DEMO = 4.9
 private const val NUM_AVALIACOES = 247
-private const val FAIXA_PRECO = "R$ 80 - R$ 150"
+private const val FAIXA_PRECO = "80"
 
 // Número sentinela usado quando o cliente escolhe "Outro serviço" (descreve livremente).
 private const val OUTRO_SERVICO = 0
@@ -142,19 +143,19 @@ private val CLIENTES_DESTACAM =
 
 private val SERVICOS = listOf(
     ServicoPro(
-        1, "Instalação elétrica residencial", 150, 400,
+        1, "Instalação elétrica residencial", 150,
         "Instalação completa de pontos de luz, tomadas e quadros de distribuição " +
             "para residências, seguindo as normas de segurança.",
         listOf("Material de primeira linha", "Garantia de 90 dias", "Limpeza ao final"),
     ),
     ServicoPro(
-        2, "Manutenção e reparo elétrico", 100, 250,
+        2, "Manutenção e reparo elétrico", 100,
         "Diagnóstico e correção de curtos, disjuntores que desarmam, tomadas " +
             "queimadas e demais problemas elétricos.",
         listOf("Atendimento no mesmo dia", "Diagnóstico incluso", "Orçamento sem compromisso"),
     ),
     ServicoPro(
-        3, "Instalação de chuveiro elétrico", 120, 180,
+        3, "Instalação de chuveiro elétrico", 120,
         "Troca e instalação de chuveiros elétricos com dimensionamento correto " +
             "de fiação e disjuntor.",
         listOf("Fiação dimensionada", "Teste de segurança", "Garantia de 90 dias"),
@@ -606,7 +607,7 @@ private fun SecaoServicos(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Serviços oferecidos",
+                stringResource(R.string.servicos_oferecidos),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
@@ -622,7 +623,7 @@ private fun SecaoServicos(
             )
         }
         Text(
-            "Toque em um serviço para ver descrição, valor e diferenciais.",
+            stringResource(R.string.servico_descricao_valor_diferencial),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -636,7 +637,7 @@ private fun SecaoServicos(
         ) {
             Icon(Icons.Outlined.Layers, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Ver todos os serviços")
+            Text(stringResource(R.string.todos_servicos))
             Spacer(Modifier.width(6.dp))
             Text(
                 "(${SERVICOS.size})",
@@ -682,7 +683,7 @@ private fun CardServico(servico: ServicoPro, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "R$ ${servico.precoMin} - R$ ${servico.precoMax}",
+                    stringResource(R.string.a_partir_de, servico.precoMin),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -740,7 +741,7 @@ private fun CardServicoDisponivel(servico: ServicoPro, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "R$ ${servico.precoMin} - R$ ${servico.precoMax}",
+                    stringResource(R.string.a_partir_de, servico.precoMin),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -884,12 +885,7 @@ private fun BarraContratar(nome: String, onContratar: () -> Unit, modifier: Modi
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Faixa de preço",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        FAIXA_PRECO,
+                        stringResource(R.string.a_partir_de, FAIXA_PRECO),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -1153,7 +1149,7 @@ private fun SeloSentimento(sentimento: Sentimento) {
     )
 }
 
-/* ---------------------------- Fluxo: escolher serviço (img_3) ---------------------------- */
+/* ---------------------------- Fluxo: escolher serviço ---------------------------- */
 
 @Composable
 private fun EscolherServicoScreen(
@@ -1169,8 +1165,8 @@ private fun EscolherServicoScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         CabecalhoFluxo(
-            titulo = "Qual serviço você precisa?",
-            subtitulo = "Selecione ou descreva livremente",
+            titulo = stringResource(R.string.qual_servico_voce_precisa),
+            subtitulo = stringResource(R.string.selecione_descreva_livre),
             onVoltar = onVoltar,
         )
         LazyColumn(
@@ -1178,7 +1174,7 @@ private fun EscolherServicoScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item { ProHeaderCard(nome) }
-            item { RotuloSecao("SERVIÇOS DISPONÍVEIS") }
+            item { RotuloSecao(stringResource(R.string.servicos_disponiveis)) }
             items(SERVICOS) { servico ->
                 CardServicoDisponivel(servico = servico, onClick = { onAbrirInfo(servico.numero) })
             }
@@ -1614,7 +1610,6 @@ private fun ServicoSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
-    val faixa = "R$ ${servico.precoMin} - R$ ${servico.precoMax}"
 
     ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
         Column(
@@ -1647,7 +1642,7 @@ private fun ServicoSheet(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        faixa,
+                        stringResource(R.string.a_partir_de, servico.precoMin),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -1681,13 +1676,13 @@ private fun ServicoSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Faixa de valor",
+                    stringResource(R.string.a_partir),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    faixa,
+                    "R$ " + servico.precoMin,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,

@@ -69,9 +69,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.winyc.elo.R
 import com.winyc.elo.ui.theme.EloTheme
 
 
@@ -98,7 +99,6 @@ private data class ProFiltravel(
     val avaliacao: Double,
     val numAvaliacoes: Int,
     val precoMin: Int,
-    val precoMax: Int,
     val distanciaKm: Double,
     val servicos: Int,
 )
@@ -120,7 +120,6 @@ private data class ProDestacado(
     val numAvaliacoes: Int,
     val distanciaKm: Double,
     val precoMin: Int,
-    val precoMax: Int,
     val destaque: Destaque,
 )
 
@@ -153,15 +152,15 @@ private val CATEGORIAS = listOf(
 )
 
 private val RECOMENDADOS_HOME = listOf(
-    ProHome("Carlos", "Eletricista", 4.9, 247, "R$ 80 - R$ 150", "2,3 km", requisitado = true),
-    ProHome("Roberto", "Encanador", 4.8, 183, "R$ 100 - R$ 200", "3,1 km"),
-    ProHome("Ana", "Diarista", 4.9, 321, "R$ 120 - R$ 180", "1,8 km", requisitado = true),
+    ProHome("Carlos", "Eletricista", 4.9, 247, "150", "2,3 km", requisitado = true),
+    ProHome("Roberto", "Encanador", 4.8, 183, "200", "3,1 km"),
+    ProHome("Ana", "Diarista", 4.9, 321, "180", "1,8 km", requisitado = true),
 )
 
 private val EM_ALTA = listOf(
-    ProHome("Sérgio", "Pintor", 4.7, 121, "R$ 90 - R$ 160", "3,8 km"),
-    ProHome("Patrícia", "Diarista", 4.7, 198, "R$ 110 - R$ 170", "2,5 km"),
-    ProHome("Rafael", "Eletricista", 4.7, 142, "R$ 70 - R$ 140", "3,5 km"),
+    ProHome("Sérgio", "Pintor", 4.7, 121, "160", "3,8 km"),
+    ProHome("Patrícia", "Diarista", 4.7, 198, "170", "2,5 km"),
+    ProHome("Rafael", "Eletricista", 4.7, 142, "140", "3,5 km"),
 )
 
 private val AREAS = listOf(
@@ -197,17 +196,17 @@ private val AREAS = listOf(
 )
 
 private val RECOMENDADOS_CATEGORIA = listOf(
-    ProDestacado("Carlos Silva", 4.9, 247, 2.3, 80, 150, Destaque.MelhorEscolha),
-    ProDestacado("Rafael Costa", 4.7, 142, 3.5, 70, 140, Destaque.PertoPopular),
-    ProDestacado("Diego Alves", 4.5, 32, 1.2, 60, 120, Destaque.TalentoRegiao),
+    ProDestacado("Carlos Silva", 4.9, 247, 2.3, 80, Destaque.MelhorEscolha),
+    ProDestacado("Rafael Costa", 4.7, 142, 3.5, 70, Destaque.PertoPopular),
+    ProDestacado("Diego Alves", 4.5, 32, 1.2, 60, Destaque.TalentoRegiao),
 )
 
 private val OUTROS_PROFISSIONAIS = listOf(
-    ProFiltravel("Fábio Nunes", 4.6, 64, 75, 150, 5.8, 118),
-    ProFiltravel("Marta Silveira", 4.8, 156, 130, 190, 5.4, 312),
-    ProFiltravel("Bruno Teixeira", 4.2, 41, 60, 110, 1.9, 47),
-    ProFiltravel("Helena Dias", 4.9, 203, 140, 210, 6.7, 289),
-    ProFiltravel("Igor Ramos", 3.9, 18, 55, 95, 2.4, 22),
+    ProFiltravel("Fábio Nunes", 4.6, 64, 75, 5.8, 118),
+    ProFiltravel("Marta Silveira", 4.8, 156, 130, 5.4, 312),
+    ProFiltravel("Bruno Teixeira", 4.2, 41, 60, 1.9, 47),
+    ProFiltravel("Helena Dias", 4.9, 203, 140, 6.7, 289),
+    ProFiltravel("Igor Ramos", 3.9, 18, 55, 2.4, 22),
 )
 
 /* ============================ Tela ============================ */
@@ -504,7 +503,7 @@ private fun CardRecomendado(pro: ProHome, onClick: () -> Unit) {
             NomeVerificado(pro.nome)
             LinhaAvaliacao(pro.avaliacao, pro.numAvaliacoes)
             Text(
-                pro.preco,
+                text = stringResource(R.string.a_partir_de, pro.preco),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -551,6 +550,11 @@ private fun CardEmAlta(pro: ProHome, onClick: () -> Unit) {
         ) {
             NomeVerificado(pro.nome)
             LinhaAvaliacao(pro.avaliacao, pro.numAvaliacoes)
+            Text(
+                text = stringResource(R.string.a_partir_de, pro.preco),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Outlined.LocationOn,
@@ -1064,7 +1068,7 @@ private fun CardDestacado(pro: ProDestacado, onClick: () -> Unit) {
                     )
                 }
                 Text(
-                    text = "R$ ${pro.precoMin} - R$ ${pro.precoMax}",
+                    text = stringResource(R.string.a_partir_de, pro.precoMin),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1129,7 +1133,7 @@ private fun CardOutro(pro: ProFiltravel, onClick: () -> Unit) {
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "R$ ${pro.precoMin} - R$ ${pro.precoMax}",
+                        text = stringResource(R.string.a_partir_de, pro.precoMin),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )

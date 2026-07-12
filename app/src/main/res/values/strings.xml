@@ -10,7 +10,6 @@
     <string name="painel">Painel</string>
     <string name="orcamentos">Orçamentos</string>
     <string name="publicar">Publicar</string>
-    <string name="perfil_pro">Perfil Pro</string>
     <string name="cliente">Cliente</string>
     <string name="modo_profissional_ativo">Modo Profissional ativo</string>
 
@@ -53,6 +52,13 @@
     <string name="experiencia_com">Como foi sua experiência com %1$s?</string>
     <string name="avaliacao_placeholder">Profissional pontual, serviço impecável…</string>
     <string name="publicar_avaliacao">Publicar avaliação</string>
+    <string name="servicos_disponiveis">"SERVIÇOS DISPONÍVEIS"</string>
+    <string name="qual_servico_voce_precisa">Qual serviço você precisa ?</string>
+    <string name="selecione_descreva_livre">Selecione ou descreva livremente</string>
+    <string name="servicos_oferecidos">Serviços oferecidos</string>
+    <string name="servico_descricao_valor_diferencial">Toque em um serviço para ver descrição, valor e diferenciais.</string>
+    <string name="todos_servicos">Ver todos os serviços</string>
+    <string name="tempo_experiencia">Tempo de experiência: %s</string>
 
     <!-- Orçamentos (profissional) -->
     <string name="solicitacoes_de_clientes">Solicitações de clientes para você</string>
@@ -70,6 +76,8 @@
 
     <!-- Comum -->
     <string name="voltar">Voltar</string>
+    <string name="a_partir_de">A partir R$ %s</string>
+    <string name="a_partir">A partir</string>
 
     <!-- Perfil do cliente -->
     <string name="perfil_titulo">Perfil</string>
@@ -193,7 +201,6 @@
     <string name="pro_imagens_dica">Mostre fotos reais de trabalhos concluídos para gerar mais confiança.</string>
     <string name="pro_adicionar">Adicionar</string>
     <string name="pro_faixa_preco">Faixa de preço</string>
-    <string name="pro_faixa_preco_hint">Ex: R$ 150 - R$ 300</string>
     <string name="pro_principais_pontos">Principais pontos</string>
     <string name="pro_pontos_hint">Ex: Garantia de 90 dias</string>
     <string name="pro_disponibilidade">Disponibilidade semanal</string>

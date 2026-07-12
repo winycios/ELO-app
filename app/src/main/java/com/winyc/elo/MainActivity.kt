@@ -122,7 +122,7 @@ private val PROFISSIONAL_ITENS = listOf(
     NavItem(EloScreen.Painel, R.string.painel, Icons.Outlined.GridView),
     NavItem(EloScreen.Orcamentos, R.string.orcamentos, Icons.Outlined.Description),
     NavItem(EloScreen.Publicar, R.string.publicar, Icons.Outlined.AddBox),
-    NavItem(EloScreen.PerfilPro, R.string.perfil_pro, Icons.Outlined.ManageAccounts),
+    NavItem(EloScreen.PerfilPro, R.string.perfil, Icons.Outlined.ManageAccounts),
 )
 
 class MainActivity : ComponentActivity() {

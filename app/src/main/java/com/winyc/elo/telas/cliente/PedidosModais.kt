@@ -258,12 +258,13 @@ internal fun DetalhesPedidoSheet(
     ModalBottomSheet(
         onDismissRequest = onFechar,
         sheetState = sheetState,
-        modifier = Modifier.padding(bottom = 120.dp)
+        modifier = Modifier.padding(bottom = 120.dp),
+        sheetGesturesEnabled = false,
+        dragHandle = null,
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp)
+                .padding(horizontal = 20.dp, vertical = 20.dp)
                 .fillMaxSize()
                 .navigationBarsPadding(),
         ) {
@@ -302,7 +303,11 @@ internal fun DetalhesPedidoSheet(
                 pedido.categoria
             )
             InfoLinha(Icons.Outlined.CalendarToday, stringResource(R.string.data), pedido.data)
-            InfoLinha(Icons.Outlined.Paid, stringResource(R.string.valor), pedido.total)
+            InfoLinha(
+                Icons.Outlined.Paid,
+                stringResource(R.string.valor),
+                pedido.total ?: "Em analise"
+            )
 
             Spacer(Modifier.size(20.dp))
             Button(
@@ -329,11 +334,15 @@ internal fun OrcamentoFinalSheet(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onFechar,
+        sheetState = sheetState,
+        sheetGesturesEnabled = false,
+        dragHandle = null,
+    ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp)
+                .padding(horizontal = 20.dp, vertical = 20.dp)
                 .navigationBarsPadding(),
         ) {
             CabecalhoSheet(
@@ -431,7 +440,11 @@ internal fun OrcamentoFinalSheet(
             Spacer(Modifier.size(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             Spacer(Modifier.size(8.dp))
-            LinhaValor(stringResource(R.string.total), pedido.total, destaque = true)
+            LinhaValor(
+                stringResource(R.string.total),
+                pedido.total ?: "Em analise",
+                destaque = true
+            )
 
             Spacer(Modifier.size(16.dp))
             Row(
