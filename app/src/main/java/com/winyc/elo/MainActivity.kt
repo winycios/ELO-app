@@ -5,6 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,6 +57,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
 import com.winyc.elo.telas.cliente.PedidosScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
@@ -78,6 +84,8 @@ private enum class EloScreen(val route: String) {
     Orcamentos("${PRO_PREFIX}orcamentos"),
     Publicar("${PRO_PREFIX}publicar"),
     PerfilPro("${PRO_PREFIX}perfil"),
+
+    Auth("auth"),
 }
 
 private data class NavItem(
@@ -118,42 +126,66 @@ private fun EloApp() {
     val currentRoute = backStackEntry?.destination?.route
 
     val emModoPro = currentRoute?.startsWith(PRO_PREFIX) == true
+    val emAuth = currentRoute == EloScreen.Auth.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
     EloTheme(context = context) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                if (emModoPro) ModoProBanner()
+                if (emModoPro && !emAuth) ModoProBanner()
             },
             bottomBar = {
-                EloNavigationBar(
-                    itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
-                    currentRoute = currentRoute,
-                    onNavigate = { navController.navegarParaAba(it) },
-                    toggleLabelRes = if (emModoPro) R.string.cliente else R.string.profissional,
-                    toggleIcon = if (emModoPro) Icons.Outlined.Person else Icons.Outlined.WorkOutline,
-                    onToggle = {
-                        val destino = if (emModoPro) EloScreen.Inicio else EloScreen.Painel
-                        navController.trocarDeModo(destino)
-                    },
-                )
+                if (!emAuth) {
+                    EloNavigationBar(
+                        itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
+                        currentRoute = currentRoute,
+                        onNavigate = { navController.navegarParaAba(it) },
+                        toggleLabelRes = if (emModoPro) R.string.cliente else R.string.profissional,
+                        toggleIcon = if (emModoPro) Icons.Outlined.Person else Icons.Outlined.WorkOutline,
+                        onToggle = {
+                            val destino = if (emModoPro) EloScreen.Inicio else EloScreen.Painel
+                            navController.trocarDeModo(destino)
+                        },
+                    )
+                }
             },
         ) { contentPadding ->
             NavHost(
                 navController = navController,
                 startDestination = EloScreen.Inicio.route,
-                modifier = Modifier.padding(contentPadding).padding(start = 10.dp, end = 10.dp),
+                modifier = Modifier
+                    .padding(contentPadding)
+                    .then(if (emAuth) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
+
+                enterTransition = {
+                    slideInHorizontally(animationSpec = tween(300)) { it / 3 } + fadeIn(tween(300))
+                },
+                exitTransition = {
+                    slideOutHorizontally(animationSpec = tween(250)) { -it / 3 } + fadeOut(tween(200))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(animationSpec = tween(300)) { -it / 3 } + fadeIn(tween(300))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(animationSpec = tween(250)) { it / 3 } + fadeOut(tween(200))
+                },
             ) {
                 composable(EloScreen.Inicio.route) { InicioScreen() }
                 composable(EloScreen.Vitrine.route) { VitrineScreen() }
                 composable(EloScreen.Pedidos.route) { PedidosScreen() }
-                composable(EloScreen.Perfil.route) { PerfilScreen() }
+                composable(EloScreen.Perfil.route) {
+                    PerfilScreen(onAbrirLogin = { navController.navigate(EloScreen.Auth.route) })
+                }
 
                 composable(EloScreen.Painel.route) { PainelScreen() }
                 composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
                 composable(EloScreen.Publicar.route) { PublicarScreen() }
                 composable(EloScreen.PerfilPro.route) { PerfilProScreen() }
+
+                composable(EloScreen.Auth.route) {
+                    AutenticacaoScreen(onSair = { navController.popBackStack() })
+                }
             }
         }
     }
