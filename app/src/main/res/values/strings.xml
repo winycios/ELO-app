@@ -142,4 +142,96 @@
     <string name="ajuda_termos">Termos de uso</string>
     <string name="ajuda_faq_titulo">PERGUNTAS FREQUENTES</string>
     <string name="ajuda_faq_resposta">Nossa equipe preparou uma explicação detalhada sobre isso na Central de Ajuda. Toque em “Falar com suporte” caso precise de atendimento humano.</string>
+
+    <!-- Perfil profissional (Perfil Pro) -->
+    <string name="pro_editar_perfil_publico">Editar perfil público</string>
+    <string name="pro_stat_servicos">Serviços</string>
+    <string name="pro_stat_avaliacao">Avaliação</string>
+    <string name="pro_stat_resposta">Resposta</string>
+    <string name="pro_disponivel_titulo">Disponível para novos serviços</string>
+    <string name="pro_disponivel_sub_on">Aparecendo nas buscas</string>
+    <string name="pro_disponivel_sub_off">Oculto nas buscas</string>
+    <string name="pro_meus_servicos">Meus serviços</string>
+    <string name="pro_contagem_servicos">%1$d categoria · %2$d serviços</string>
+    <string name="pro_badge_verificado">Verificado</string>
+    <string name="pro_badge_top">Top Pro</string>
+    <string name="pro_badge_pontual">Pontual</string>
+    <string name="pro_area_atendimento">Área de atendimento</string>
+    <string name="pro_ajuda">Ajuda Pro</string>
+    <string name="pro_ajuda_sub">Suporte dedicado</string>
+    <string name="pro_saiu">Você saiu da conta</string>
+
+    <!-- Editar perfil público -->
+    <string name="pro_editar_sub">Visível para todos os clientes</string>
+    <string name="pro_url_foto">URL da foto</string>
+    <string name="pro_url_foto_hint">https://…</string>
+    <string name="pro_bio">Bio / Apresentação</string>
+    <string name="pro_bio_hint">Conte sobre sua experiência e especialidades…</string>
+    <string name="pro_area_hint">Ex: São Paulo - Zona Oeste (até 10 km)</string>
+    <string name="pro_tags_especialidade">Tags de especialidade</string>
+    <string name="pro_tags_hint">Ex: Pontual, Organizado…</string>
+    <string name="pro_salvar_perfil">Salvar perfil</string>
+
+    <!-- Meus serviços -->
+    <string name="pro_servicos_sub">O que você oferece aos clientes</string>
+    <string name="pro_servicos_qtd">%1$d serviços</string>
+    <string name="pro_adicionar_servico">Adicionar serviço</string>
+    <string name="pro_editar_servico_cd">Editar serviço</string>
+    <string name="pro_excluir_servico_cd">Excluir serviço</string>
+
+    <!-- Novo / editar serviço -->
+    <string name="pro_novo_servico">Novo serviço</string>
+    <string name="pro_editar_servico">Editar serviço</string>
+    <string name="pro_servico_sub">Preencha categoria e detalhes</string>
+    <string name="pro_area_atuacao">1. Área de atuação</string>
+    <string name="pro_area_selecionada">Área selecionada: %1$s</string>
+    <string name="pro_servico_especifico">2. Serviço específico</string>
+    <string name="pro_servico_especifico_hint">Nome do serviço</string>
+    <string name="pro_servico_aparece">Aparecerá como: %1$s → %2$s</string>
+    <string name="pro_descricao_hint">Detalhe o que está incluso, como funciona…</string>
+    <string name="pro_imagens">Imagens do serviço (até 3)</string>
+    <string name="pro_imagens_dica">Mostre fotos reais de trabalhos concluídos para gerar mais confiança.</string>
+    <string name="pro_adicionar">Adicionar</string>
+    <string name="pro_faixa_preco">Faixa de preço</string>
+    <string name="pro_faixa_preco_hint">Ex: R$ 150 - R$ 300</string>
+    <string name="pro_principais_pontos">Principais pontos</string>
+    <string name="pro_pontos_hint">Ex: Garantia de 90 dias</string>
+    <string name="pro_disponibilidade">Disponibilidade semanal</string>
+    <string name="pro_igualar_todos">Igualar todos</string>
+    <string name="pro_disp_vazio">Selecione os dias em que este serviço está disponível</string>
+    <string name="pro_disp_dica">Cada dia pode ter múltiplos intervalos (ex: manhã e tarde).</string>
+    <string name="pro_horario">Horário</string>
+    <string name="pro_intervalos_qtd">%1$d intervalo(s)</string>
+    <string name="pro_salvar_servico">Salvar serviço</string>
+    <string name="pro_selecione_categoria">Selecione uma categoria para continuar</string>
+    <string name="pro_remover">Remover</string>
+    <string name="pro_adicionar_item">Adicionar</string>
+
+    <!-- Áreas de atuação -->
+    <string name="pro_cat_limpeza">Limpeza</string>
+    <string name="pro_cat_reformas">Reformas</string>
+    <string name="pro_cat_instalacoes">Instalações</string>
+    <string name="pro_cat_moveis">Móveis e Montagem</string>
+    <string name="pro_cat_externos">Serviços Externos</string>
+    <string name="pro_cat_assistencia">Assistência Técnica</string>
+    <string name="pro_cat_digitais">Serviços Digitais</string>
+    <string name="pro_cat_profissionais">Serviços Profissionais</string>
+
+    <!-- Dias da semana (curto) -->
+    <string name="pro_dia_dom">Dom</string>
+    <string name="pro_dia_seg">Seg</string>
+    <string name="pro_dia_ter">Ter</string>
+    <string name="pro_dia_qua">Qua</string>
+    <string name="pro_dia_qui">Qui</string>
+    <string name="pro_dia_sex">Sex</string>
+    <string name="pro_dia_sab">Sáb</string>
+
+    <!-- Dias da semana (longo) -->
+    <string name="pro_dia_domingo">Domingo</string>
+    <string name="pro_dia_segunda">Segunda</string>
+    <string name="pro_dia_terca">Terça</string>
+    <string name="pro_dia_quarta">Quarta</string>
+    <string name="pro_dia_quinta">Quinta</string>
+    <string name="pro_dia_sexta">Sexta</string>
+    <string name="pro_dia_sabado">Sábado</string>
 </resources>
