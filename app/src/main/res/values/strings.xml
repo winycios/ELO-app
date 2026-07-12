@@ -67,4 +67,79 @@
     <string name="avaliar_cliente">Avaliar cliente</string>
     <string name="enviar_orcamento">Enviar orçamento</string>
     <string name="adicionar_categoria">ADICIONAR CATEGORIA</string>
+
+    <!-- Comum -->
+    <string name="voltar">Voltar</string>
+
+    <!-- Perfil do cliente -->
+    <string name="perfil_titulo">Perfil</string>
+    <string name="perfil_entrar_criar_conta">Entrar ou criar conta</string>
+    <string name="perfil_verificado">Verificado</string>
+    <string name="perfil_editar">Editar perfil</string>
+    <string name="perfil_enderecos">Endereços</string>
+    <string name="perfil_enderecos_sub">Gerencie seus endereços</string>
+    <string name="perfil_ajuda">Ajuda</string>
+    <string name="perfil_ajuda_sub">Central de suporte</string>
+    <string name="perfil_sair">Sair da conta</string>
+    <string name="perfil_stat_pedidos">Pedidos</string>
+    <string name="perfil_stat_concluidos">Concluídos</string>
+    <string name="perfil_stat_avaliacao">Avaliação</string>
+    <string name="perfil_email">E-mail</string>
+    <string name="perfil_telefone">Telefone</string>
+
+    <!-- Editar perfil -->
+    <string name="perfil_trocar_foto">Trocar foto</string>
+    <string name="perfil_campo_nome">Nome</string>
+    <string name="perfil_campo_nome_hint">Seu nome completo</string>
+    <string name="perfil_campo_email_hint">seu@email.com</string>
+    <string name="perfil_campo_telefone_hint">(00) 00000-0000</string>
+    <string name="perfil_campo_endereco">Endereço</string>
+    <string name="perfil_campo_endereco_hint">Cidade, estado</string>
+
+    <!-- Endereços -->
+    <string name="enderecos_sub_salvos">Gerencie seus endereços salvos</string>
+    <string name="endereco_adicionar_novo">Adicionar novo endereço</string>
+    <string name="endereco_novo">Novo endereço</string>
+    <string name="endereco_adicionar">Adicionar endereço</string>
+    <string name="endereco_editar_titulo">Editar endereço</string>
+    <string name="endereco_salvar_alteracoes">Salvar alterações</string>
+    <string name="endereco_cep_format">CEP: %1$s</string>
+    <string name="endereco_principal">Principal</string>
+    <string name="endereco_acao_definir_principal">principal</string>
+    <string name="endereco_acao_editar">Editar</string>
+    <string name="endereco_acao_excluir">Excluir</string>
+    <string name="endereco_campo_nome">Nome do endereço</string>
+    <string name="endereco_campo_nome_hint_novo">Ex: Minha casa, Escritório…</string>
+    <string name="endereco_tipo">Tipo</string>
+    <string name="endereco_tipo_casa">Casa</string>
+    <string name="endereco_tipo_trabalho">Trabalho</string>
+    <string name="endereco_tipo_outro">Outro</string>
+    <string name="endereco_cep">CEP</string>
+    <string name="endereco_cep_hint">00000–000</string>
+    <string name="endereco_rua">Rua / Av.</string>
+    <string name="endereco_rua_hint">Nome da rua</string>
+    <string name="endereco_numero">Número</string>
+    <string name="endereco_numero_hint">Nº</string>
+    <string name="endereco_complemento">Complemento</string>
+    <string name="endereco_complemento_hint">Apto, sala, bloco… (opcional)</string>
+    <string name="endereco_bairro">Bairro</string>
+    <string name="endereco_cidade">Cidade</string>
+    <string name="endereco_estado">Estado</string>
+    <string name="endereco_estado_hint">SP</string>
+
+    <!-- Ajuda -->
+    <string name="ajuda_sub">Como podemos te ajudar?</string>
+    <string name="ajuda_buscar">Buscar em perguntas frequentes…</string>
+    <string name="ajuda_falar_suporte">FALAR COM SUPORTE</string>
+    <string name="ajuda_chat">Chat ao vivo</string>
+    <string name="ajuda_chat_sub">Atendimento em tempo real</string>
+    <string name="ajuda_telefone_sub">0800 123 4567 (gratuito)</string>
+    <string name="ajuda_email_sub">suporte@elo.com.br</string>
+    <string name="ajuda_atalhos">ATALHOS RÁPIDOS</string>
+    <string name="ajuda_reportar">Reportar problema</string>
+    <string name="ajuda_protecao">Proteção ao cliente</string>
+    <string name="ajuda_avaliar_app">Avaliar o app</string>
+    <string name="ajuda_termos">Termos de uso</string>
+    <string name="ajuda_faq_titulo">PERGUNTAS FREQUENTES</string>
+    <string name="ajuda_faq_resposta">Nossa equipe preparou uma explicação detalhada sobre isso na Central de Ajuda. Toque em “Falar com suporte” caso precise de atendimento humano.</string>
 </resources>

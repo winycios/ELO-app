@@ -42,6 +42,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -144,6 +147,9 @@ private fun EloApp() {
     val jaViuOnboarding = remember { prefs.getBoolean(KEY_ONBOARDING, false) }
     val startDestination = if (jaViuOnboarding) EloScreen.Inicio.route else EloScreen.Onboarding.route
 
+    // Estado de sessão (mock): controla se o Perfil mostra a área logada.
+    var logado by rememberSaveable { mutableStateOf(false) }
+
     val emModoPro = currentRoute?.startsWith(PRO_PREFIX) == true
     val telaCheia = currentRoute == EloScreen.Auth.route ||
         currentRoute == EloScreen.Onboarding.route ||
@@ -200,7 +206,11 @@ private fun EloApp() {
                 }
                 composable(EloScreen.Pedidos.route) { PedidosScreen() }
                 composable(EloScreen.Perfil.route) {
-                    PerfilScreen(onAbrirLogin = { navController.navigate(EloScreen.Auth.route) })
+                    PerfilScreen(
+                        logado = logado,
+                        onAbrirLogin = { navController.navigate(EloScreen.Auth.route) },
+                        onSair = { logado = false },
+                    )
                 }
                 composable(
                     EloScreen.PerfilProfissional.route,
@@ -232,7 +242,13 @@ private fun EloApp() {
                 }
 
                 composable(EloScreen.Auth.route) {
-                    AutenticacaoScreen(onSair = { navController.popBackStack() })
+                    AutenticacaoScreen(
+                        onSair = { navController.popBackStack() },
+                        onAutenticar = {
+                            logado = true
+                            navController.popBackStack()
+                        },
+                    )
                 }
             }
         }

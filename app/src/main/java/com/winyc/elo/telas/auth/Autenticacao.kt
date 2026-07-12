@@ -97,7 +97,11 @@ private val ESTATISTICAS = listOf(
 )
 
 @Composable
-fun AutenticacaoScreen(onSair: () -> Unit, modifier: Modifier = Modifier) {
+fun AutenticacaoScreen(
+    onSair: () -> Unit,
+    onAutenticar: () -> Unit = onSair,
+    modifier: Modifier = Modifier,
+) {
     var modo by rememberSaveable { mutableStateOf(ModoAuth.Entrar) }
     var perfil by rememberSaveable { mutableStateOf(PerfilCadastro.Cliente) }
 
@@ -144,13 +148,13 @@ fun AutenticacaoScreen(onSair: () -> Unit, modifier: Modifier = Modifier) {
             ) { alvo ->
                 when (alvo) {
                     ModoAuth.Entrar -> FormularioEntrar(
-                        onEntrar = onSair,
+                        onEntrar = onAutenticar,
                         onIrParaCadastro = { modo = ModoAuth.Cadastrar },
                     )
                     ModoAuth.Cadastrar -> FormularioCadastro(
                         perfil = perfil,
                         onPerfil = { perfil = it },
-                        onCriarConta = onSair,
+                        onCriarConta = onAutenticar,
                         onIrParaLogin = { modo = ModoAuth.Entrar },
                     )
                 }
