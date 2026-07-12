@@ -57,8 +57,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import android.content.Context
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
+import com.winyc.elo.telas.onboarding.OnboardingScreen
 import com.winyc.elo.telas.cliente.PedidosScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
 import com.winyc.elo.telas.cliente.VitrineScreen
@@ -68,9 +72,12 @@ import com.winyc.elo.telas.profissional.PerfilProScreen
 import com.winyc.elo.telas.profissional.PublicarScreen
 import com.winyc.elo.ui.theme.EloContext
 import com.winyc.elo.ui.theme.EloTheme
+import androidx.core.content.edit
 
 
 private const val PRO_PREFIX = "pro/"
+private const val PREFS = "elo_prefs"
+private const val KEY_ONBOARDING = "onboarding_visto"
 
 private enum class EloScreen(val route: String) {
     // Cliente (coral)
@@ -85,6 +92,7 @@ private enum class EloScreen(val route: String) {
     Publicar("${PRO_PREFIX}publicar"),
     PerfilPro("${PRO_PREFIX}perfil"),
 
+    Onboarding("onboarding"),
     Auth("auth"),
 }
 
@@ -125,18 +133,23 @@ private fun EloApp() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    val appContext = LocalContext.current
+    val prefs = remember { appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    val jaViuOnboarding = remember { prefs.getBoolean(KEY_ONBOARDING, false) }
+    val startDestination = if (jaViuOnboarding) EloScreen.Inicio.route else EloScreen.Onboarding.route
+
     val emModoPro = currentRoute?.startsWith(PRO_PREFIX) == true
-    val emAuth = currentRoute == EloScreen.Auth.route
+    val telaCheia = currentRoute == EloScreen.Auth.route || currentRoute == EloScreen.Onboarding.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
     EloTheme(context = context) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                if (emModoPro && !emAuth) ModoProBanner()
+                if (emModoPro && !telaCheia) ModoProBanner()
             },
             bottomBar = {
-                if (!emAuth) {
+                if (!telaCheia) {
                     EloNavigationBar(
                         itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
                         currentRoute = currentRoute,
@@ -153,10 +166,10 @@ private fun EloApp() {
         ) { contentPadding ->
             NavHost(
                 navController = navController,
-                startDestination = EloScreen.Inicio.route,
+                startDestination = startDestination,
                 modifier = Modifier
                     .padding(contentPadding)
-                    .then(if (emAuth) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
+                    .then(if (telaCheia) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
 
                 enterTransition = {
                     slideInHorizontally(animationSpec = tween(300)) { it / 3 } + fadeIn(tween(300))
@@ -182,6 +195,17 @@ private fun EloApp() {
                 composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
                 composable(EloScreen.Publicar.route) { PublicarScreen() }
                 composable(EloScreen.PerfilPro.route) { PerfilProScreen() }
+
+                composable(EloScreen.Onboarding.route) {
+                    OnboardingScreen(
+                        onConcluir = {
+                            prefs.edit { putBoolean(KEY_ONBOARDING, true) }
+                            navController.navigate(EloScreen.Inicio.route) {
+                                popUpTo(EloScreen.Onboarding.route) { inclusive = true }
+                            }
+                        },
+                    )
+                }
 
                 composable(EloScreen.Auth.route) {
                     AutenticacaoScreen(onSair = { navController.popBackStack() })

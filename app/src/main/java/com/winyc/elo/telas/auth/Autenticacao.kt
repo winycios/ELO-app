@@ -191,9 +191,6 @@ private fun Cabecalho(modo: ModoAuth, onPular: () -> Unit) {
                         .background(EloTintaEscura),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // Vetor dos anéis (foreground do ícone). painterResource
-                    // renderiza <vector> nítido em qualquer tamanho; o tamanho
-                    // maior que o box preenche a zona de segurança do ícone.
                     Image(
                         painter = painterResource(R.drawable.ic_launcher_foreground),
                         contentDescription = "Logo Elo",
