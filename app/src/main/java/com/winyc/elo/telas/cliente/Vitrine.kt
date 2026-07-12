@@ -122,7 +122,10 @@ private val COMENTARIOS_DEMO = listOf(
 )
 
 @Composable
-fun VitrineScreen(modifier: Modifier = Modifier) {
+fun VitrineScreen(
+    onAbrirPerfil: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val rotuloTodos = stringResource(R.string.categoria_todos)
     var categoriaSelecionada by rememberSaveable { mutableStateOf(rotuloTodos) }
 
@@ -162,7 +165,7 @@ fun VitrineScreen(modifier: Modifier = Modifier) {
         }
 
         items(postsVisiveis) { post ->
-            TrabalhoCard(post)
+            TrabalhoCard(post, onAbrirPerfil = { onAbrirPerfil(post.autor) })
         }
     }
 }
@@ -203,7 +206,11 @@ private fun Categorias(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TrabalhoCard(post: TrabalhoPost, modifier: Modifier = Modifier) {
+private fun TrabalhoCard(
+    post: TrabalhoPost,
+    onAbrirPerfil: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
 
     var curtido by rememberSaveable(post.autor) { mutableStateOf(false) }
     var curtidas by rememberSaveable(post.autor) { mutableIntStateOf(post.curtidas) }
@@ -222,7 +229,7 @@ private fun TrabalhoCard(post: TrabalhoPost, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Cabecalho(post)
+            Cabecalho(post, onAbrirPerfil = onAbrirPerfil)
             Text(
                 text = post.descricao,
                 style = MaterialTheme.typography.bodyMedium,
@@ -238,6 +245,7 @@ private fun TrabalhoCard(post: TrabalhoPost, modifier: Modifier = Modifier) {
                     curtidas += if (curtido) 1 else -1
                 },
                 onComentar = { comentando = true },
+                onVerPerfil = onAbrirPerfil,
             )
         }
     }
@@ -287,8 +295,13 @@ private fun FotoTrabalho(categoria: String) {
 }
 
 @Composable
-private fun Cabecalho(post: TrabalhoPost) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun Cabecalho(post: TrabalhoPost, onAbrirPerfil: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onAbrirPerfil),
+    ) {
         Avatar(post.autor)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -351,6 +364,7 @@ private fun RodapeCard(
     comentarios: Int,
     onCurtir: () -> Unit,
     onComentar: () -> Unit,
+    onVerPerfil: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Contador(
@@ -372,6 +386,10 @@ private fun RodapeCard(
             text = stringResource(R.string.ver_perfil),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onVerPerfil)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
         )
     }
 }

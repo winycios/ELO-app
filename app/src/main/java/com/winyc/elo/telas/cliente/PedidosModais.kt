@@ -80,7 +80,7 @@ private val Verde = Color(0xFF12A15A)
 
 /** Anima o fechamento do sheet e só então limpa o estado no chamador. */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun esconderEntao(scope: CoroutineScope, sheetState: SheetState, aoFim: () -> Unit) {
+fun recolherBottomModal(scope: CoroutineScope, sheetState: SheetState, aoFim: () -> Unit) {
     scope.launch { sheetState.hide() }.invokeOnCompletion {
         if (!sheetState.isVisible) aoFim()
     }
@@ -121,7 +121,7 @@ internal fun ContatoSheet(
             CabecalhoSheet(
                 icone = Icons.Outlined.Phone,
                 titulo = stringResource(R.string.contato),
-                onFechar = { esconderEntao(scope, sheetState, onFechar) },
+                onFechar = { recolherBottomModal(scope, sheetState, onFechar) },
             )
 
             Spacer(Modifier.size(16.dp))
@@ -269,7 +269,7 @@ internal fun DetalhesPedidoSheet(
         ) {
             CabecalhoSheet(
                 titulo = stringResource(R.string.detalhes_do_pedido),
-                onFechar = { esconderEntao(scope, sheetState, onFechar) },
+                onFechar = { recolherBottomModal(scope, sheetState, onFechar) },
             )
 
             Spacer(Modifier.size(12.dp))
@@ -306,7 +306,7 @@ internal fun DetalhesPedidoSheet(
 
             Spacer(Modifier.size(20.dp))
             Button(
-                onClick = { esconderEntao(scope, sheetState, onFechar) },
+                onClick = { recolherBottomModal(scope, sheetState, onFechar) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.fechar))
@@ -340,7 +340,7 @@ internal fun OrcamentoFinalSheet(
                 icone = Icons.Outlined.EditNote,
                 titulo = stringResource(R.string.orcamento_final),
                 subtitulo = stringResource(R.string.revise_e_decida),
-                onFechar = { esconderEntao(scope, sheetState, onFechar) },
+                onFechar = { recolherBottomModal(scope, sheetState, onFechar) },
             )
 
             Spacer(Modifier.size(16.dp))
@@ -459,7 +459,7 @@ internal fun OrcamentoFinalSheet(
             Spacer(Modifier.size(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
-                    onClick = { esconderEntao(scope, sheetState, onFechar) },
+                    onClick = { recolherBottomModal(scope, sheetState, onFechar) },
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(R.string.recusar))
@@ -467,7 +467,7 @@ internal fun OrcamentoFinalSheet(
                 Button(
                     onClick = {
                         Toast.makeText(context, "Orçamento aceito!", Toast.LENGTH_SHORT).show()
-                        esconderEntao(scope, sheetState, onFechar)
+                        recolherBottomModal(scope, sheetState, onFechar)
                     },
                     modifier = Modifier.weight(1f),
                 ) {
@@ -550,7 +550,7 @@ internal fun AvaliarSheet(
                 onClick = {
                     onPublicar(nota, comentario.trim())
                     Toast.makeText(context, "Avaliação publicada!", Toast.LENGTH_SHORT).show()
-                    esconderEntao(scope, sheetState, onFechar)
+                    recolherBottomModal(scope, sheetState, onFechar)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {

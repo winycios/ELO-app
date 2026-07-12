@@ -214,24 +214,36 @@ private val OUTROS_PROFISSIONAIS = listOf(
 
 /** Home do cliente: busca de serviços, categorias e recomendações. */
 @Composable
-fun InicioScreen(modifier: Modifier = Modifier) {
+fun InicioScreen(
+    onAbrirPerfil: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     var categoriaAberta by rememberSaveable { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = categoriaAberta != null) { categoriaAberta = null }
 
     if (categoriaAberta == null) {
-        HomeConteudo(onAbrirCategoria = { categoriaAberta = it }, modifier = modifier)
+        HomeConteudo(
+            onAbrirCategoria = { categoriaAberta = it },
+            onAbrirPerfil = onAbrirPerfil,
+            modifier = modifier,
+        )
     } else {
         CategoriaScreen(
             categoria = categoriaAberta!!,
             onVoltar = { categoriaAberta = null },
+            onAbrirPerfil = onAbrirPerfil,
             modifier = modifier,
         )
     }
 }
 
 @Composable
-private fun HomeConteudo(onAbrirCategoria: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun HomeConteudo(
+    onAbrirCategoria: (String) -> Unit,
+    onAbrirPerfil: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -261,7 +273,7 @@ private fun HomeConteudo(onAbrirCategoria: (String) -> Unit, modifier: Modifier 
                     contentPadding = PaddingValues(horizontal = 2.dp),
                 ) {
                     items(RECOMENDADOS_HOME) { pro ->
-                        CardRecomendado(pro, onClick = { onAbrirCategoria(pro.categoria) })
+                        CardRecomendado(pro, onClick = { onAbrirPerfil(pro.nome) })
                     }
                 }
             }
@@ -280,7 +292,7 @@ private fun HomeConteudo(onAbrirCategoria: (String) -> Unit, modifier: Modifier 
                     contentPadding = PaddingValues(horizontal = 2.dp),
                 ) {
                     items(EM_ALTA) { pro ->
-                        CardEmAlta(pro, onClick = { onAbrirCategoria(pro.categoria) })
+                        CardEmAlta(pro, onClick = { onAbrirPerfil(pro.nome) })
                     }
                 }
             }
@@ -748,6 +760,7 @@ private fun AreaAccordion(
 private fun CategoriaScreen(
     categoria: String,
     onVoltar: () -> Unit,
+    onAbrirPerfil: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var filtrosAbertos by rememberSaveable(categoria) { mutableStateOf(false) }
@@ -803,7 +816,7 @@ private fun CategoriaScreen(
             }
 
             items(RECOMENDADOS_CATEGORIA) { pro ->
-                CardDestacado(pro)
+                CardDestacado(pro, onClick = { onAbrirPerfil(pro.nome) })
             }
 
             item {
@@ -826,7 +839,7 @@ private fun CategoriaScreen(
                 }
             } else {
                 items(outros) { pro ->
-                    CardOutro(pro)
+                    CardOutro(pro, onClick = { onAbrirPerfil(pro.nome) })
                 }
             }
         }
@@ -977,10 +990,12 @@ private fun corDestaque(destaque: Destaque): Color = when (destaque) {
 }
 
 @Composable
-private fun CardDestacado(pro: ProDestacado) {
+private fun CardDestacado(pro: ProDestacado, onClick: () -> Unit) {
     val cor = corDestaque(pro.destaque)
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -1059,9 +1074,11 @@ private fun CardDestacado(pro: ProDestacado) {
 }
 
 @Composable
-private fun CardOutro(pro: ProFiltravel) {
+private fun CardOutro(pro: ProFiltravel, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),

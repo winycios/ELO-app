@@ -53,10 +53,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import android.net.Uri
 import android.content.Context
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -64,6 +67,7 @@ import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
 import com.winyc.elo.telas.onboarding.OnboardingScreen
 import com.winyc.elo.telas.cliente.PedidosScreen
+import com.winyc.elo.telas.cliente.PerfilProfissionalScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
 import com.winyc.elo.telas.cliente.VitrineScreen
 import com.winyc.elo.telas.profissional.OrcamentosScreen
@@ -76,6 +80,7 @@ import androidx.core.content.edit
 
 
 private const val PRO_PREFIX = "pro/"
+private const val PRO_PERFIL_PREFIX = "cliente/profissional/"
 private const val PREFS = "elo_prefs"
 private const val KEY_ONBOARDING = "onboarding_visto"
 
@@ -85,6 +90,7 @@ private enum class EloScreen(val route: String) {
     Vitrine("cliente/vitrine"),
     Pedidos("cliente/pedidos"),
     Perfil("cliente/perfil"),
+    PerfilProfissional("cliente/profissional/{nome}"),
 
     // Profissional (teal)
     Painel("${PRO_PREFIX}painel"),
@@ -139,7 +145,9 @@ private fun EloApp() {
     val startDestination = if (jaViuOnboarding) EloScreen.Inicio.route else EloScreen.Onboarding.route
 
     val emModoPro = currentRoute?.startsWith(PRO_PREFIX) == true
-    val telaCheia = currentRoute == EloScreen.Auth.route || currentRoute == EloScreen.Onboarding.route
+    val telaCheia = currentRoute == EloScreen.Auth.route ||
+        currentRoute == EloScreen.Onboarding.route ||
+        currentRoute == EloScreen.PerfilProfissional.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
     EloTheme(context = context) {
@@ -184,11 +192,27 @@ private fun EloApp() {
                     slideOutHorizontally(animationSpec = tween(250)) { it / 3 } + fadeOut(tween(200))
                 },
             ) {
-                composable(EloScreen.Inicio.route) { InicioScreen() }
-                composable(EloScreen.Vitrine.route) { VitrineScreen() }
+                composable(EloScreen.Inicio.route) {
+                    InicioScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it) })
+                }
+                composable(EloScreen.Vitrine.route) {
+                    VitrineScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it) })
+                }
                 composable(EloScreen.Pedidos.route) { PedidosScreen() }
                 composable(EloScreen.Perfil.route) {
                     PerfilScreen(onAbrirLogin = { navController.navigate(EloScreen.Auth.route) })
+                }
+                composable(
+                    EloScreen.PerfilProfissional.route,
+                    arguments = listOf(navArgument("nome") { type = NavType.StringType }),
+                ) { entry ->
+                    val nome = entry.arguments?.getString("nome").orEmpty()
+                    PerfilProfissionalScreen(
+                        nome = nome,
+                        onVoltar = { navController.popBackStack() },
+                        onIrParaInicio = { navController.navegarParaAba(EloScreen.Inicio) },
+                        onVerPedidos = { navController.navegarParaAba(EloScreen.Pedidos) },
+                    )
                 }
 
                 composable(EloScreen.Painel.route) { PainelScreen() }
@@ -220,6 +244,12 @@ private fun NavController.navegarParaAba(screen: EloScreen) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+private fun NavController.abrirPerfilProfissional(nome: String) {
+    navigate("${PRO_PERFIL_PREFIX}${Uri.encode(nome)}") {
+        launchSingleTop = true
     }
 }
 
