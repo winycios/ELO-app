@@ -73,6 +73,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.winyc.elo.R
+import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
 
 
@@ -215,6 +217,7 @@ private val OUTROS_PROFISSIONAIS = listOf(
 @Composable
 fun InicioScreen(
     onAbrirPerfil: (String) -> Unit = {},
+    perfil: PerfilSessao?,
     modifier: Modifier = Modifier,
 ) {
     var categoriaAberta by rememberSaveable { mutableStateOf<String?>(null) }
@@ -226,6 +229,7 @@ fun InicioScreen(
             onAbrirCategoria = { categoriaAberta = it },
             onAbrirPerfil = onAbrirPerfil,
             modifier = modifier,
+            perfil = perfil
         )
     } else {
         CategoriaScreen(
@@ -240,6 +244,7 @@ fun InicioScreen(
 @Composable
 private fun HomeConteudo(
     onAbrirCategoria: (String) -> Unit,
+    perfil: PerfilSessao?,
     onAbrirPerfil: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -250,7 +255,7 @@ private fun HomeConteudo(
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        item { HeaderBusca() }
+        item { HeaderBusca(perfil = perfil) }
 
         item {
             SecaoCategorias(
@@ -318,7 +323,7 @@ private fun HomeConteudo(
 }
 
 @Composable
-private fun HeaderBusca() {
+private fun HeaderBusca(perfil: PerfilSessao?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -331,7 +336,7 @@ private fun HeaderBusca() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Olá, Lucas",
+                    text = "Olá, " + if (perfil != null && perfil.nome.isNotBlank()) perfil.nome else "Cliente",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                 )
@@ -341,19 +346,12 @@ private fun HeaderBusca() {
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.22f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "LS",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            }
+            AvatarPerfil(
+                nome = if (perfil != null && perfil.nome.isNotBlank()) perfil.nome else "Cliente",
+                fotoUrl = if (perfil != null && perfil.urlPerfil.isNotBlank()) perfil.urlPerfil else null,
+                tamanho = 44.dp,
+                fonte = MaterialTheme.typography.titleLarge,
+            )
             Spacer(Modifier.width(10.dp))
             Box(
                 modifier = Modifier

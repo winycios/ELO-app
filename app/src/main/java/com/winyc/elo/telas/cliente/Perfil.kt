@@ -85,6 +85,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.winyc.elo.R
+import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.telas.componentes.AvatarPerfil
 
 /* ============================ Cores de apoio / mock ============================ */
 
@@ -151,12 +153,13 @@ private val FAQ_CATEGORIAS =
 @Composable
 fun PerfilScreen(
     logado: Boolean,
+    perfil: PerfilSessao?,
     onAbrirLogin: () -> Unit,
     onSair: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (logado) {
-        PerfilLogado(onAbrirLogin = onAbrirLogin, onSair = onSair, modifier = modifier)
+        PerfilLogado(perfil = perfil, onAbrirLogin = onAbrirLogin, onSair = onSair, modifier = modifier)
     } else {
         PerfilDeslogado(onAbrirLogin = onAbrirLogin, modifier = modifier)
     }
@@ -225,6 +228,7 @@ private enum class PerfilAba { Menu, EditarPerfil, Enderecos, Ajuda }
 
 @Composable
 private fun PerfilLogado(
+    perfil: PerfilSessao?,
     onAbrirLogin: () -> Unit,
     onSair: () -> Unit,
     modifier: Modifier = Modifier,
@@ -233,8 +237,13 @@ private fun PerfilLogado(
 
     BackHandler(enabled = aba != PerfilAba.Menu) { aba = PerfilAba.Menu }
 
+    val nome = perfil?.nome?.takeIf { it.isNotBlank() } ?: USUARIO_NOME
+    val fotoUrl = perfil?.urlPerfil
+
     when (aba) {
         PerfilAba.Menu -> MenuPerfil(
+            nome = nome,
+            fotoUrl = fotoUrl,
             onEditar = { aba = PerfilAba.EditarPerfil },
             onEnderecos = { aba = PerfilAba.Enderecos },
             onAjuda = { aba = PerfilAba.Ajuda },
@@ -244,6 +253,8 @@ private fun PerfilLogado(
         )
 
         PerfilAba.EditarPerfil -> EditarPerfilScreen(
+            nomeInicial = nome,
+            fotoUrl = fotoUrl,
             onVoltar = { aba = PerfilAba.Menu },
             modifier = modifier,
         )
@@ -264,6 +275,8 @@ private fun PerfilLogado(
 
 @Composable
 private fun MenuPerfil(
+    nome: String,
+    fotoUrl: String?,
     onEditar: () -> Unit,
     onEnderecos: () -> Unit,
     onAjuda: () -> Unit,
@@ -283,16 +296,17 @@ private fun MenuPerfil(
                 modifier = Modifier.padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AvatarIniciais(
-                    USUARIO_NOME,
+                AvatarPerfil(
+                    nome = nome,
+                    fotoUrl = fotoUrl,
                     tamanho = 68.dp,
-                    fonte = MaterialTheme.typography.headlineSmall
+                    fonte = MaterialTheme.typography.headlineSmall,
                 )
                 Spacer(Modifier.width(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            USUARIO_NOME,
+                            nome,
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
@@ -539,8 +553,13 @@ private fun ItemMenu(
 /* ---------------------------- Editar perfil (img_1) ---------------------------- */
 
 @Composable
-private fun EditarPerfilScreen(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
-    var nome by rememberSaveable { mutableStateOf(USUARIO_NOME) }
+private fun EditarPerfilScreen(
+    nomeInicial: String,
+    fotoUrl: String?,
+    onVoltar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var nome by rememberSaveable(nomeInicial) { mutableStateOf(nomeInicial) }
     var email by rememberSaveable { mutableStateOf(USUARIO_EMAIL) }
     var telefone by rememberSaveable { mutableStateOf(USUARIO_TELEFONE) }
     var endereco by rememberSaveable { mutableStateOf(USUARIO_LOCAL) }
@@ -562,10 +581,11 @@ private fun EditarPerfilScreen(onVoltar: () -> Unit, modifier: Modifier = Modifi
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(contentAlignment = Alignment.BottomEnd) {
-                        AvatarIniciais(
-                            nome,
+                        AvatarPerfil(
+                            nome = nome,
+                            fotoUrl = fotoUrl,
                             tamanho = 96.dp,
-                            fonte = MaterialTheme.typography.headlineMedium
+                            fonte = MaterialTheme.typography.headlineMedium,
                         )
                         Box(
                             modifier = Modifier
@@ -1391,33 +1411,6 @@ private fun CampoTexto(
     }
 }
 
-@Composable
-private fun AvatarIniciais(
-    nome: String,
-    tamanho: Dp,
-    fonte: TextStyle,
-) {
-    Box(
-        modifier = Modifier
-            .size(tamanho)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = iniciais(nome),
-            style = fonte,
-            color = MaterialTheme.colorScheme.primary,
-        )
-    }
-}
-
-private fun iniciais(nome: String): String =
-    nome.trim().split(" ")
-        .filter { it.isNotBlank() }
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
 
 /** Borda sólida arredondada sem depender do módulo foundation.border. */
 private fun Modifier.bordaSolida(cor: Color, raio: Dp): Modifier = drawBehind {

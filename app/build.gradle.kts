@@ -63,6 +63,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.mpandroidchart)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.tink.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -53,6 +53,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.winyc.elo.R
+import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
 
 /* ============================ Cores de apoio dos selos ============================ */
@@ -121,11 +123,18 @@ private enum class SheetPro { EditarPerfil, MeusServicos }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun PerfilProScreen(modifier: Modifier = Modifier) {
+fun PerfilProScreen(sessao: PerfilSessao?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val saiuLabel = stringResource(R.string.pro_saiu)
 
-    var perfil by remember { mutableStateOf(PERFIL_INICIAL) }
+    var perfil by remember(sessao) {
+        mutableStateOf(
+            PERFIL_INICIAL.copy(
+                nome = sessao?.nome?.takeIf { it.isNotBlank() } ?: PERFIL_INICIAL.nome,
+                fotoUrl = sessao?.urlPerfilPro?.takeIf { it.isNotBlank() } ?: PERFIL_INICIAL.fotoUrl,
+            ),
+        )
+    }
     var disponivel by rememberSaveable { mutableStateOf(true) }
     val servicos = remember { mutableStateListOf<ServicoPro>().apply { addAll(SERVICOS_INICIAIS) } }
     var sheet by remember { mutableStateOf<SheetPro?>(null) }
@@ -219,7 +228,12 @@ private fun CabecalhoPro(perfil: PerfilPublico, areas: String, onEditar: () -> U
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AvatarCliente(perfil.nome, tamanho = 64.dp)
+                AvatarPerfil(
+                    nome = perfil.nome,
+                    fotoUrl = perfil.fotoUrl,
+                    tamanho = 64.dp,
+                    fonte = MaterialTheme.typography.titleLarge,
+                )
                 Spacer(Modifier.width(14.dp))
                 Column(
                     modifier = Modifier.weight(1f),

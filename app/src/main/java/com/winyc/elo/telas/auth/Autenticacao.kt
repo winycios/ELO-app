@@ -1,11 +1,14 @@
 package com.winyc.elo.telas.auth
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -27,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.People
@@ -51,6 +56,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,6 +66,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +75,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -79,10 +87,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
+import com.winyc.elo.backend.viewModel.AuthEstado
+import com.winyc.elo.backend.viewModel.AuthViewModel
 import com.winyc.elo.ui.theme.EloContext
 import com.winyc.elo.ui.theme.EloTheme
 import com.winyc.elo.ui.theme.EloTintaEscura
+import kotlinx.coroutines.delay
 
 private enum class ModoAuth { Entrar, Cadastrar }
 
@@ -101,9 +114,18 @@ fun AutenticacaoScreen(
     onSair: () -> Unit,
     onAutenticar: () -> Unit = onSair,
     modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel = viewModel(),
 ) {
     var modo by rememberSaveable { mutableStateOf(ModoAuth.Entrar) }
     var perfil by rememberSaveable { mutableStateOf(PerfilCadastro.Cliente) }
+
+    val estado by authViewModel.estado.collectAsStateWithLifecycle()
+    val carregando = estado is AuthEstado.Carregando
+    val erro = (estado as? AuthEstado.Erro)?.mensagem
+
+    LaunchedEffect(estado) {
+        if (estado is AuthEstado.Sucesso) onAutenticar()
+    }
 
     val contexto = if (modo == ModoAuth.Cadastrar && perfil == PerfilCadastro.Profissional) {
         EloContext.Profissional
@@ -111,56 +133,93 @@ fun AutenticacaoScreen(
         EloContext.Cliente
     }
 
+    // Enquanto houver erro, mostra o toast e o descarta sozinho após alguns segundos.
+    LaunchedEffect(erro) {
+        if (!erro.isNullOrBlank()) {
+            delay(4000)
+            authViewModel.limparErro()
+        }
+    }
+
     EloTheme(context = contexto) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .navigationBarsPadding(),
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Cabecalho(modo = modo, onPular = onSair)
-                SeletorModo(
-                    modo = modo,
-                    onModo = { modo = it },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 20.dp)
-                        .offset(y = 30.dp),
-                )
-            }
-
-            Spacer(Modifier.height(46.dp))
-
-            AnimatedContent(
-                targetState = modo,
-                transitionSpec = {
-                    val paraCadastro = targetState == ModoAuth.Cadastrar
-                    val dir = if (paraCadastro) 1 else -1
-                    (slideInHorizontally(tween(280)) { largura -> dir * largura / 3 } + fadeIn(tween(280)))
-                        .togetherWith(
-                            slideOutHorizontally(tween(220)) { largura -> -dir * largura / 3 } + fadeOut(tween(180)),
-                        )
-                },
-                label = "transicao-auth",
-            ) { alvo ->
-                when (alvo) {
-                    ModoAuth.Entrar -> FormularioEntrar(
-                        onEntrar = onAutenticar,
-                        onIrParaCadastro = { modo = ModoAuth.Cadastrar },
-                    )
-                    ModoAuth.Cadastrar -> FormularioCadastro(
-                        perfil = perfil,
-                        onPerfil = { perfil = it },
-                        onCriarConta = onAutenticar,
-                        onIrParaLogin = { modo = ModoAuth.Entrar },
+        Box(modifier = modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .navigationBarsPadding(),
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Cabecalho(modo = modo, onPular = onSair)
+                    SeletorModo(
+                        modo = modo,
+                        onModo = { modo = it },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 20.dp)
+                            .offset(y = 30.dp),
                     )
                 }
+
+                Spacer(Modifier.height(46.dp))
+
+                AnimatedContent(
+                    targetState = modo,
+                    transitionSpec = {
+                        val paraCadastro = targetState == ModoAuth.Cadastrar
+                        val dir = if (paraCadastro) 1 else -1
+                        (slideInHorizontally(tween(280)) { largura -> dir * largura / 3 } + fadeIn(
+                            tween(280)
+                        ))
+                            .togetherWith(
+                                slideOutHorizontally(tween(220)) { largura -> -dir * largura / 3 } + fadeOut(
+                                    tween(180)
+                                ),
+                            )
+                    },
+                    label = "transicao-auth",
+                ) { alvo ->
+                    when (alvo) {
+                        ModoAuth.Entrar -> FormularioEntrar(
+                            carregando = carregando,
+                            onEntrar = { email, senha -> authViewModel.login(email, senha) },
+                            onIrParaCadastro = {
+                                authViewModel.limparErro()
+                                modo = ModoAuth.Cadastrar
+                            },
+                        )
+
+                        ModoAuth.Cadastrar -> FormularioCadastro(
+                            perfil = perfil,
+                            carregando = carregando,
+                            onPerfil = { perfil = it },
+                            onCriarConta = { nome, sobrenome, telefone, email, senha ->
+                                authViewModel.cadastrar(
+                                    nome = nome,
+                                    sobrenome = sobrenome,
+                                    telefone = telefone,
+                                    email = email,
+                                    senha = senha,
+                                    comoProfissional = perfil == PerfilCadastro.Profissional,
+                                )
+                            },
+                            onIrParaLogin = {
+                                authViewModel.limparErro()
+                                modo = ModoAuth.Entrar
+                            },
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
             }
 
-            Spacer(Modifier.height(24.dp))
+            ToastErro(
+                mensagem = erro,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
     }
 }
@@ -295,13 +354,28 @@ private fun SeletorModo(modo: ModoAuth, onModo: (ModoAuth) -> Unit, modifier: Mo
             .padding(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        SegmentoModo("Entrar", selecionado = modo == ModoAuth.Entrar, onClick = { onModo(ModoAuth.Entrar) }, modifier = Modifier.weight(1f))
-        SegmentoModo("Cadastrar", selecionado = modo == ModoAuth.Cadastrar, onClick = { onModo(ModoAuth.Cadastrar) }, modifier = Modifier.weight(1f))
+        SegmentoModo(
+            "Entrar",
+            selecionado = modo == ModoAuth.Entrar,
+            onClick = { onModo(ModoAuth.Entrar) },
+            modifier = Modifier.weight(1f)
+        )
+        SegmentoModo(
+            "Cadastrar",
+            selecionado = modo == ModoAuth.Cadastrar,
+            onClick = { onModo(ModoAuth.Cadastrar) },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
 @Composable
-private fun SegmentoModo(texto: String, selecionado: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SegmentoModo(
+    texto: String,
+    selecionado: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(11.dp))
@@ -321,7 +395,11 @@ private fun SegmentoModo(texto: String, selecionado: Boolean, onClick: () -> Uni
 /* ---------------------------- Formulário: Entrar ---------------------------- */
 
 @Composable
-private fun FormularioEntrar(onEntrar: () -> Unit, onIrParaCadastro: () -> Unit) {
+private fun FormularioEntrar(
+    carregando: Boolean,
+    onEntrar: (email: String, senha: String) -> Unit,
+    onIrParaCadastro: () -> Unit,
+) {
     var email by rememberSaveable { mutableStateOf("") }
     var senha by rememberSaveable { mutableStateOf("") }
 
@@ -357,8 +435,9 @@ private fun FormularioEntrar(onEntrar: () -> Unit, onIrParaCadastro: () -> Unit)
         )
         BotaoPrincipal(
             texto = "Entrar",
-            habilitado = email.isNotBlank() && senha.isNotBlank(),
-            onClick = onEntrar,
+            habilitado = email.isNotBlank() && senha.isNotBlank() && !carregando,
+            carregando = carregando,
+            onClick = { onEntrar(email, senha) },
         )
         DivisorOu()
         BotaoGoogle()
@@ -376,11 +455,13 @@ private fun FormularioEntrar(onEntrar: () -> Unit, onIrParaCadastro: () -> Unit)
 @Composable
 private fun FormularioCadastro(
     perfil: PerfilCadastro,
+    carregando: Boolean,
     onPerfil: (PerfilCadastro) -> Unit,
-    onCriarConta: () -> Unit,
+    onCriarConta: (nome: String, sobrenome: String, telefone: String, email: String, senha: String) -> Unit,
     onIrParaLogin: () -> Unit,
 ) {
     var nome by rememberSaveable { mutableStateOf("") }
+    var sobrenome by rememberSaveable { mutableStateOf("") }
     var telefone by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var senha by rememberSaveable { mutableStateOf("") }
@@ -419,9 +500,25 @@ private fun FormularioCadastro(
             )
         }
 
-        CampoAuth(nome, { nome = it }, "Nome completo", Icons.Outlined.PersonOutline)
-        CampoAuth(telefone, { telefone = it }, "Telefone", Icons.Outlined.Phone, tipoTeclado = KeyboardType.Phone)
-        CampoAuth(email, { email = it }, "E-mail", Icons.Outlined.MailOutline, tipoTeclado = KeyboardType.Email)
+
+
+        CampoAuth(nome, { nome = it }, "Nome", Icons.Outlined.PersonOutline)
+        CampoAuth(sobrenome, { sobrenome = it }, "Sobrenome", Icons.Outlined.PersonOutline)
+
+        CampoAuth(
+            telefone,
+            { telefone = it },
+            "Telefone",
+            Icons.Outlined.Phone,
+            tipoTeclado = KeyboardType.Phone,
+        )
+        CampoAuth(
+            email,
+            { email = it },
+            "E-mail",
+            Icons.Outlined.MailOutline,
+            tipoTeclado = KeyboardType.Email
+        )
         CampoAuth(senha, { senha = it }, "Senha", Icons.Outlined.Lock, senha = true)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -433,11 +530,21 @@ private fun FormularioCadastro(
             Text(
                 text = buildAnnotatedString {
                     append("Li e aceito os ")
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)) {
+                    withStyle(
+                        SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    ) {
                         append("Termos de Uso")
                     }
                     append(" e a ")
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)) {
+                    withStyle(
+                        SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    ) {
                         append("Política de Privacidade")
                     }
                 },
@@ -448,9 +555,10 @@ private fun FormularioCadastro(
 
         BotaoPrincipal(
             texto = "Criar conta",
-            habilitado = nome.isNotBlank() && telefone.isNotBlank() &&
-                email.isNotBlank() && senha.isNotBlank() && aceitou,
-            onClick = onCriarConta,
+            habilitado = nome.isNotBlank() && nome.length >= 3 && sobrenome.isNotBlank() && telefone.isNotBlank() &&
+                    email.isNotBlank() && senha.isNotBlank() && aceitou && !carregando,
+            carregando = carregando,
+            onClick = { onCriarConta(nome, sobrenome, telefone, email, senha) },
         )
         DivisorOu()
         BotaoGoogle()
@@ -512,7 +620,12 @@ private fun CartaoPerfil(
                     .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(13.dp))
+                Icon(
+                    Icons.Filled.Check,
+                    null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(13.dp)
+                )
             }
         }
     }
@@ -525,6 +638,7 @@ private fun CampoAuth(
     placeholder: String,
     leading: ImageVector,
     senha: Boolean = false,
+    tamanho: Float = 1f,
     tipoTeclado: KeyboardType = KeyboardType.Text,
 ) {
     var visivel by remember { mutableStateOf(false) }
@@ -532,10 +646,15 @@ private fun CampoAuth(
     OutlinedTextField(
         value = valor,
         onValueChange = onValor,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(tamanho),
         placeholder = { Text(placeholder) },
         leadingIcon = {
-            Icon(leading, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            Icon(
+                leading,
+                null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
         },
         trailingIcon = if (senha) {
             {
@@ -564,7 +683,12 @@ private fun CampoAuth(
 }
 
 @Composable
-private fun BotaoPrincipal(texto: String, habilitado: Boolean, onClick: () -> Unit) {
+private fun BotaoPrincipal(
+    texto: String,
+    habilitado: Boolean,
+    onClick: () -> Unit,
+    carregando: Boolean = false,
+) {
     Button(
         onClick = onClick,
         enabled = habilitado,
@@ -579,9 +703,56 @@ private fun BotaoPrincipal(texto: String, habilitado: Boolean, onClick: () -> Un
             disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
         ),
     ) {
-        Text(texto, style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.width(8.dp))
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(18.dp))
+        if (carregando) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(texto, style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+
+@Composable
+private fun ToastErro(mensagem: String?, modifier: Modifier = Modifier) {
+    var ultimaMensagem by remember { mutableStateOf("") }
+    if (!mensagem.isNullOrBlank()) ultimaMensagem = mensagem
+
+    AnimatedVisibility(
+        visible = !mensagem.isNullOrBlank(),
+        enter = slideInVertically(tween(260)) { -it } + fadeIn(tween(260)),
+        exit = slideOutVertically(tween(220)) { -it } + fadeOut(tween(220)),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.errorContainer)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = ultimaMensagem,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
     }
 }
 
@@ -625,7 +796,12 @@ private fun SeloSeguranca() {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Shield, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+        Icon(
+            Icons.Outlined.Shield,
+            null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(14.dp)
+        )
         Spacer(Modifier.width(6.dp))
         Text(
             text = "Seus dados estão protegidos e nunca são compartilhados",

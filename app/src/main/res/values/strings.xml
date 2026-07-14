@@ -241,4 +241,18 @@
     <string name="pro_dia_quinta">Quinta</string>
     <string name="pro_dia_sexta">Sexta</string>
     <string name="pro_dia_sabado">Sábado</string>
+
+    <!-- Sessão: deslogado, orçamento e troca de modo -->
+    <string name="deslogado_titulo">Você está navegando sem login</string>
+    <string name="deslogado_texto">Entre para solicitar orçamentos e acompanhar seus pedidos.</string>
+    <string name="deslogado_entrar">Entrar</string>
+    <string name="deslogado_dispensar_cd">Dispensar aviso</string>
+
+    <string name="orcar_login_titulo">Entre para solicitar um orçamento</string>
+    <string name="orcar_login_texto">Você precisa estar logado para enviar uma solicitação a este profissional.</string>
+    <string name="orcar_login_entrar">Entrar</string>
+    <string name="orcar_login_agora_nao">Agora não</string>
+
+    <string name="modo_bloqueado_pro">Modo profissional disponível apenas para contas profissionais.</string>
+    <string name="modo_bloqueado_cliente">Modo cliente não está disponível para esta conta.</string>
 </resources>

@@ -48,9 +48,11 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -65,6 +67,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -207,6 +210,8 @@ private fun primeiroNome(nome: String): String = nome.trim().split(" ").first()
 @Composable
 fun PerfilProfissionalScreen(
     nome: String,
+    logado: Boolean,
+    onPrecisaLogin: () -> Unit,
     onVoltar: () -> Unit,
     onIrParaInicio: () -> Unit = {},
     onVerPedidos: () -> Unit = {},
@@ -217,6 +222,10 @@ fun PerfilProfissionalScreen(
     var servicoDetalhe by rememberSaveable(nome) { mutableStateOf<Int?>(null) }
     var servicoInfo by rememberSaveable(nome) { mutableStateOf<Int?>(null) }
     var sucesso by rememberSaveable(nome) { mutableStateOf(false) }
+    var pedindoLogin by rememberSaveable(nome) { mutableStateOf(false) }
+
+    // Só quem está logado pode iniciar um orçamento; deslogado vê o convite para entrar.
+    val iniciarOrcamento = { if (logado) escolhendoServico = true else pedindoLogin = true }
 
     BackHandler(enabled = sucesso) { onIrParaInicio() }
     BackHandler(enabled = !sucesso && servicoDetalhe != null) { servicoDetalhe = null }
@@ -293,7 +302,7 @@ fun PerfilProfissionalScreen(
                     Spacer(Modifier.height(20.dp))
                     SecaoServicos(
                         onAbrirServico = { servicoInfo = it },
-                        onVerTodos = { escolhendoServico = true },
+                        onVerTodos = iniciarOrcamento,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -310,7 +319,7 @@ fun PerfilProfissionalScreen(
 
             BarraContratar(
                 nome = nome,
-                onContratar = { escolhendoServico = true },
+                onContratar = iniciarOrcamento,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -322,10 +331,43 @@ fun PerfilProfissionalScreen(
             onFechar = { servicoInfo = null },
             onContratar = {
                 servicoInfo = null
-                servicoDetalhe = numero
+                if (logado) servicoDetalhe = numero else pedindoLogin = true
             },
         )
     }
+
+    if (pedindoLogin) {
+        DialogPrecisaLogin(
+            onEntrar = {
+                pedindoLogin = false
+                onPrecisaLogin()
+            },
+            onCancelar = { pedindoLogin = false },
+        )
+    }
+}
+
+/** Convite para login quando um usuário deslogado tenta solicitar um orçamento. */
+@Composable
+private fun DialogPrecisaLogin(onEntrar: () -> Unit, onCancelar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        icon = {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        title = { Text(stringResource(R.string.orcar_login_titulo)) },
+        text = { Text(stringResource(R.string.orcar_login_texto)) },
+        confirmButton = {
+            Button(onClick = onEntrar) { Text(stringResource(R.string.orcar_login_entrar)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) { Text(stringResource(R.string.orcar_login_agora_nao)) }
+        },
+    )
 }
 
 @Composable

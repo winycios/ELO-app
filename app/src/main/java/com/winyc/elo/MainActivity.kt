@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddBox
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Home
@@ -31,18 +34,24 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,6 +75,8 @@ import android.net.Uri
 import android.content.Context
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.winyc.elo.backend.security.TokenStore
 import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
 import com.winyc.elo.telas.onboarding.OnboardingScreen
@@ -80,6 +91,7 @@ import com.winyc.elo.telas.profissional.PublicarScreen
 import com.winyc.elo.ui.theme.EloContext
 import com.winyc.elo.ui.theme.EloTheme
 import androidx.core.content.edit
+import kotlinx.coroutines.launch
 
 
 private const val PRO_PREFIX = "pro/"
@@ -147,8 +159,11 @@ private fun EloApp() {
     val jaViuOnboarding = remember { prefs.getBoolean(KEY_ONBOARDING, false) }
     val startDestination = if (jaViuOnboarding) EloScreen.Inicio.route else EloScreen.Onboarding.route
 
-    // Estado de sessão (mock): controla se o Perfil mostra a área logada.
-    var logado by rememberSaveable { mutableStateOf(false) }
+    val escopo = rememberCoroutineScope()
+    val tokenStore = remember { TokenStore.getInstance(appContext) }
+    LaunchedEffect(Unit) { tokenStore.carregar() }
+    val logado by tokenStore.estaLogadoFlow.collectAsStateWithLifecycle()
+    val perfil by tokenStore.perfilFlow.collectAsStateWithLifecycle()
 
     val emModoPro = currentRoute?.startsWith(PRO_PREFIX) == true
     val telaCheia = currentRoute == EloScreen.Auth.route ||
@@ -156,25 +171,51 @@ private fun EloApp() {
         currentRoute == EloScreen.PerfilProfissional.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
+    val podePro = logado && perfil?.profissionalAtivo == true
+    val podeCliente = !logado || perfil?.clienteAtivo == true
+    val toggleBloqueado = if (emModoPro) !podeCliente else !podePro
+
+    var balaoDispensado by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(logado) { if (logado) balaoDispensado = false }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val msgBloqueio = stringResource(
+        if (emModoPro) R.string.modo_bloqueado_cliente else R.string.modo_bloqueado_pro,
+    )
+
     EloTheme(context = context) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 if (emModoPro && !telaCheia) ModoProBanner()
             },
             bottomBar = {
                 if (!telaCheia) {
-                    EloNavigationBar(
-                        itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
-                        currentRoute = currentRoute,
-                        onNavigate = { navController.navegarParaAba(it) },
-                        toggleLabelRes = if (emModoPro) R.string.cliente else R.string.profissional,
-                        toggleIcon = if (emModoPro) Icons.Outlined.Person else Icons.Outlined.WorkOutline,
-                        onToggle = {
-                            val destino = if (emModoPro) EloScreen.Inicio else EloScreen.Painel
-                            navController.trocarDeModo(destino)
-                        },
-                    )
+                    Column {
+                        if (!logado && !balaoDispensado) {
+                            BalaoDeslogado(
+                                onEntrar = { navController.navigate(EloScreen.Auth.route) },
+                                onDispensar = { balaoDispensado = true },
+                            )
+                        }
+                        EloNavigationBar(
+                            itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
+                            currentRoute = currentRoute,
+                            onNavigate = { navController.navegarParaAba(it) },
+                            toggleLabelRes = if (emModoPro) R.string.cliente else R.string.profissional,
+                            toggleIcon = if (emModoPro) Icons.Outlined.Person else Icons.Outlined.WorkOutline,
+                            toggleBloqueado = toggleBloqueado,
+                            onToggle = {
+                                if (toggleBloqueado) {
+                                    escopo.launch { snackbarHostState.showSnackbar(msgBloqueio) }
+                                } else {
+                                    val destino = if (emModoPro) EloScreen.Inicio else EloScreen.Painel
+                                    navController.trocarDeModo(destino)
+                                }
+                            },
+                        )
+                    }
                 }
             },
         ) { contentPadding ->
@@ -199,7 +240,7 @@ private fun EloApp() {
                 },
             ) {
                 composable(EloScreen.Inicio.route) {
-                    InicioScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it) })
+                    InicioScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it)}, perfil = perfil)
                 }
                 composable(EloScreen.Vitrine.route) {
                     VitrineScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it) })
@@ -208,8 +249,9 @@ private fun EloApp() {
                 composable(EloScreen.Perfil.route) {
                     PerfilScreen(
                         logado = logado,
+                        perfil = perfil,
                         onAbrirLogin = { navController.navigate(EloScreen.Auth.route) },
-                        onSair = { logado = false },
+                        onSair = { escopo.launch { tokenStore.limpar() } },
                     )
                 }
                 composable(
@@ -219,6 +261,8 @@ private fun EloApp() {
                     val nome = entry.arguments?.getString("nome").orEmpty()
                     PerfilProfissionalScreen(
                         nome = nome,
+                        logado = logado,
+                        onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
                         onVoltar = { navController.popBackStack() },
                         onIrParaInicio = { navController.navegarParaAba(EloScreen.Inicio) },
                         onVerPedidos = { navController.navegarParaAba(EloScreen.Pedidos) },
@@ -228,7 +272,7 @@ private fun EloApp() {
                 composable(EloScreen.Painel.route) { PainelScreen() }
                 composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
                 composable(EloScreen.Publicar.route) { PublicarScreen() }
-                composable(EloScreen.PerfilPro.route) { PerfilProScreen() }
+                composable(EloScreen.PerfilPro.route) { PerfilProScreen(sessao = perfil) }
 
                 composable(EloScreen.Onboarding.route) {
                     OnboardingScreen(
@@ -244,10 +288,7 @@ private fun EloApp() {
                 composable(EloScreen.Auth.route) {
                     AutenticacaoScreen(
                         onSair = { navController.popBackStack() },
-                        onAutenticar = {
-                            logado = true
-                            navController.popBackStack()
-                        },
+                        onAutenticar = { navController.popBackStack() },
                     )
                 }
             }
@@ -303,6 +344,52 @@ private fun ModoProBanner() {
     }
 }
 
+/** Aviso fixo (acima da barra) para o usuário deslogado, com atalho para entrar. */
+@Composable
+private fun BalaoDeslogado(onEntrar: () -> Unit, onDispensar: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.deslogado_titulo),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    text = stringResource(R.string.deslogado_texto),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                )
+            }
+            Button(onClick = onEntrar) {
+                Text(stringResource(R.string.deslogado_entrar))
+            }
+            IconButton(onClick = onDispensar) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.deslogado_dispensar_cd),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun EloNavigationBar(
     itens: List<NavItem>,
@@ -311,10 +398,12 @@ private fun EloNavigationBar(
     toggleLabelRes: Int,
     toggleIcon: ImageVector,
     onToggle: () -> Unit,
+    toggleBloqueado: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val corContexto = MaterialTheme.colorScheme.primary
     val corInativa = MaterialTheme.colorScheme.onSurfaceVariant
+    val corToggle = if (toggleBloqueado) corInativa else corContexto
 
     Column(
         modifier = modifier
@@ -360,7 +449,7 @@ private fun EloNavigationBar(
                 onClick = onToggle,
                 icon = {
                     Icon(
-                        imageVector = toggleIcon,
+                        imageVector = if (toggleBloqueado) Icons.Outlined.Lock else toggleIcon,
                         contentDescription = toggleLabel,
                         modifier = Modifier.height(23.dp),
                     )
@@ -368,10 +457,10 @@ private fun EloNavigationBar(
                 label = { NavLabel(toggleLabel, selecionado = true) },
                 alwaysShowLabel = true,
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = corContexto,
-                    selectedTextColor = corContexto,
-                    unselectedIconColor = corContexto,
-                    unselectedTextColor = corContexto,
+                    selectedIconColor = corToggle,
+                    selectedTextColor = corToggle,
+                    unselectedIconColor = corToggle,
+                    unselectedTextColor = corToggle,
                     indicatorColor = Color.Transparent,
                 ),
             )
