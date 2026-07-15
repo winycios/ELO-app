@@ -19,19 +19,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
@@ -43,11 +47,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,84 +61,55 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.vitrine.ComentarioRS
+import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
+import com.winyc.elo.backend.model.vitrine.PublicacaoImagemRS
+import com.winyc.elo.backend.viewModel.CategoriaChip
+import com.winyc.elo.backend.viewModel.ComentariosUi
+import com.winyc.elo.backend.viewModel.VitrineViewModel
+import com.winyc.elo.telas.componentes.AvatarPerfil
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
-/** Um post de trabalho exibido no feed da vitrine. */
-private data class TrabalhoPost(
-    val autor: String,
-    val categoria: String,
-    val tempo: String,
-    val descricao: String,
-    val curtidas: Int,
-    val verificado: Boolean,
-)
+/** Dispara o carregamento da próxima página quando faltam estas publicações para o fim. */
+private const val GATILHO_PROXIMA_PAGINA = 5
 
-/** Um comentário de um post. */
-private data class Comentario(
-    val autor: String,
-    val texto: String,
-    val tempo: String,
-)
-
-private val CATEGORIAS = listOf(
-    "Eletricista", "Diarista", "Encanador", "Jardineiro",
-    "Pintor", "Montador", "Pedreiro", "Marceneiro",
-)
-
-private val POSTS = listOf(
-    TrabalhoPost(
-        autor = "Carlos Silva",
-        categoria = "Eletricista",
-        tempo = "3h",
-        descricao = "Mais uma instalação elétrica completa finalizada! Quadro de " +
-                "distribuição novo com disjuntores individuais para cada circuito. " +
-                "Segurança em primeiro lugar! ⚡",
-        curtidas = 87,
-        verificado = true,
-    ),
-    TrabalhoPost(
-        autor = "Ana Souza",
-        categoria = "Pintor",
-        tempo = "5h",
-        descricao = "Sala de estar renovada com um tom de azul suave. Acabamento " +
-                "impecável e sem respingos! 🎨",
-        curtidas = 124,
-        verificado = true,
-    ),
-    TrabalhoPost(
-        autor = "Roberto Lima",
-        categoria = "Encanador",
-        tempo = "1d",
-        descricao = "Troca completa do encanamento de um apartamento antigo. " +
-                "Zero vazamentos e garantia total no serviço.",
-        curtidas = 56,
-        verificado = false,
-    ),
-)
-
-private val COMENTARIOS_DEMO = listOf(
-    Comentario("Marina Alves", "Trabalho impecável como sempre! 👏", "1d"),
-    Comentario("João Pereira", "Ficou ótimo! Como faço pra pedir um orçamento?", "2d"),
-    Comentario("Beatriz Rocha", "Recomendo demais, super pontual.", "3d"),
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VitrineScreen(
+    logado: Boolean,
     onAbrirPerfil: (String) -> Unit = {},
+    onPrecisaLogin: () -> Unit = {},
     modifier: Modifier = Modifier,
+    vm: VitrineViewModel = viewModel(),
 ) {
-    val rotuloTodos = stringResource(R.string.categoria_todos)
-    var categoriaSelecionada by rememberSaveable { mutableStateOf(rotuloTodos) }
+    val estado by vm.estado.collectAsStateWithLifecycle()
+    val comentarios by vm.comentarios.collectAsStateWithLifecycle()
 
-    val postsVisiveis = remember(categoriaSelecionada) {
-        if (categoriaSelecionada == rotuloTodos) POSTS
-        else POSTS.filter { it.categoria == categoriaSelecionada }
+    val listState = rememberLazyListState()
+
+    val precisaCarregarMais by remember {
+        derivedStateOf {
+            val ultimoVisivel = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+            val total = listState.layoutInfo.totalItemsCount
+            total > 0 && ultimoVisivel >= total - 1 - GATILHO_PROXIMA_PAGINA
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(precisaCarregarMais, estado.podeCarregarMais) {
+        if (precisaCarregarMais && estado.podeCarregarMais) vm.carregarMais()
     }
 
     LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
@@ -158,72 +133,111 @@ fun VitrineScreen(
 
         item {
             Categorias(
-                todos = rotuloTodos,
-                selecionada = categoriaSelecionada,
-                onSelecionar = { categoriaSelecionada = it },
+                todos = stringResource(R.string.categoria_todos),
+                categorias = estado.categorias,
+                selecionada = estado.categoriaSelecionada,
+                onSelecionar = vm::selecionarCategoria,
             )
         }
 
-        items(postsVisiveis) { post ->
-            TrabalhoCard(post, onAbrirPerfil = { onAbrirPerfil(post.autor) })
+        items(estado.posts, key = { it.id }) { post ->
+            TrabalhoCard(
+                post = post,
+                onAbrirPerfil = { post.profissionalNome?.let(onAbrirPerfil) },
+                onCurtir = { if (logado) vm.alternarCurtida(post.id) else null },
+                onComentar = { vm.abrirComentarios(post.id) },
+            )
         }
+
+        // Rodapé: carregando inicial, carregando mais, erro (com retry) ou vazio.
+        item {
+            when {
+                estado.carregandoInicial || estado.carregandoMais -> RodapeCarregando()
+                estado.erro != null -> RodapeErro(
+                    mensagem = estado.erro!!,
+                    onTentarNovamente = vm::carregarInicial
+                )
+
+                estado.posts.isEmpty() -> RodapeVazio()
+            }
+        }
+    }
+
+    comentarios?.let { estadoComentarios ->
+        ComentariosSheet(
+            estado = estadoComentarios,
+            logado = logado,
+            onFechar = vm::fecharComentarios,
+            onEnviar = vm::enviarComentario,
+            onCarregarMais = vm::carregarMaisComentarios,
+            onPrecisaLogin = onPrecisaLogin,
+        )
     }
 }
 
 @Composable
 private fun Categorias(
     todos: String,
-    selecionada: String,
-    onSelecionar: (String) -> Unit,
+    categorias: List<CategoriaChip>,
+    selecionada: Long?,
+    onSelecionar: (Long?) -> Unit,
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(listOf(todos) + CATEGORIAS) { categoria ->
-            val selecionado = categoria == selecionada
-            FilterChip(
-                selected = selecionado,
-                onClick = { onSelecionar(categoria) },
-                label = {
-                    Text(
-                        text = categoria,
-                        fontWeight = if (selecionado) FontWeight.Medium else FontWeight.Normal,
-                    )
-                },
-                shape = CircleShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = selecionado,
-                    borderColor = MaterialTheme.colorScheme.outline,
-                    selectedBorderColor = Color.Transparent,
-                ),
-            )
+        item {
+            CategoriaChipUi(
+                rotulo = todos,
+                selecionado = selecionada == null
+            ) { onSelecionar(null) }
+        }
+        items(categorias, key = { it.id }) { categoria ->
+            CategoriaChipUi(
+                rotulo = categoria.nome,
+                selecionado = categoria.id == selecionada,
+            ) { onSelecionar(categoria.id) }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoriaChipUi(rotulo: String, selecionado: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selecionado,
+        onClick = onClick,
+        label = {
+            Text(
+                text = rotulo,
+                fontWeight = if (selecionado) FontWeight.Medium else FontWeight.Normal,
+            )
+        },
+        shape = CircleShape,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selecionado,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = Color.Transparent,
+        ),
+    )
+}
+
 @Composable
 private fun TrabalhoCard(
-    post: TrabalhoPost,
+    post: PublicacaoFeedRS,
     onAbrirPerfil: () -> Unit,
+    onCurtir: () -> Unit,
+    onComentar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-
-    var curtido by rememberSaveable(post.autor) { mutableStateOf(false) }
-    var curtidas by rememberSaveable(post.autor) { mutableIntStateOf(post.curtidas) }
-    var comentando by rememberSaveable(post.autor) { mutableStateOf(false) }
-    val comentarios = remember(post.autor) { mutableStateListOf<Comentario>().apply { addAll(COMENTARIOS_DEMO) } }
-
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        FotoTrabalho(categoria = post.categoria)
+        FotoTrabalho(imagens = post.imagens, categoria = post.categoriaNome)
 
         Column(
             modifier = Modifier.padding(16.dp),
@@ -237,33 +251,22 @@ private fun TrabalhoCard(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             RodapeCard(
-                curtido = curtido,
-                curtidas = curtidas,
-                comentarios = comentarios.size,
-                onCurtir = {
-                    curtido = !curtido
-                    curtidas += if (curtido) 1 else -1
-                },
-                onComentar = { comentando = true },
+                curtido = post.isCurtido,
+                curtidas = post.quantidadeCurtidas,
+                comentarios = post.quantidadeComentarios,
+                onCurtir = onCurtir,
+                onComentar = onComentar,
                 onVerPerfil = onAbrirPerfil,
             )
         }
     }
-
-    if (comentando) {
-        ComentariosSheet(
-            comentarios = comentarios,
-
-            onFechar = { comentando = false },
-            onEnviar = { texto ->
-                comentarios.add(0, Comentario("Você", texto, "agora"))
-            },
-        )
-    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FotoTrabalho(categoria: String) {
+private fun FotoTrabalho(imagens: List<PublicacaoImagemRS>, categoria: String?) {
+    val ordenadas = remember(imagens) { imagens.sortedBy { it.ordem ?: Int.MAX_VALUE } }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -271,58 +274,84 @@ private fun FotoTrabalho(categoria: String) {
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Outlined.Image,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            modifier = Modifier.size(40.dp),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.55f))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        ) {
-            Text(
-                text = categoria,
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
+        if (ordenadas.isEmpty()) {
+            Icon(
+                imageVector = Icons.Outlined.Image,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(40.dp),
             )
+        } else {
+            val pagerState = rememberPagerState(pageCount = { ordenadas.size })
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pagina ->
+                AsyncImage(
+                    model = ordenadas[pagina].url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            if (ordenadas.size > 1) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = "${pagerState.currentPage + 1}/${ordenadas.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+            }
+        }
+
+        if (!categoria.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = categoria,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun Cabecalho(post: TrabalhoPost, onAbrirPerfil: () -> Unit) {
+private fun Cabecalho(post: PublicacaoFeedRS, onAbrirPerfil: () -> Unit) {
+    val nome = post.profissionalNome.orEmpty()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onAbrirPerfil),
     ) {
-        Avatar(post.autor)
+        AvatarPerfil(
+            nome = nome,
+            fotoUrl = post.profissionalFotoUrl,
+            tamanho = 40.dp,
+            fonte = MaterialTheme.typography.labelMedium,
+        )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = post.autor,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (post.verificado) {
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Filled.Verified,
-                        contentDescription = "Verificado",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
             Text(
-                text = post.tempo,
+                text = nome,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = tempoRelativo(post.publicadoEm),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -336,32 +365,10 @@ private fun Cabecalho(post: TrabalhoPost, onAbrirPerfil: () -> Unit) {
 }
 
 @Composable
-private fun Avatar(nome: String, tamanho: androidx.compose.ui.unit.Dp = 40.dp) {
-    val iniciais = nome.split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
-
-    Box(
-        modifier = Modifier
-            .size(tamanho)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = iniciais,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    }
-}
-
-@Composable
 private fun RodapeCard(
     curtido: Boolean,
-    curtidas: Int,
-    comentarios: Int,
+    curtidas: Long,
+    comentarios: Long,
     onCurtir: () -> Unit,
     onComentar: () -> Unit,
     onVerPerfil: () -> Unit,
@@ -395,12 +402,7 @@ private fun RodapeCard(
 }
 
 @Composable
-private fun Contador(
-    icone: ImageVector,
-    valor: String,
-    tint: Color,
-    onClick: () -> Unit,
-) {
+private fun Contador(icone: ImageVector, valor: String, tint: Color, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -412,7 +414,7 @@ private fun Contador(
             imageVector = icone,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.width(6.dp))
         Text(
@@ -423,66 +425,164 @@ private fun Contador(
     }
 }
 
+@Composable
+private fun RodapeCarregando() {
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .padding(16.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
+    }
+}
+
+@Composable
+private fun RodapeErro(mensagem: String, onTentarNovamente: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onTentarNovamente) { Text(stringResource(R.string.vitrine_tentar_novamente)) }
+    }
+}
+
+@Composable
+private fun RodapeVazio() {
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .padding(24.dp), contentAlignment = Alignment.Center) {
+        Text(
+            text = stringResource(R.string.vitrine_vazia),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ComentariosSheet(
-    comentarios: List<Comentario>,
+    estado: ComentariosUi,
+    logado: Boolean,
     onEnviar: (String) -> Unit,
     onFechar: () -> Unit,
+    onCarregarMais: () -> Unit,
+    onPrecisaLogin: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
+    val listState = rememberLazyListState()
+
+    val precisaCarregarMais by remember {
+        derivedStateOf {
+            val ultimoVisivel = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+            val total = listState.layoutInfo.totalItemsCount
+            total > 0 && ultimoVisivel >= total - 1 - GATILHO_PROXIMA_PAGINA
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(precisaCarregarMais, estado.podeCarregarMais) {
+        if (precisaCarregarMais && estado.podeCarregarMais) onCarregarMais()
+    }
+
     ModalBottomSheet(
-        onDismissRequest = onFechar,
-        sheetState = sheetState,
+        onDismissRequest = onFechar, sheetState = sheetState, sheetGesturesEnabled = false,
+        dragHandle = null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxHeight(0.85f)
                 .imePadding()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .padding(vertical = 20.dp),
         ) {
             Text(
-                text = "Comentários",
+                text = stringResource(R.string.vitrine_comentarios),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(vertical = 8.dp),
-            ) {
-                items(comentarios) { comentario ->
-                    ComentarioItem(comentario)
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    estado.carregando -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
+
+                    estado.comentarios.isEmpty() && estado.erro != null -> MensagemCentral(estado.erro)
+
+                    estado.comentarios.isEmpty() -> MensagemCentral(stringResource(R.string.vitrine_sem_comentarios))
+
+                    else -> LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                    ) {
+                        items(estado.comentarios, key = { it.id }) { comentario ->
+                            ComentarioItem(comentario)
+                        }
+                        if (estado.carregandoMais) {
+                            item { RodapeCarregando() }
+                        }
+                    }
                 }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-            InputComentario(onEnviar = onEnviar)
+            if (logado) {
+                InputComentario(enviando = estado.enviando, onEnviar = onEnviar)
+            } else {
+                ConviteLogin(onPrecisaLogin = onPrecisaLogin)
+            }
         }
     }
 }
 
 @Composable
-private fun ComentarioItem(comentario: Comentario) {
+private fun MensagemCentral(texto: String) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .padding(24.dp), contentAlignment = Alignment.Center) {
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ComentarioItem(comentario: ComentarioRS) {
+    val nome = comentario.usuarioNome.orEmpty()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Avatar(comentario.autor, tamanho = 36.dp)
+        AvatarPerfil(
+            nome = nome,
+            fotoUrl = comentario.usuarioFotoUrl,
+            tamanho = 36.dp,
+            fonte = MaterialTheme.typography.labelMedium,
+        )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = comentario.autor,
+                    text = nome,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = comentario.tempo,
+                    text = tempoRelativo(comentario.comentadoEm),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -498,7 +598,7 @@ private fun ComentarioItem(comentario: Comentario) {
 }
 
 @Composable
-private fun InputComentario(onEnviar: (String) -> Unit) {
+private fun InputComentario(enviando: Boolean, onEnviar: (String) -> Unit) {
     var texto by rememberSaveable { mutableStateOf("") }
 
     Row(
@@ -509,11 +609,12 @@ private fun InputComentario(onEnviar: (String) -> Unit) {
     ) {
         OutlinedTextField(
             value = texto,
-            onValueChange = { texto = it },
+            onValueChange = { if (it.length <= 200) texto = it },
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Escreva um comentário…") },
+            placeholder = { Text(stringResource(R.string.vitrine_escreva_comentario)) },
             shape = RoundedCornerShape(24.dp),
             maxLines = 4,
+            enabled = !enviando,
         )
         Spacer(Modifier.width(8.dp))
         FilledIconButton(
@@ -523,12 +624,53 @@ private fun InputComentario(onEnviar: (String) -> Unit) {
                     texto = ""
                 }
             },
-            enabled = texto.isNotBlank(),
+            enabled = texto.isNotBlank() && !enviando,
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = "Enviar comentário",
-            )
+            if (enviando) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = stringResource(R.string.vitrine_enviar_comentario),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ConviteLogin(onPrecisaLogin: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = stringResource(R.string.vitrine_entre_para_comentar),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onPrecisaLogin) { Text(stringResource(R.string.deslogado_entrar)) }
+    }
+}
+
+/** Converte um timestamp ISO-8601 do backend em rótulo curto (agora, 5min, 3h, 2d…). */
+private fun tempoRelativo(iso: String?): String {
+    if (iso.isNullOrBlank()) return ""
+    return try {
+        val dt = LocalDateTime.parse(iso)
+        val minutos = ChronoUnit.MINUTES.between(dt, LocalDateTime.now())
+        when {
+            minutos < 1 -> "agora"
+            minutos < 60 -> "${minutos}min"
+            minutos < 1_440 -> "${minutos / 60}h"
+            minutos < 10_080 -> "${minutos / 1_440}d"
+            else -> "${minutos / 10_080}sem"
+        }
+    } catch (_: Exception) {
+        ""
     }
 }

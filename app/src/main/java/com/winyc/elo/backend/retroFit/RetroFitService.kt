@@ -1,6 +1,7 @@
 package com.winyc.elo.backend.retroFit
 
 import com.winyc.elo.backend.controller.auth.AuthInterface
+import com.winyc.elo.backend.controller.vitrine.VitrineInterface
 import com.winyc.elo.backend.security.TokenStore
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -53,4 +54,7 @@ object RetroFitService {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
+
+    fun vitrineApi(tokenStore: TokenStore): VitrineInterface =
+        retrofitAutenticado(tokenStore).create(VitrineInterface::class.java)
 }

@@ -243,7 +243,11 @@ private fun EloApp() {
                     InicioScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it)}, perfil = perfil)
                 }
                 composable(EloScreen.Vitrine.route) {
-                    VitrineScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it) })
+                    VitrineScreen(
+                        logado = logado,
+                        onAbrirPerfil = { navController.abrirPerfilProfissional(it) },
+                        onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
+                    )
                 }
                 composable(EloScreen.Pedidos.route) { PedidosScreen() }
                 composable(EloScreen.Perfil.route) {

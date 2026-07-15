@@ -18,6 +18,15 @@
     <string name="ver_perfil">Ver perfil</string>
     <string name="categoria_todos">Todos</string>
 
+    <!-- Vitrine -->
+    <string name="vitrine_comentarios">Comentários</string>
+    <string name="vitrine_sem_comentarios">Ainda não há comentários. Seja o primeiro!</string>
+    <string name="vitrine_escreva_comentario">Escreva um comentário…</string>
+    <string name="vitrine_enviar_comentario">Enviar comentário</string>
+    <string name="vitrine_entre_para_comentar">Entre para curtir e comentar.</string>
+    <string name="vitrine_tentar_novamente">Tentar novamente</string>
+    <string name="vitrine_vazia">Nenhuma publicação por aqui ainda.</string>
+
     <!-- Pedidos -->
     <string name="meus_pedidos">Meus pedidos</string>
     <string name="acompanhe_seus_servicos">Acompanhe seus serviços</string>
