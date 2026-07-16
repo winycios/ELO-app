@@ -1,6 +1,8 @@
 package com.winyc.elo.backend.retroFit
 
 import com.winyc.elo.backend.controller.auth.AuthInterface
+import com.winyc.elo.backend.controller.categoria.CategoriaInterface
+import com.winyc.elo.backend.controller.categoria.CategoriaRepository
 import com.winyc.elo.backend.controller.vitrine.VitrineInterface
 import com.winyc.elo.backend.security.TokenStore
 import okhttp3.OkHttpClient
@@ -37,8 +39,6 @@ object RetroFitService {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    fun authConnection(): AuthInterface = authApi
-
     // Endpoints com auth
     fun retrofitAutenticado(tokenStore: TokenStore): Retrofit {
         val client = OkHttpClient.Builder()
@@ -57,4 +57,8 @@ object RetroFitService {
 
     fun vitrineApi(tokenStore: TokenStore): VitrineInterface =
         retrofitAutenticado(tokenStore).create(VitrineInterface::class.java)
+
+    fun authConnection(): AuthInterface = authApi
+
+    fun categoriaApi(): CategoriaInterface = authRetrofit.create(CategoriaInterface::class.java)
 }

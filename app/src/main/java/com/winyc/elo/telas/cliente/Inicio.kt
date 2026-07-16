@@ -35,23 +35,57 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Architecture
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.Carpenter
+import androidx.compose.material.icons.outlined.Checkroom
+import androidx.compose.material.icons.outlined.ChildCare
 import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.Construction
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.DeliveryDining
+import androidx.compose.material.icons.outlined.DesignServices
+import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.Elderly
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.FormatPaint
 import androidx.compose.material.icons.outlined.Foundation
 import androidx.compose.material.icons.outlined.Grass
+import androidx.compose.material.icons.outlined.GridOn
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Handyman
+import androidx.compose.material.icons.outlined.HomeRepairService
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.PestControl
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Plumbing
+import androidx.compose.material.icons.outlined.Pool
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material.icons.outlined.Router
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.SolarPower
+import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Straighten
+import androidx.compose.material.icons.outlined.TireRepair
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.outlined.VpnKey
+import androidx.compose.material.icons.outlined.Window
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -72,13 +106,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
 import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.backend.viewModel.CategoriaUi
+import com.winyc.elo.backend.viewModel.CategoriaViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
 
 
-/** Categoria destacada em "Serviços mais procurados". */
 private data class Categoria(val nome: String, val icone: ImageVector)
 
 /** Profissional exibido nos carrosséis da home. */
@@ -142,16 +179,50 @@ private enum class AvaliacaoMinima(val rotulo: String, val minimo: Double) {
 private val VerdeDestaque = Color(0xFF12A15A)
 private val RoxoDestaque = Color(0xFF8B5CF6)
 
-private val CATEGORIAS = listOf(
-    Categoria("Eletricista", Icons.Outlined.Bolt),
-    Categoria("Diarista", Icons.Outlined.CleaningServices),
-    Categoria("Encanador", Icons.Outlined.Plumbing),
-    Categoria("Pintor", Icons.Outlined.Handyman),
-    Categoria("Jardineiro", Icons.Outlined.Grass),
-    Categoria("Montador", Icons.Outlined.Handyman),
-    Categoria("Pedreiro", Icons.Outlined.Foundation),
-    Categoria("Marceneiro", Icons.Outlined.Straighten),
+private val ICONES: Map<String, ImageVector> = mapOf(
+    "Bolt" to Icons.Outlined.Bolt,
+    "CleaningServices" to Icons.Outlined.CleaningServices,
+    "Plumbing" to Icons.Outlined.Plumbing,
+    "Grass" to Icons.Outlined.Grass,
+    "FormatPaint" to Icons.Outlined.FormatPaint,
+    "Straighten" to Icons.Outlined.Straighten,
+    "Foundation" to Icons.Outlined.Foundation,
+    "Carpenter" to Icons.Outlined.Carpenter,
+    "Handyman" to Icons.Outlined.Handyman,
+    "Construction" to Icons.Outlined.Construction,
+    "Window" to Icons.Outlined.Window,
+    "Architecture" to Icons.Outlined.Architecture,
+    "GridOn" to Icons.Outlined.GridOn,
+    "VpnKey" to Icons.Outlined.VpnKey,
+    "Build" to Icons.Outlined.Build,
+    "TireRepair" to Icons.Outlined.TireRepair,
+    "Computer" to Icons.Outlined.Computer,
+    "AcUnit" to Icons.Outlined.AcUnit,
+    "HomeRepairService" to Icons.Outlined.HomeRepairService,
+    "Videocam" to Icons.Outlined.Videocam,
+    "Router" to Icons.Outlined.Router,
+    "SolarPower" to Icons.Outlined.SolarPower,
+    "PestControl" to Icons.Outlined.PestControl,
+    "Pool" to Icons.Outlined.Pool,
+    "Elderly" to Icons.Outlined.Elderly,
+    "ChildCare" to Icons.Outlined.ChildCare,
+    "Restaurant" to Icons.Outlined.Restaurant,
+    "Cake" to Icons.Outlined.Cake,
+    "PhotoCamera" to Icons.Outlined.PhotoCamera,
+    "DesignServices" to Icons.Outlined.DesignServices,
+    "Checkroom" to Icons.Outlined.Checkroom,
+    "ContentCut" to Icons.Outlined.ContentCut,
+    "Face" to Icons.Outlined.Face,
+    "Spa" to Icons.Outlined.Spa,
+    "FitnessCenter" to Icons.Outlined.FitnessCenter,
+    "School" to Icons.Outlined.School,
+    "DirectionsCar" to Icons.Outlined.DirectionsCar,
+    "DeliveryDining" to Icons.Outlined.DeliveryDining,
+    "LocalShipping" to Icons.Outlined.LocalShipping,
 )
+fun obterIcone(nomeIcone: String?): ImageVector {
+    return ICONES[nomeIcone] ?: Icons.Outlined.Work
+}
 
 private val RECOMENDADOS_HOME = listOf(
     ProHome("Carlos", "Eletricista", 4.9, 247, "150", "2,3 km", requisitado = true),
@@ -163,38 +234,6 @@ private val EM_ALTA = listOf(
     ProHome("Sérgio", "Pintor", 4.7, 121, "160", "3,8 km"),
     ProHome("Patrícia", "Diarista", 4.7, 198, "170", "2,5 km"),
     ProHome("Rafael", "Eletricista", 4.7, 142, "140", "3,5 km"),
-)
-
-private val AREAS = listOf(
-    Area(
-        "Limpeza", Icons.Outlined.CleaningServices, listOf(
-            "Diarista",
-            "Limpeza pós-obra",
-            "Limpeza de estofados",
-            "Limpeza de piscina",
-            "Dedetização"
-        )
-    ),
-    Area(
-        "Reformas", Icons.Outlined.Handyman, listOf(
-            "Pedreiro", "Pintor", "Gesseiro", "Azulejista", "Telhadista", "Reforma geral"
-        )
-    ),
-    Area(
-        "Instalações", Icons.Outlined.Bolt, listOf(
-            "Eletricista", "Encanador", "Ar-condicionado", "Antena e TV", "Câmeras", "Interfone"
-        )
-    ),
-    Area(
-        "Móveis e Montagem", Icons.Outlined.Straighten, listOf(
-            "Montador", "Marceneiro", "Marido de aluguel"
-        )
-    ),
-    Area(
-        "Serviços Externos", Icons.Outlined.Grass, listOf(
-            "Jardineiro", "Piscineiro", "Limpeza de calhas", "Dedetização"
-        )
-    ),
 )
 
 private val RECOMENDADOS_CATEGORIA = listOf(
@@ -219,13 +258,19 @@ fun InicioScreen(
     onAbrirPerfil: (String) -> Unit = {},
     perfil: PerfilSessao?,
     modifier: Modifier = Modifier,
+    vm: CategoriaViewModel = viewModel(),
 ) {
     var categoriaAberta by rememberSaveable { mutableStateOf<String?>(null) }
+    val estado by vm.estado.collectAsStateWithLifecycle()
 
     BackHandler(enabled = categoriaAberta != null) { categoriaAberta = null }
 
     if (categoriaAberta == null) {
         HomeConteudo(
+            categorias = estado.categorias,
+            carregando = estado.carregando,
+            erro = estado.erro,
+            onTentarNovamente = vm::carregar,
             onAbrirCategoria = { categoriaAberta = it },
             onAbrirPerfil = onAbrirPerfil,
             modifier = modifier,
@@ -243,11 +288,22 @@ fun InicioScreen(
 
 @Composable
 private fun HomeConteudo(
+    categorias: List<CategoriaUi>,
+    carregando: Boolean,
+    erro: String?,
+    onTentarNovamente: () -> Unit,
     onAbrirCategoria: (String) -> Unit,
     perfil: PerfilSessao?,
     onAbrirPerfil: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tiles = remember(categorias) {
+        categorias.map { Categoria(it.nomeGeral, obterIcone(it.descricaoIcon)) }
+    }
+    val areas = remember(categorias) {
+        categorias.map { Area(it.nomeGeral, obterIcone(it.descricaoIcon), it.servicos) }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -259,6 +315,10 @@ private fun HomeConteudo(
 
         item {
             SecaoCategorias(
+                categorias = if (tiles.isEmpty()) tiles else tiles.subList(0, 8),
+                carregando = carregando,
+                erro = erro,
+                onTentarNovamente = onTentarNovamente,
                 onAbrirCategoria = onAbrirCategoria,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
@@ -302,22 +362,24 @@ private fun HomeConteudo(
             }
         }
 
-        item {
-            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                SecaoHeader(
-                    icone = Icons.Outlined.GridView,
-                    titulo = "Serviços por área",
-                    subtitulo = "Explore profissionais por especialidade",
+        if (areas.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+                    SecaoHeader(
+                        icone = Icons.Outlined.GridView,
+                        titulo = "Serviços por área",
+                        subtitulo = "Explore profissionais por especialidade",
+                    )
+                }
+            }
+
+            items(areas) { area ->
+                AreaAccordion(
+                    area = area,
+                    onAbrirServico = onAbrirCategoria,
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
-        }
-
-        items(AREAS) { area ->
-            AreaAccordion(
-                area = area,
-                onAbrirServico = onAbrirCategoria,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
         }
     }
 }
@@ -394,21 +456,71 @@ private fun HeaderBusca(perfil: PerfilSessao?) {
 }
 
 @Composable
-private fun SecaoCategorias(onAbrirCategoria: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun SecaoCategorias(
+    categorias: List<Categoria>,
+    carregando: Boolean,
+    erro: String?,
+    onTentarNovamente: () -> Unit,
+    onAbrirCategoria: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SecaoHeader(
             icone = Icons.Outlined.Explore,
             titulo = "Serviços mais procurados",
             subtitulo = "As categorias mais buscadas pela comunidade",
         )
-        CATEGORIAS.chunked(4).forEach { linha ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                linha.forEach { categoria ->
-                    CategoriaTile(
-                        categoria = categoria,
-                        onClick = { onAbrirCategoria(categoria.nome) },
-                        modifier = Modifier.weight(1f),
+        when {
+            categorias.isEmpty() && carregando -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                }
+            }
+
+            categorias.isEmpty() && erro != null -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = erro,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Text(
+                        text = "Tentar novamente",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(onClick = onTentarNovamente)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
+            else -> {
+                categorias.chunked(4).forEach { linha ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        linha.forEach { categoria ->
+                            CategoriaTile(
+                                categoria = categoria,
+                                onClick = { onAbrirCategoria(categoria.nome) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        // completa a última linha para os tiles não esticarem
+                        repeat(4 - linha.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
         }

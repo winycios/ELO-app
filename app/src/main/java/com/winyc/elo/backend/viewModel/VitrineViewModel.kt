@@ -10,6 +10,7 @@ import com.winyc.elo.backend.security.TokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -62,7 +63,20 @@ class VitrineViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         carregarInicial()
+        observarSessao()
     }
+    private fun observarSessao() {
+        viewModelScope.launch {
+            tokenStore.estaLogadoFlow.drop(1).collect {
+                _comentarios.value = null
+                cursorComentarios = null
+                _estado.value = VitrineUi()
+                cursorFeed = null
+                carregarInicial()
+            }
+        }
+    }
+
     fun carregarInicial() {
         if (_estado.value.carregandoInicial) return
         cursorFeed = null
