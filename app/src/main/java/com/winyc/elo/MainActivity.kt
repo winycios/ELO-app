@@ -76,6 +76,7 @@ import android.content.Context
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.winyc.elo.backend.security.TokenStore
 import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
@@ -139,8 +140,12 @@ private val PROFISSIONAL_ITENS = listOf(
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        val tokenStore = TokenStore.getInstance(this)
+        splashScreen.setKeepOnScreenCondition { !tokenStore.carregada }
+        lifecycleScope.launch { tokenStore.carregar() }
         enableEdgeToEdge()
         setContent {
             EloApp()
@@ -157,13 +162,21 @@ private fun EloApp() {
     val appContext = LocalContext.current
     val prefs = remember { appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     val jaViuOnboarding = remember { prefs.getBoolean(KEY_ONBOARDING, false) }
-    val startDestination = if (jaViuOnboarding) EloScreen.Inicio.route else EloScreen.Onboarding.route
 
     val escopo = rememberCoroutineScope()
     val tokenStore = remember { TokenStore.getInstance(appContext) }
-    LaunchedEffect(Unit) { tokenStore.carregar() }
+    val carregada by tokenStore.carregadaFlow.collectAsStateWithLifecycle()
     val logado by tokenStore.estaLogadoFlow.collectAsStateWithLifecycle()
     val perfil by tokenStore.perfilFlow.collectAsStateWithLifecycle()
+    
+    if (!carregada) return
+
+    val soProfissional = logado && perfil?.profissionalAtivo == true && perfil?.clienteAtivo != true
+    val startDestination = when {
+        !jaViuOnboarding -> EloScreen.Onboarding.route
+        soProfissional -> EloScreen.Painel.route
+        else -> EloScreen.Inicio.route
+    }
 
     val emModoPro = currentRoute?.startsWith(PRO_PREFIX) == true
     val telaCheia = currentRoute == EloScreen.Auth.route ||
@@ -174,6 +187,14 @@ private fun EloApp() {
     val podePro = logado && perfil?.profissionalAtivo == true
     val podeCliente = !logado || perfil?.clienteAtivo == true
     val toggleBloqueado = if (emModoPro) !podeCliente else !podePro
+
+    LaunchedEffect(soProfissional, logado, emModoPro, currentRoute, telaCheia) {
+        if (currentRoute == null || telaCheia) return@LaunchedEffect
+        when {
+            soProfissional && !emModoPro -> navController.trocarDeModo(EloScreen.Painel)
+            emModoPro && !logado -> navController.trocarDeModo(EloScreen.Inicio)
+        }
+    }
 
     var balaoDispensado by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(logado) { if (logado) balaoDispensado = false }
@@ -276,7 +297,12 @@ private fun EloApp() {
                 composable(EloScreen.Painel.route) { PainelScreen() }
                 composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
                 composable(EloScreen.Publicar.route) { PublicarScreen() }
-                composable(EloScreen.PerfilPro.route) { PerfilProScreen(sessao = perfil) }
+                composable(EloScreen.PerfilPro.route) {
+                    PerfilProScreen(
+                        sessao = perfil,
+                        onSair = { escopo.launch { tokenStore.limpar() } },
+                    )
+                }
 
                 composable(EloScreen.Onboarding.route) {
                     OnboardingScreen(

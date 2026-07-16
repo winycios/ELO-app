@@ -7,8 +7,8 @@ data class AuthRS(
     val nome: String,
     val urlPerfil: String?,
     val urlPerfilPro: String?,
-    val isProfissionalAtivo: Boolean,
-    val isClienteAtivo: Boolean
+    val isProfissional: Boolean,
+    val isCliente: Boolean
 )
 
 data class AuthRQ(

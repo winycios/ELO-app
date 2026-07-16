@@ -64,9 +64,13 @@ class TokenStore private constructor(context: Context) {
 
     private val _estaLogado = MutableStateFlow(false)
     private val _perfil = MutableStateFlow<PerfilSessao?>(null)
+    private val _carregada = MutableStateFlow(false)
 
     val estaLogadoFlow: StateFlow<Boolean> = _estaLogado.asStateFlow()
     val perfilFlow: StateFlow<PerfilSessao?> = _perfil.asStateFlow()
+
+    val carregadaFlow: StateFlow<Boolean> = _carregada.asStateFlow()
+    val carregada: Boolean get() = _carregada.value
 
     val accessToken: String? get() = accessCache
     val refreshToken: String? get() = refreshCache
@@ -85,6 +89,7 @@ class TokenStore private constructor(context: Context) {
         clienteAtivoCache = prefs[KEY_CLIENTE_ATIVO] ?: false
         profAtivoCache = prefs[KEY_PROF_ATIVO] ?: false
         atualizarEstado()
+        _carregada.value = true
     }
 
     /** Persiste a sessão retornada pelo login/refresh. */
@@ -95,8 +100,8 @@ class TokenStore private constructor(context: Context) {
         nomeCache = auth.nome
         urlPerfilCache = auth.urlPerfil.orEmpty()
         urlPerfilProCache = auth.urlPerfilPro.orEmpty()
-        clienteAtivoCache = auth.isClienteAtivo
-        profAtivoCache = auth.isProfissionalAtivo
+        clienteAtivoCache = auth.isCliente
+        profAtivoCache = auth.isProfissional
         atualizarEstado()
         dataStore.edit { prefs ->
             prefs[KEY_ACCESS] = cifrar(auth.token)
@@ -105,8 +110,8 @@ class TokenStore private constructor(context: Context) {
             prefs[KEY_NOME] = cifrar(auth.nome)
             prefs[KEY_URL_PERFIL] = cifrar(urlPerfilCache)
             prefs[KEY_URL_PERFIL_PRO] = cifrar(urlPerfilProCache)
-            prefs[KEY_CLIENTE_ATIVO] = auth.isClienteAtivo
-            prefs[KEY_PROF_ATIVO] = auth.isProfissionalAtivo
+            prefs[KEY_CLIENTE_ATIVO] = auth.isCliente
+            prefs[KEY_PROF_ATIVO] = auth.isProfissional
         }
     }
 
