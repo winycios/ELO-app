@@ -1,5 +1,6 @@
 package com.winyc.elo.telas.cliente
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -63,8 +65,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,56 +80,49 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.winyc.elo.R
+import com.winyc.elo.backend.controller.viacep.ViaCepRepository
+import com.winyc.elo.backend.model.endereco.EnderecoCreateDTO
+import com.winyc.elo.backend.model.endereco.EnderecoRS
+import com.winyc.elo.backend.model.endereco.linhaEndereco
+import com.winyc.elo.backend.model.usuario.UsuarioRS
 import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.backend.viewModel.UsuarioUi
+import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
 
-/* ============================ Cores de apoio / mock ============================ */
+/* ============================ Cores de apoio ============================ */
 
 private val Azul = Color(0xFF2F6BFF)
 private val Roxo = Color(0xFF8B5CF6)
 private val Verde = Color(0xFF12A15A)
 private val Amarelo = Color(0xFFDD8A15)
 
-private const val USUARIO_NOME = "Lucas Silva"
-private const val USUARIO_EMAIL = "lucas.silva@email.com"
-private const val USUARIO_TELEFONE = "(11) 98765-4321"
-private const val USUARIO_LOCAL = "São Paulo, SP"
+/** Tipos aceitos pelo backend (enum TipoEndereco: casa / empresa / comercial). */
+private enum class TipoEndereco(
+    val rotuloRes: Int,
+    val icone: ImageVector,
+    val cor: Color,
+    val valorApi: String,
+) {
+    Casa(R.string.endereco_tipo_casa, Icons.Outlined.Home, Azul, "casa"),
+    Empresa(R.string.endereco_tipo_empresa, Icons.Outlined.Work, Roxo, "empresa"),
+    Comercial(R.string.endereco_tipo_comercial, Icons.Outlined.LocationOn, Amarelo, "comercial");
 
-private enum class TipoEndereco(val rotuloRes: Int, val icone: ImageVector, val cor: Color) {
-    Casa(R.string.endereco_tipo_casa, Icons.Outlined.Home, Azul),
-    Trabalho(R.string.endereco_tipo_trabalho, Icons.Outlined.Work, Roxo),
-    Outro(R.string.endereco_tipo_outro, Icons.Outlined.LocationOn, Amarelo),
+    companion object {
+        /** Aceita tanto o valor ("casa") quanto o nome do enum ("CASA"). */
+        fun fromApi(valor: String?): TipoEndereco = entries.firstOrNull {
+            it.valorApi.equals(valor, ignoreCase = true) || it.name.equals(valor, ignoreCase = true)
+        } ?: Casa
+    }
 }
-
-private data class EnderecoMock(
-    val id: Int,
-    val nome: String,
-    val tipo: TipoEndereco,
-    val logradouro: String,
-    val bairroCidade: String,
-    val cep: String,
-    val principal: Boolean,
-)
-
-private val ENDERECOS_INICIAIS = listOf(
-    EnderecoMock(
-        1, "Minha casa", TipoEndereco.Casa,
-        "Rua das Flores, 123 – Apto 42", "Jardim América, São Paulo – SP", "01401-000",
-        principal = true,
-    ),
-    EnderecoMock(
-        2, "Escritório", TipoEndereco.Trabalho,
-        "Av. Paulista, 1578 – 14º andar", "Bela Vista, São Paulo – SP", "01310-200",
-        principal = false,
-    ),
-)
 
 private data class Faq(val categoria: String, val pergunta: String)
 
@@ -154,12 +149,23 @@ private val FAQ_CATEGORIAS =
 fun PerfilScreen(
     logado: Boolean,
     perfil: PerfilSessao?,
+    usuarioVm: UsuarioViewModel,
+    abrirEnderecos: Boolean = false,
+    onEnderecosAbertos: () -> Unit = {},
     onAbrirLogin: () -> Unit,
     onSair: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (logado) {
-        PerfilLogado(perfil = perfil, onAbrirLogin = onAbrirLogin, onSair = onSair, modifier = modifier)
+        PerfilLogado(
+            perfil = perfil,
+            usuarioVm = usuarioVm,
+            abrirEnderecos = abrirEnderecos,
+            onEnderecosAbertos = onEnderecosAbertos,
+            onAbrirLogin = onAbrirLogin,
+            onSair = onSair,
+            modifier = modifier,
+        )
     } else {
         PerfilDeslogado(onAbrirLogin = onAbrirLogin, modifier = modifier)
     }
@@ -229,37 +235,62 @@ private enum class PerfilAba { Menu, EditarPerfil, Enderecos, Ajuda }
 @Composable
 private fun PerfilLogado(
     perfil: PerfilSessao?,
+    usuarioVm: UsuarioViewModel,
+    abrirEnderecos: Boolean,
+    onEnderecosAbertos: () -> Unit,
     onAbrirLogin: () -> Unit,
     onSair: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var aba by rememberSaveable { mutableStateOf(PerfilAba.Menu) }
+    val estado by usuarioVm.estado.collectAsStateWithLifecycle()
+
+    // Recarrega perfil/endereços ao (re)entrar na aba de perfil.
+    LaunchedEffect(Unit) { usuarioVm.carregar() }
+
+    // Vindo da Home ("gerenciar endereços"): abre direto os endereços.
+    LaunchedEffect(abrirEnderecos) {
+        if (abrirEnderecos) {
+            aba = PerfilAba.Enderecos
+            onEnderecosAbertos()
+        }
+    }
 
     BackHandler(enabled = aba != PerfilAba.Menu) { aba = PerfilAba.Menu }
 
-    val nome = perfil?.nome?.takeIf { it.isNotBlank() } ?: USUARIO_NOME
+    val dados = estado.perfil
+    val nome = dados?.nome?.takeIf { it.isNotBlank() }
+        ?: perfil?.nome?.takeIf { it.isNotBlank() }
+        ?: ""
     val fotoUrl = perfil?.urlPerfil
 
     when (aba) {
         PerfilAba.Menu -> MenuPerfil(
             nome = nome,
             fotoUrl = fotoUrl,
+            dados = dados,
+            enderecoPrincipal = estado.principal,
             onEditar = { aba = PerfilAba.EditarPerfil },
             onEnderecos = { aba = PerfilAba.Enderecos },
             onAjuda = { aba = PerfilAba.Ajuda },
-            onCriarConta = onAbrirLogin,
             onSair = onSair,
             modifier = modifier,
         )
 
         PerfilAba.EditarPerfil -> EditarPerfilScreen(
-            nomeInicial = nome,
+            dados = dados,
+            nomeSessao = nome,
             fotoUrl = fotoUrl,
+            salvando = estado.salvando,
+            erro = estado.erro,
+            onSalvar = usuarioVm::editarPerfil,
             onVoltar = { aba = PerfilAba.Menu },
             modifier = modifier,
         )
 
         PerfilAba.Enderecos -> EnderecosFlow(
+            estado = estado,
+            usuarioVm = usuarioVm,
             onVoltar = { aba = PerfilAba.Menu },
             modifier = modifier,
         )
@@ -271,16 +302,17 @@ private fun PerfilLogado(
     }
 }
 
-/* ---------------------------- Menu principal (img) ---------------------------- */
+/* ---------------------------- Menu principal ---------------------------- */
 
 @Composable
 private fun MenuPerfil(
     nome: String,
     fotoUrl: String?,
+    dados: UsuarioRS?,
+    enderecoPrincipal: EnderecoRS?,
     onEditar: () -> Unit,
     onEnderecos: () -> Unit,
     onAjuda: () -> Unit,
-    onCriarConta: () -> Unit,
     onSair: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -318,7 +350,13 @@ private fun MenuPerfil(
                             modifier = Modifier.size(18.dp),
                         )
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable(onClick = onEnderecos)
+                            .padding(vertical = 2.dp),
+                    ) {
                         Icon(
                             Icons.Outlined.LocationOn,
                             null,
@@ -327,9 +365,11 @@ private fun MenuPerfil(
                         )
                         Spacer(Modifier.width(3.dp))
                         Text(
-                            USUARIO_LOCAL,
+                            enderecoPrincipal?.linhaEndereco()?.takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.home_endereco_vazio_titulo),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
                         )
                     }
                     Row(
@@ -356,9 +396,9 @@ private fun MenuPerfil(
             }
         }
 
-        item { CardEstatisticasPerfil() }
+        item { CardEstatisticasPerfil(dados) }
 
-        item { CardContato() }
+        item { CardContato(dados) }
 
         item {
             Card(
@@ -416,7 +456,7 @@ private fun MenuPerfil(
 }
 
 @Composable
-private fun CardEstatisticasPerfil() {
+private fun CardEstatisticasPerfil(dados: UsuarioRS?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -429,11 +469,23 @@ private fun CardEstatisticasPerfil() {
                 .height(IntrinsicSize.Min)
                 .padding(vertical = 16.dp),
         ) {
-            EstatItem("5", stringResource(R.string.perfil_stat_pedidos), Modifier.weight(1f))
+            EstatItem(
+                (dados?.qtdPedido ?: 0L).toString(),
+                stringResource(R.string.perfil_stat_pedidos),
+                Modifier.weight(1f),
+            )
             VerticalDivider(color = MaterialTheme.colorScheme.outline)
-            EstatItem("3", stringResource(R.string.perfil_stat_concluidos), Modifier.weight(1f))
+            EstatItem(
+                (dados?.qtdConcluido ?: 0L).toString(),
+                stringResource(R.string.perfil_stat_concluidos),
+                Modifier.weight(1f),
+            )
             VerticalDivider(color = MaterialTheme.colorScheme.outline)
-            EstatItem("4.9", stringResource(R.string.perfil_stat_avaliacao), Modifier.weight(1f))
+            EstatItem(
+                formatarAvaliacao(dados?.avaliacaoGeral),
+                stringResource(R.string.perfil_stat_avaliacao),
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -459,7 +511,7 @@ private fun EstatItem(valor: String, rotulo: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun CardContato() {
+private fun CardContato(dados: UsuarioRS?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -470,8 +522,23 @@ private fun CardContato() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            LinhaContato(Icons.Outlined.MailOutline, stringResource(R.string.perfil_email), USUARIO_EMAIL)
-            LinhaContato(Icons.Outlined.Phone, stringResource(R.string.perfil_telefone), USUARIO_TELEFONE)
+            LinhaContato(
+                Icons.Outlined.MailOutline,
+                stringResource(R.string.perfil_email),
+                dados?.email?.takeIf { it.isNotBlank() } ?: "—",
+            )
+            LinhaContato(
+                Icons.Outlined.Phone,
+                stringResource(R.string.perfil_telefone),
+                dados?.telefone?.takeIf { it.isNotBlank() } ?: "—",
+            )
+            dados?.telefoneZap?.takeIf { it.isNotBlank() }?.let { zap ->
+                LinhaContato(
+                    Icons.Outlined.Phone,
+                    stringResource(R.string.perfil_telefone_zap),
+                    zap
+                )
+            }
         }
     }
 }
@@ -550,26 +617,44 @@ private fun ItemMenu(
     }
 }
 
-/* ---------------------------- Editar perfil (img_1) ---------------------------- */
+/* ---------------------------- Editar perfil ---------------------------- */
 
 @Composable
 private fun EditarPerfilScreen(
-    nomeInicial: String,
+    dados: UsuarioRS?,
+    nomeSessao: String,
     fotoUrl: String?,
+    salvando: Boolean,
+    erro: String?,
+    onSalvar: (String, String, String, String, String, (Boolean) -> Unit) -> Unit,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var nome by rememberSaveable(nomeInicial) { mutableStateOf(nomeInicial) }
-    var email by rememberSaveable { mutableStateOf(USUARIO_EMAIL) }
-    var telefone by rememberSaveable { mutableStateOf(USUARIO_TELEFONE) }
-    var endereco by rememberSaveable { mutableStateOf(USUARIO_LOCAL) }
+    val nomeCompleto = dados?.nome?.takeIf { it.isNotBlank() } ?: nomeSessao
+    val nomeInicial = remember(nomeCompleto) { dividirNome(nomeCompleto) }
+
+    var nome by rememberSaveable(nomeCompleto) { mutableStateOf(nomeInicial.first) }
+    var sobrenome by rememberSaveable(nomeCompleto) { mutableStateOf(nomeInicial.second) }
+    var email by rememberSaveable(dados?.email) { mutableStateOf(dados?.email.orEmpty()) }
+    var telefone by rememberSaveable(dados?.telefone) { mutableStateOf(dados?.telefone.orEmpty()) }
+    var zap by rememberSaveable(dados?.telefoneZap) { mutableStateOf(dados?.telefoneZap.orEmpty()) }
+
+    val context = LocalContext.current
+    val msgSalvo = stringResource(R.string.perfil_salvo)
+
+    val podeSalvar = nome.trim().length >= 3 && sobrenome.isNotBlank() &&
+            email.isNotBlank() && telefone.isNotBlank() && !salvando
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        TopBarVoltar(titulo = stringResource(R.string.perfil_editar), subtitulo = null, onVoltar = onVoltar)
+        TopBarVoltar(
+            titulo = stringResource(R.string.perfil_editar),
+            subtitulo = null,
+            onVoltar = onVoltar
+        )
 
         LazyColumn(
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 24.dp),
@@ -582,7 +667,7 @@ private fun EditarPerfilScreen(
                 ) {
                     Box(contentAlignment = Alignment.BottomEnd) {
                         AvatarPerfil(
-                            nome = nome,
+                            nome = nome.ifBlank { nomeSessao },
                             fotoUrl = fotoUrl,
                             tamanho = 96.dp,
                             fonte = MaterialTheme.typography.headlineMedium,
@@ -616,11 +701,20 @@ private fun EditarPerfilScreen(
             }
             item {
                 CampoTexto(
+                    stringResource(R.string.perfil_campo_sobrenome),
+                    sobrenome,
+                    { sobrenome = it },
+                    stringResource(R.string.perfil_campo_sobrenome_hint),
+                )
+            }
+            item {
+                CampoTexto(
                     stringResource(R.string.perfil_email),
                     email,
                     { email = it },
                     stringResource(R.string.perfil_campo_email_hint),
-                    teclado = KeyboardType.Email
+                    teclado = KeyboardType.Email,
+                    enabled = false,
                 )
             }
             item {
@@ -634,23 +728,62 @@ private fun EditarPerfilScreen(
             }
             item {
                 CampoTexto(
-                    stringResource(R.string.perfil_campo_endereco),
-                    endereco,
-                    { endereco = it },
-                    stringResource(R.string.perfil_campo_endereco_hint),
+                    stringResource(R.string.perfil_telefone_zap),
+                    zap,
+                    { zap = it },
+                    stringResource(R.string.perfil_campo_zap_hint),
+                    teclado = KeyboardType.Phone
                 )
+            }
+
+            if (erro != null) {
+                item { TextoErro(erro) }
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        onSalvar(nome, sobrenome, email, telefone, zap) { ok ->
+                            if (ok) {
+                                Toast.makeText(context, msgSalvo, Toast.LENGTH_SHORT).show()
+                                onVoltar()
+                            }
+                        }
+                    },
+                    enabled = podeSalvar,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    if (salvando) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.perfil_salvar),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-/* ---------------------------- Endereços (img_2 / img_3 / img_4) ---------------------------- */
+/* ---------------------------- Endereços ---------------------------- */
 
 @Composable
-private fun EnderecosFlow(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
-    val enderecos =
-        remember { mutableStateListOf<EnderecoMock>().apply { addAll(ENDERECOS_INICIAIS) } }
-    var editando by remember { mutableStateOf<EnderecoMock?>(null) }
+private fun EnderecosFlow(
+    estado: UsuarioUi,
+    usuarioVm: UsuarioViewModel,
+    onVoltar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var editando by remember { mutableStateOf<EnderecoRS?>(null) }
     var criando by remember { mutableStateOf(false) }
 
     BackHandler(enabled = editando != null || criando) {
@@ -663,6 +796,9 @@ private fun EnderecosFlow(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
             endereco = null,
             titulo = stringResource(R.string.endereco_novo),
             textoBotao = stringResource(R.string.endereco_adicionar),
+            salvando = estado.salvando,
+            erro = estado.erro,
+            onSalvar = { dto, onResultado -> usuarioVm.salvarEndereco(dto, onResultado) },
             onVoltar = { criando = false },
             modifier = modifier,
         )
@@ -671,21 +807,21 @@ private fun EnderecosFlow(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
             endereco = editando,
             titulo = stringResource(R.string.endereco_editar_titulo),
             textoBotao = stringResource(R.string.endereco_salvar_alteracoes),
+            salvando = estado.salvando,
+            erro = estado.erro,
+            onSalvar = { dto, onResultado -> usuarioVm.salvarEndereco(dto, onResultado) },
             onVoltar = { editando = null },
             modifier = modifier,
         )
 
         else -> EnderecosScreen(
-            enderecos = enderecos,
+            enderecos = estado.enderecos,
+            carregando = estado.carregando,
             onVoltar = onVoltar,
             onNovo = { criando = true },
             onEditar = { editando = it },
-            onExcluir = { alvo -> enderecos.removeAll { it.id == alvo.id } },
-            onDefinirPrincipal = { alvo ->
-                for (i in enderecos.indices) {
-                    enderecos[i] = enderecos[i].copy(principal = enderecos[i].id == alvo.id)
-                }
-            },
+            onExcluir = { usuarioVm.excluirEndereco(it.id) },
+            onDefinirPrincipal = { usuarioVm.definirPrincipal(it.id) },
             modifier = modifier,
         )
     }
@@ -693,12 +829,13 @@ private fun EnderecosFlow(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun EnderecosScreen(
-    enderecos: List<EnderecoMock>,
+    enderecos: List<EnderecoRS>,
+    carregando: Boolean,
     onVoltar: () -> Unit,
     onNovo: () -> Unit,
-    onEditar: (EnderecoMock) -> Unit,
-    onExcluir: (EnderecoMock) -> Unit,
-    onDefinirPrincipal: (EnderecoMock) -> Unit,
+    onEditar: (EnderecoRS) -> Unit,
+    onExcluir: (EnderecoRS) -> Unit,
+    onDefinirPrincipal: (EnderecoRS) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -715,13 +852,35 @@ private fun EnderecosScreen(
             contentPadding = PaddingValues(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(enderecos, key = { it.id }) { endereco ->
-                CardEndereco(
-                    endereco = endereco,
-                    onEditar = { onEditar(endereco) },
-                    onExcluir = { onExcluir(endereco) },
-                    onDefinirPrincipal = { onDefinirPrincipal(endereco) },
-                )
+            if (enderecos.isEmpty() && carregando) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    }
+                }
+            } else if (enderecos.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.endereco_vazio),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+                    )
+                }
+            } else {
+                items(enderecos, key = { it.id }) { endereco ->
+                    CardEndereco(
+                        endereco = endereco,
+                        onEditar = { onEditar(endereco) },
+                        onExcluir = { onExcluir(endereco) },
+                        onDefinirPrincipal = { onDefinirPrincipal(endereco) },
+                    )
+                }
             }
             item {
                 Row(
@@ -754,11 +913,14 @@ private fun EnderecosScreen(
 
 @Composable
 private fun CardEndereco(
-    endereco: EnderecoMock,
+    endereco: EnderecoRS,
     onEditar: () -> Unit,
     onExcluir: () -> Unit,
     onDefinirPrincipal: () -> Unit,
 ) {
+    val tipo = TipoEndereco.fromApi(endereco.tipoEndereco)
+    val principal = endereco.stPrincipal == true
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -771,13 +933,13 @@ private fun CardEndereco(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(endereco.tipo.cor.copy(alpha = 0.14f)),
+                        .background(tipo.cor.copy(alpha = 0.14f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        endereco.tipo.icone,
+                        tipo.icone,
                         null,
-                        tint = endereco.tipo.cor,
+                        tint = tipo.cor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -788,39 +950,41 @@ private fun CardEndereco(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            endereco.nome,
+                            endereco.nmApelido?.takeIf { it.isNotBlank() }
+                                ?: stringResource(tipo.rotuloRes),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        if (endereco.principal) {
+                        if (principal) {
                             Spacer(Modifier.width(8.dp))
                             ChipPrincipal()
                         }
                     }
-                    Text(
-                        endereco.logradouro,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        endereco.bairroCidade,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        stringResource(R.string.endereco_cep_format, endereco.cep),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    endereco.linhaEndereco().takeIf { it.isNotBlank() }?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    endereco.cep?.takeIf { it.isNotBlank() }?.let {
+                        Text(
+                            stringResource(R.string.endereco_cep_format, it),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
             Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-                if (!endereco.principal) {
+                if (!principal) {
                     AcaoEndereco(
-                        Icons.Outlined.StarBorder, stringResource(R.string.endereco_acao_definir_principal),
-                        cor = MaterialTheme.colorScheme.primary, onClick = onDefinirPrincipal,
+                        Icons.Outlined.StarBorder,
+                        stringResource(R.string.endereco_acao_definir_principal),
+                        cor = MaterialTheme.colorScheme.primary,
+                        onClick = onDefinirPrincipal,
                         modifier = Modifier.weight(1f),
                     )
                     VerticalDivider(color = MaterialTheme.colorScheme.outline)
@@ -889,24 +1053,55 @@ private fun AcaoEndereco(
 
 @Composable
 private fun EditarEnderecoScreen(
-    endereco: EnderecoMock?,
+    endereco: EnderecoRS?,
     titulo: String,
     textoBotao: String,
+    salvando: Boolean,
+    erro: String?,
+    onSalvar: (EnderecoCreateDTO, (Boolean) -> Unit) -> Unit,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var nome by rememberSaveable { mutableStateOf(endereco?.nome ?: "") }
-    var tipo by rememberSaveable { mutableStateOf(endereco?.tipo ?: TipoEndereco.Casa) }
-    var cep by rememberSaveable { mutableStateOf(endereco?.cep ?: "") }
-    var rua by rememberSaveable { mutableStateOf(if (endereco != null) "Rua das Flores" else "") }
-    var numero by rememberSaveable { mutableStateOf(if (endereco != null) "123" else "") }
-    var complemento by rememberSaveable { mutableStateOf(if (endereco != null) "Apto 42" else "") }
-    var bairro by rememberSaveable { mutableStateOf(if (endereco != null) "Jardim América" else "") }
-    var cidade by rememberSaveable { mutableStateOf(if (endereco != null) "São Paulo" else "") }
-    var estado by rememberSaveable { mutableStateOf(if (endereco != null) "SP" else "SP") }
+    var nome by rememberSaveable { mutableStateOf(endereco?.nmApelido.orEmpty()) }
+    var tipo by rememberSaveable { mutableStateOf(TipoEndereco.fromApi(endereco?.tipoEndereco)) }
+    var cep by rememberSaveable { mutableStateOf(endereco?.cep.orEmpty()) }
+    var rua by rememberSaveable { mutableStateOf(endereco?.rua.orEmpty()) }
+    var numero by rememberSaveable {
+        mutableStateOf(endereco?.nrRua?.takeIf { it > 0 }?.toString().orEmpty())
+    }
+    var complemento by rememberSaveable { mutableStateOf(endereco?.complemento.orEmpty()) }
+    var bairro by rememberSaveable { mutableStateOf(endereco?.bairro.orEmpty()) }
+    var cidade by rememberSaveable { mutableStateOf(endereco?.cidade.orEmpty()) }
+    var estado by rememberSaveable { mutableStateOf(endereco?.estado.orEmpty()) }
 
-    val podeSalvar = nome.isNotBlank() && cep.isNotBlank() && rua.isNotBlank() &&
-            numero.isNotBlank() && bairro.isNotBlank() && cidade.isNotBlank()
+    var buscandoCep by remember { mutableStateOf(false) }
+    var cepErro by remember { mutableStateOf<String?>(null) }
+
+    val viaCep = remember { ViaCepRepository() }
+    val cepDigitos = cep.filter { it.isDigit() }
+    // CEP já salvo: não reconsulta ao abrir para não sobrescrever os dados do endereço.
+    val cepInicial = remember { endereco?.cep?.filter { it.isDigit() }.orEmpty() }
+
+    // Autopreenche pelo CEP quando o usuário informa/altera um CEP de 8 dígitos.
+    LaunchedEffect(cepDigitos) {
+        if (cepDigitos.length == 8 && cepDigitos != cepInicial) {
+            buscandoCep = true
+            cepErro = null
+            viaCep.consultar(cepDigitos)
+                .onSuccess { via ->
+                    via.logradouro?.takeIf { it.isNotBlank() }?.let { rua = it }
+                    via.bairro?.takeIf { it.isNotBlank() }?.let { bairro = it }
+                    via.localidade?.takeIf { it.isNotBlank() }?.let { cidade = it }
+                    via.uf?.takeIf { it.isNotBlank() }?.let { estado = it }
+                }
+                .onFailure { cepErro = it.message }
+            buscandoCep = false
+        }
+    }
+
+    val podeSalvar = nome.trim().length >= 3 && cepDigitos.length == 8 && rua.isNotBlank() &&
+            numero.isNotBlank() && bairro.isNotBlank() && cidade.isNotBlank() &&
+            estado.isNotBlank() && !salvando
 
     Column(
         modifier = modifier
@@ -922,8 +1117,7 @@ private fun EditarEnderecoScreen(
             item {
                 CampoTexto(
                     stringResource(R.string.endereco_campo_nome), nome, { nome = it },
-                    if (endereco == null) stringResource(R.string.endereco_campo_nome_hint_novo)
-                    else stringResource(R.string.endereco_campo_nome),
+                    stringResource(R.string.endereco_campo_nome_hint_novo),
                 )
             }
             item {
@@ -954,7 +1148,17 @@ private fun EditarEnderecoScreen(
                     cep,
                     { cep = it },
                     stringResource(R.string.endereco_cep_hint),
-                    teclado = KeyboardType.Number
+                    teclado = KeyboardType.Number,
+                    trailing = if (buscandoCep) {
+                        {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                    } else null,
+                    apoio = cepErro,
+                    erro = cepErro != null,
                 )
             }
             item {
@@ -1010,16 +1214,43 @@ private fun EditarEnderecoScreen(
                     )
                 }
             }
+
+            if (erro != null) {
+                item { TextoErro(erro) }
+            }
+
             item {
                 Button(
-                    onClick = onVoltar,
+                    onClick = {
+                        val dto = EnderecoCreateDTO(
+                            id = endereco?.id,
+                            nmApelido = nome.trim(),
+                            tipoEndereco = tipo.valorApi,
+                            cep = cepDigitos,
+                            rua = rua.trim(),
+                            nrRua = numero.filter { it.isDigit() }.toIntOrNull() ?: 0,
+                            complemento = complemento.trim(),
+                            bairro = bairro.trim(),
+                            cidade = cidade.trim(),
+                            estado = estado.trim(),
+                        )
+                        onSalvar(dto) { ok -> if (ok) onVoltar() }
+                    },
                     enabled = podeSalvar,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                 ) {
-                    Text(textoBotao, style = MaterialTheme.typography.titleMedium)
+                    if (salvando) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(textoBotao, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }
@@ -1061,7 +1292,7 @@ private fun SeletorTipo(
     }
 }
 
-/* ---------------------------- Ajuda (img_5 / img_6) ---------------------------- */
+/* ---------------------------- Ajuda ---------------------------- */
 
 @Composable
 private fun AjudaScreen(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
@@ -1341,6 +1572,7 @@ private fun FaqItem(faq: Faq) {
     }
 }
 
+/* ---------------------------- Componentes de apoio ---------------------------- */
 
 @Composable
 private fun TopBarVoltar(titulo: String, subtitulo: String?, onVoltar: () -> Unit) {
@@ -1386,6 +1618,10 @@ private fun CampoTexto(
     placeholder: String,
     modifier: Modifier = Modifier,
     teclado: KeyboardType = KeyboardType.Text,
+    trailing: @Composable (() -> Unit)? = null,
+    apoio: String? = null,
+    erro: Boolean = false,
+    enabled: Boolean = true
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -1399,6 +1635,10 @@ private fun CampoTexto(
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(placeholder) },
             singleLine = true,
+            enabled = enabled,
+            isError = erro,
+            trailingIcon = trailing,
+            supportingText = apoio?.let { { Text(it) } },
             shape = RoundedCornerShape(14.dp),
             keyboardOptions = KeyboardOptions(keyboardType = teclado),
             colors = OutlinedTextFieldDefaults.colors(
@@ -1411,6 +1651,32 @@ private fun CampoTexto(
     }
 }
 
+@Composable
+private fun TextoErro(mensagem: String) {
+    Text(
+        mensagem,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.padding(horizontal = 4.dp),
+    )
+}
+
+/** Divide "Ana Maria Silva" em ("Ana", "Maria Silva") para preencher nome/sobrenome. */
+private fun dividirNome(completo: String): Pair<String, String> {
+    val partes = completo.trim().split(" ").filter { it.isNotBlank() }
+    return when {
+        partes.isEmpty() -> "" to ""
+        partes.size == 1 -> partes[0] to ""
+        else -> partes.first() to partes.drop(1).joinToString(" ")
+    }
+}
+
+/** Formata a nota (ex.: 4.9) ou "—" quando ainda não há avaliação. */
+private fun formatarAvaliacao(nota: Double?): String {
+    if (nota == null || nota <= 0.0) return "—"
+    val arredondado = kotlin.math.round(nota * 10) / 10.0
+    return arredondado.toString().replace('.', ',')
+}
 
 /** Borda sólida arredondada sem depender do módulo foundation.border. */
 private fun Modifier.bordaSolida(cor: Color, raio: Dp): Modifier = drawBehind {

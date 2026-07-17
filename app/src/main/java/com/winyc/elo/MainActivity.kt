@@ -77,7 +77,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.backend.security.TokenStore
+import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
 import com.winyc.elo.telas.onboarding.OnboardingScreen
@@ -168,7 +170,10 @@ private fun EloApp() {
     val carregada by tokenStore.carregadaFlow.collectAsStateWithLifecycle()
     val logado by tokenStore.estaLogadoFlow.collectAsStateWithLifecycle()
     val perfil by tokenStore.perfilFlow.collectAsStateWithLifecycle()
-    
+
+    val usuarioVm: UsuarioViewModel = viewModel()
+    var abrirEnderecos by rememberSaveable { mutableStateOf(false) }
+
     if (!carregada) return
 
     val soProfissional = logado && perfil?.profissionalAtivo == true && perfil?.clienteAtivo != true
@@ -261,7 +266,15 @@ private fun EloApp() {
                 },
             ) {
                 composable(EloScreen.Inicio.route) {
-                    InicioScreen(onAbrirPerfil = { navController.abrirPerfilProfissional(it)}, perfil = perfil)
+                    InicioScreen(
+                        onAbrirPerfil = { navController.abrirPerfilProfissional(it) },
+                        onIrParaEnderecos = {
+                            abrirEnderecos = true
+                            navController.navegarParaAba(EloScreen.Perfil)
+                        },
+                        perfil = perfil,
+                        usuarioVm = usuarioVm,
+                    )
                 }
                 composable(EloScreen.Vitrine.route) {
                     VitrineScreen(
@@ -275,6 +288,9 @@ private fun EloApp() {
                     PerfilScreen(
                         logado = logado,
                         perfil = perfil,
+                        usuarioVm = usuarioVm,
+                        abrirEnderecos = abrirEnderecos,
+                        onEnderecosAbertos = { abrirEnderecos = false },
                         onAbrirLogin = { navController.navigate(EloScreen.Auth.route) },
                         onSair = { escopo.launch { tokenStore.limpar() } },
                     )

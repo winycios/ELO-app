@@ -108,10 +108,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.endereco.EnderecoRS
+import com.winyc.elo.backend.model.endereco.linhaEndereco
 import com.winyc.elo.backend.security.PerfilSessao
 import com.winyc.elo.backend.viewModel.CategoriaUi
 import com.winyc.elo.backend.viewModel.CategoriaViewModel
+import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
 
@@ -256,12 +260,17 @@ private val OUTROS_PROFISSIONAIS = listOf(
 @Composable
 fun InicioScreen(
     onAbrirPerfil: (String) -> Unit = {},
+    onIrParaEnderecos: () -> Unit = {},
     perfil: PerfilSessao?,
+    usuarioVm: UsuarioViewModel,
     modifier: Modifier = Modifier,
     vm: CategoriaViewModel = viewModel(),
 ) {
     var categoriaAberta by rememberSaveable { mutableStateOf<String?>(null) }
     val estado by vm.estado.collectAsStateWithLifecycle()
+    val usuarioEstado by usuarioVm.estado.collectAsStateWithLifecycle()
+
+    LaunchedEffect(perfil?.id) { if (perfil != null) usuarioVm.carregar() }
 
     BackHandler(enabled = categoriaAberta != null) { categoriaAberta = null }
 
@@ -274,7 +283,9 @@ fun InicioScreen(
             onAbrirCategoria = { categoriaAberta = it },
             onAbrirPerfil = onAbrirPerfil,
             modifier = modifier,
-            perfil = perfil
+            perfil = perfil,
+            enderecoPrincipal = usuarioEstado.principal,
+            onIrParaEnderecos = onIrParaEnderecos,
         )
     } else {
         CategoriaScreen(
@@ -294,6 +305,8 @@ private fun HomeConteudo(
     onTentarNovamente: () -> Unit,
     onAbrirCategoria: (String) -> Unit,
     perfil: PerfilSessao?,
+    enderecoPrincipal: EnderecoRS?,
+    onIrParaEnderecos: () -> Unit,
     onAbrirPerfil: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -312,6 +325,17 @@ private fun HomeConteudo(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item { HeaderBusca(perfil = perfil) }
+
+        // Só faz sentido mostrar/gerenciar endereço para quem está logado.
+        if (perfil != null) {
+            item {
+                SecaoEnderecoPrincipal(
+                    endereco = enderecoPrincipal,
+                    onIrParaEnderecos = onIrParaEnderecos,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+        }
 
         item {
             SecaoCategorias(
@@ -450,6 +474,88 @@ private fun HeaderBusca(perfil: PerfilSessao?) {
                 text = "Buscar serviços ou profissionais…",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SecaoEnderecoPrincipal(
+    endereco: EnderecoRS?,
+    onIrParaEnderecos: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onIrParaEnderecos),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.LocationOn,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            if (endereco != null) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(R.string.home_endereco_principal),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = endereco.nmApelido?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.home_endereco_titulo),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                    )
+                    endereco.linhaEndereco().takeIf { it.isNotBlank() }?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                        )
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(R.string.home_endereco_vazio_titulo),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.home_endereco_vazio_sub),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                stringResource(R.string.home_endereco_gerenciar),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

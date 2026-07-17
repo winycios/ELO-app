@@ -103,11 +103,24 @@
     <string name="perfil_stat_avaliacao">Avaliação</string>
     <string name="perfil_email">E-mail</string>
     <string name="perfil_telefone">Telefone</string>
+    <string name="perfil_telefone_zap">WhatsApp</string>
+    <string name="perfil_salvo">Perfil atualizado com sucesso.</string>
+
+    <!-- Endereço na Home -->
+    <string name="home_endereco_titulo">Seu endereço</string>
+    <string name="home_endereco_principal">Endereço principal</string>
+    <string name="home_endereco_vazio_titulo">Cadastre um endereço</string>
+    <string name="home_endereco_vazio_sub">Adicione um endereço para encontrar profissionais perto de você.</string>
+    <string name="home_endereco_gerenciar">Gerenciar endereços</string>
 
     <!-- Editar perfil -->
     <string name="perfil_trocar_foto">Trocar foto</string>
     <string name="perfil_campo_nome">Nome</string>
     <string name="perfil_campo_nome_hint">Seu nome completo</string>
+    <string name="perfil_campo_sobrenome">Sobrenome</string>
+    <string name="perfil_campo_sobrenome_hint">Seu sobrenome</string>
+    <string name="perfil_campo_zap_hint">(00) 00000-0000</string>
+    <string name="perfil_salvar">Salvar alterações</string>
     <string name="perfil_campo_email_hint">seu@email.com</string>
     <string name="perfil_campo_telefone_hint">(00) 00000-0000</string>
     <string name="perfil_campo_endereco">Endereço</string>
@@ -131,8 +144,13 @@
     <string name="endereco_tipo_casa">Casa</string>
     <string name="endereco_tipo_trabalho">Trabalho</string>
     <string name="endereco_tipo_outro">Outro</string>
+    <string name="endereco_tipo_empresa">Empresa</string>
+    <string name="endereco_tipo_comercial">Comercial</string>
     <string name="endereco_cep">CEP</string>
     <string name="endereco_cep_hint">00000–000</string>
+    <string name="endereco_cep_buscando">Buscando endereço pelo CEP…</string>
+    <string name="endereco_salvando">Salvando…</string>
+    <string name="endereco_vazio">Você ainda não cadastrou nenhum endereço.</string>
     <string name="endereco_rua">Rua / Av.</string>
     <string name="endereco_rua_hint">Nome da rua</string>
     <string name="endereco_numero">Número</string>
