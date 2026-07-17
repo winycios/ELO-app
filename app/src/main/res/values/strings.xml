@@ -203,6 +203,15 @@
     <string name="pro_bio">Bio / Apresentação</string>
     <string name="pro_bio_hint">Conte sobre sua experiência e especialidades…</string>
     <string name="pro_area_hint">Ex: São Paulo - Zona Oeste (até 10 km)</string>
+    <string name="pro_area_sub">Defina o centro e o raio onde você atende</string>
+    <string name="pro_area_buscar_hint">Buscar endereço ou bairro</string>
+    <string name="pro_area_buscar_cd">Buscar endereço</string>
+    <string name="pro_area_nao_encontrado">Endereço não encontrado</string>
+    <string name="pro_area_mapa_dica">Toque no mapa para ajustar o ponto central</string>
+    <string name="pro_area_mock">Mapa ilustrativo (mock)</string>
+    <string name="pro_area_raio">Raio de atendimento</string>
+    <string name="pro_area_ate_km">até %1$d km</string>
+    <string name="pro_area_local_ajustado">Ponto ajustado no mapa</string>
     <string name="pro_tags_especialidade">Tags de especialidade</string>
     <string name="pro_tags_hint">Ex: Pontual, Organizado…</string>
     <string name="pro_salvar_perfil">Salvar perfil</string>

@@ -69,11 +69,30 @@ internal data class PerfilPublico(
     val profissao: String,
     val fotoUrl: String,
     val bio: String,
-    val area: String,
+    val area: AreaAtendimento,
     val tags: List<String>,
 )
 
-/** Um serviço oferecido pelo profissional. */
+internal data class AreaAtendimento(
+    val latitude: Double,
+    val longitude: Double,
+    val raioKm: Int,
+    val cidade: String,
+    val estado: String,
+    val bairro: String?,
+) {
+    val local: String
+        get() = buildString {
+            if (!bairro.isNullOrBlank()) append(bairro).append(" · ")
+            append(cidade)
+            if (estado.isNotBlank()) append(" - ").append(estado)
+        }
+}
+
+/** Formata um par de coordenadas de forma estável (ponto decimal, 5 casas). */
+internal fun formatarCoord(lat: Double, lng: Double): String =
+    String.format(java.util.Locale.US, "%.5f, %.5f", lat, lng)
+
 internal data class ServicoPro(
     val id: Int,
     val categoria: String,
@@ -90,7 +109,14 @@ private val PERFIL_INICIAL = PerfilPublico(
     fotoUrl = "https://images.unsplash.com/photo-1621905252507",
     bio = "Eletricista profissional com mais de 15 anos de experiência. " +
         "Especializado em instalações residenciais e comerciais, manutenção preventiva e corretiva.",
-    area = "São Paulo - Zona Oeste e Centro (até 10 km)",
+    area = AreaAtendimento(
+        latitude = -23.52660,
+        longitude = -46.68900,
+        raioKm = 10,
+        cidade = "São Paulo",
+        estado = "SP",
+        bairro = "Zona Oeste e Centro",
+    ),
     tags = listOf("Pontual", "Organizado", "Excelente trabalho", "Justo no preço"),
 )
 
@@ -434,7 +460,7 @@ private fun Selo(icone: ImageVector, cor: Color, texto: String, modifier: Modifi
 }
 
 @Composable
-private fun CardAreaAtendimento(area: String) {
+private fun CardAreaAtendimento(area: AreaAtendimento) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -454,12 +480,27 @@ private fun CardAreaAtendimento(area: String) {
                     stringResource(R.string.pro_area_atendimento),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    stringResource(R.string.pro_area_ate_km, area.raioKm),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
             Text(
-                area,
+                area.local,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                formatarCoord(area.latitude, area.longitude),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             )
         }
     }

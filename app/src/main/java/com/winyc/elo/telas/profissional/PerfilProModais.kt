@@ -1,5 +1,8 @@
 package com.winyc.elo.telas.profissional
 
+import android.content.Context
+import android.location.Address
+import android.location.Geocoder
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -32,7 +36,9 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -41,35 +47,51 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
 import com.winyc.elo.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 private fun fecharSheet(scope: CoroutineScope, sheetState: SheetState, aoFim: () -> Unit) {
@@ -90,7 +112,7 @@ internal fun EditarPerfilPublicoSheet(
     var nome by rememberSaveable { mutableStateOf(perfil.nome) }
     var fotoUrl by rememberSaveable { mutableStateOf(perfil.fotoUrl) }
     var bio by rememberSaveable { mutableStateOf(perfil.bio) }
-    var area by rememberSaveable { mutableStateOf(perfil.area) }
+    var area by remember { mutableStateOf(perfil.area) }
     val tags = remember { mutableStateListOf<String>().apply { addAll(perfil.tags) } }
 
     ModalBottomSheet(
@@ -153,7 +175,7 @@ internal fun EditarPerfilPublicoSheet(
                     stringResource(R.string.pro_bio), bio, { bio = it },
                     stringResource(R.string.pro_bio_hint), linhas = 4,
                 )
-                CampoPro(stringResource(R.string.pro_area_atendimento), area, { area = it }, stringResource(R.string.pro_area_hint))
+                SeletorAreaAtendimento(area = area, onArea = { area = it })
 
                 ChipsEditaveis(
                     titulo = stringResource(R.string.pro_tags_especialidade),
@@ -176,7 +198,7 @@ internal fun EditarPerfilPublicoSheet(
                                 nome = nome.trim(),
                                 fotoUrl = fotoUrl.trim(),
                                 bio = bio.trim(),
-                                area = area.trim(),
+                                area = area,
                                 tags = tags.toList(),
                             )
                         )
@@ -947,6 +969,220 @@ private fun ChipsEditaveis(titulo: String, itens: SnapshotStateList<String>, hin
             }
         }
     }
+}
+
+/* ============================ Área de atendimento (Google Maps) ============================ */
+
+@Composable
+private fun SeletorAreaAtendimento(
+    area: AreaAtendimento,
+    onArea: (AreaAtendimento) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val naoEncontrado = stringResource(R.string.pro_area_nao_encontrado)
+    val primary = MaterialTheme.colorScheme.primary
+    val areaAtual by rememberUpdatedState(area)
+
+    var busca by rememberSaveable { mutableStateOf("") }
+    var buscando by remember { mutableStateOf(false) }
+
+    val markerState = rememberMarkerState(position = LatLng(area.latitude, area.longitude))
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(area.latitude, area.longitude), 13f)
+    }
+
+    fun aplicarPonto(p: LatLng) {
+        onArea(areaAtual.copy(latitude = p.latitude, longitude = p.longitude))
+        reverseGeocodificar(context, p.latitude, p.longitude) { addr ->
+            scope.launch {
+                onArea(
+                    areaAtual.copy(
+                        latitude = p.latitude,
+                        longitude = p.longitude,
+                        cidade = addr?.localidadeOuRegiao() ?: areaAtual.cidade,
+                        estado = addr?.adminArea ?: areaAtual.estado,
+                        bairro = addr?.subLocality,
+                    ),
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(markerState) {
+        var arrastando = false
+        snapshotFlow { markerState.isDragging }.collect { dragging ->
+            if (dragging) {
+                arrastando = true
+            } else if (arrastando) {
+                arrastando = false
+                aplicarPonto(markerState.position)
+            }
+        }
+    }
+
+    fun buscar() {
+        if (busca.isBlank()) return
+        buscando = true
+        geocodificar(context, busca) { addr ->
+            scope.launch {
+                buscando = false
+                if (addr == null) {
+                    Toast.makeText(context, naoEncontrado, Toast.LENGTH_SHORT).show()
+                } else {
+                    val p = LatLng(addr.latitude, addr.longitude)
+                    markerState.position = p
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(p, 13f)
+                    onArea(
+                        areaAtual.copy(
+                            latitude = addr.latitude,
+                            longitude = addr.longitude,
+                            cidade = addr.localidadeOuRegiao(),
+                            estado = addr.adminArea ?: areaAtual.estado,
+                            bairro = addr.subLocality,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            stringResource(R.string.pro_area_atendimento),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = busca,
+                onValueChange = { busca = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text(stringResource(R.string.pro_area_buscar_hint)) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { buscar() }),
+                colors = coresCampo(),
+            )
+            Spacer(Modifier.width(8.dp))
+            FilledIconButton(onClick = { buscar() }, enabled = busca.isNotBlank() && !buscando) {
+                Icon(Icons.Outlined.Search, stringResource(R.string.pro_area_buscar_cd))
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .clip(RoundedCornerShape(16.dp)),
+        ) {
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                onMapClick = { latLng ->
+                    markerState.position = latLng
+                    aplicarPonto(latLng)
+                },
+            ) {
+                Marker(state = markerState, draggable = true)
+                Circle(
+                    center = markerState.position,
+                    radius = area.raioKm * 1000.0,
+                    strokeColor = primary,
+                    strokeWidth = 4f,
+                    fillColor = primary.copy(alpha = 0.15f),
+                )
+            }
+            if (buscando) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = primary,
+                )
+            }
+        }
+
+        Text(
+            stringResource(R.string.pro_area_mapa_dica),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.LocationOn,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(area.local, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    formatarCoord(area.latitude, area.longitude),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.pro_area_raio),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                stringResource(R.string.pro_area_ate_km, area.raioKm),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Slider(
+            value = area.raioKm.toFloat(),
+            onValueChange = { onArea(area.copy(raioKm = it.roundToInt().coerceIn(1, 30))) },
+            valueRange = 1f..30f,
+            steps = 28,
+        )
+    }
+}
+
+
+private fun Address.localidadeOuRegiao(): String =
+    locality ?: subAdminArea ?: adminArea ?: ""
+
+private fun geocodificar(context: Context, consulta: String, onResultado: (Address?) -> Unit) {
+    val termo = consulta.trim()
+    if (termo.isEmpty() || !Geocoder.isPresent()) {
+        onResultado(null)
+        return
+    }
+    Geocoder(context, Locale.forLanguageTag("pt-BR")).getFromLocationName(
+        termo,
+        1,
+        object : Geocoder.GeocodeListener {
+            override fun onGeocode(addresses: MutableList<Address>) = onResultado(addresses.firstOrNull())
+            override fun onError(errorMessage: String?) = onResultado(null)
+        },
+    )
+}
+
+private fun reverseGeocodificar(context: Context, lat: Double, lng: Double, onResultado: (Address?) -> Unit) {
+    if (!Geocoder.isPresent()) {
+        onResultado(null)
+        return
+    }
+    Geocoder(context, Locale.forLanguageTag("pt-BR")).getFromLocation(
+        lat,
+        lng,
+        1,
+        object : Geocoder.GeocodeListener {
+            override fun onGeocode(addresses: MutableList<Address>) = onResultado(addresses.firstOrNull())
+            override fun onError(errorMessage: String?) = onResultado(null)
+        },
+    )
 }
 
 @Composable
