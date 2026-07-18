@@ -76,9 +76,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -87,7 +91,15 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.categoria.CategoriaRS
+import com.winyc.elo.backend.model.servico.ServicoCreateDTO
+import com.winyc.elo.backend.model.servico.ServicoDisponibilidadeCreateDTO
+import com.winyc.elo.backend.model.servico.ServicoListaRS
+import com.winyc.elo.backend.model.servico.ServicoRS
+import com.winyc.elo.backend.viewModel.ProfissionalUi
+import com.winyc.elo.backend.viewModel.ProfissionalViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -219,13 +231,16 @@ internal fun EditarPerfilPublicoSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MeusServicosSheet(
-    servicos: SnapshotStateList<ServicoPro>,
+    vm: ProfissionalViewModel,
+    categorias: List<CategoriaRS>,
     onFechar: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
-    var editando by remember { mutableStateOf<ServicoPro?>(null) }
+    val estado by vm.estado.collectAsStateWithLifecycle()
+    var editando by remember { mutableStateOf<ServicoRS?>(null) }
     var criando by remember { mutableStateOf(false) }
+    var carregandoEdicao by remember { mutableStateOf<Long?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onFechar,
@@ -236,31 +251,35 @@ internal fun MeusServicosSheet(
         Box(modifier = Modifier.fillMaxHeight(0.92f).padding(vertical = 20.dp)) {
             when {
                 criando -> FormServico(
-                    inicial = null,
+                    detalhe = null,
+                    categorias = categorias,
+                    salvando = estado.salvando,
                     onVoltar = { criando = false },
-                    onSalvar = { novo ->
-                        val proxId = (servicos.maxOfOrNull { it.id } ?: 0) + 1
-                        servicos.add(novo.copy(id = proxId))
-                        criando = false
-                    },
+                    onSalvar = { dto -> vm.salvarServico(dto) { ok -> if (ok) criando = false } },
                 )
 
                 editando != null -> FormServico(
-                    inicial = editando,
+                    detalhe = editando,
+                    categorias = categorias,
+                    salvando = estado.salvando,
                     onVoltar = { editando = null },
-                    onSalvar = { alterado ->
-                        val i = servicos.indexOfFirst { it.id == alterado.id }
-                        if (i >= 0) servicos[i] = alterado
-                        editando = null
-                    },
+                    onSalvar = { dto -> vm.salvarServico(dto) { ok -> if (ok) editando = null } },
                 )
 
                 else -> ListaServicos(
-                    servicos = servicos,
+                    estado = estado,
+                    categorias = categorias,
+                    carregandoEdicao = carregandoEdicao,
                     onFechar = { fecharSheet(scope, sheetState, onFechar) },
                     onNovo = { criando = true },
-                    onEditar = { editando = it },
-                    onExcluir = { alvo -> servicos.removeAll { it.id == alvo.id } },
+                    onEditar = { id ->
+                        carregandoEdicao = id
+                        vm.buscarServico(id) { rs ->
+                            carregandoEdicao = null
+                            if (rs != null) editando = rs
+                        }
+                    },
+                    onExcluir = { vm.excluirServico(it) },
                 )
             }
         }
@@ -269,17 +288,28 @@ internal fun MeusServicosSheet(
 
 @Composable
 private fun ListaServicos(
-    servicos: List<ServicoPro>,
+    estado: ProfissionalUi,
+    categorias: List<CategoriaRS>,
+    carregandoEdicao: Long?,
     onFechar: () -> Unit,
     onNovo: () -> Unit,
-    onEditar: (ServicoPro) -> Unit,
-    onExcluir: (ServicoPro) -> Unit,
+    onEditar: (Long) -> Unit,
+    onExcluir: (Long) -> Unit,
 ) {
-    // Áreas em que o profissional atua; a lista abre filtrada pela primeira.
-    val areas = servicos.map { it.categoria }.distinct()
-    var areaSelecionada by rememberSaveable { mutableStateOf<String?>(null) }
-    val areaAtual = areaSelecionada?.takeIf { it in areas } ?: areas.firstOrNull()
-    val visiveis = servicos.filter { it.categoria == areaAtual }
+    val nomeEspecifica = remember(categorias) {
+        categorias.flatMap { it.categoriaEspecificaList }.associate { it.id to it.nmCategoria }
+    }
+    val nomeGeral = remember(categorias) {
+        categorias.flatMap { it.categoriaEspecificaList }
+            .associate { it.categoriaGeral.id to it.categoriaGeral.nmCategoria }
+    }
+
+    val servicos = estado.servicos
+    // Áreas (categoria geral) em que o profissional atua; abre filtrada pela primeira.
+    val gerais = servicos.mapNotNull { it.categoria?.idCategoriaGeral }.distinct()
+    var geralSelecionada by rememberSaveable { mutableStateOf<Long?>(null) }
+    val geralAtual = geralSelecionada?.takeIf { it in gerais } ?: gerais.firstOrNull()
+    val visiveis = servicos.filter { it.categoria?.idCategoriaGeral == geralAtual }
 
     Column(modifier = Modifier.fillMaxHeight()) {
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -299,26 +329,45 @@ private fun ListaServicos(
         ) {
             Spacer(Modifier.size(2.dp))
 
-            // Filtro por área de atuação.
-            if (areas.isNotEmpty()) {
-                FiltroAreas(
-                    areas = areas,
-                    selecionada = areaAtual,
-                    onSelecionar = { areaSelecionada = it },
-                )
-            }
+            when {
+                estado.carregando && servicos.isEmpty() -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(modifier = Modifier.size(28.dp)) }
 
-            Text(
-                stringResource(R.string.pro_servicos_qtd, visiveis.size),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            visiveis.forEach { servico ->
-                CardServico(
-                    servico = servico,
-                    onEditar = { onEditar(servico) },
-                    onExcluir = { onExcluir(servico) },
+                servicos.isEmpty() -> Text(
+                    stringResource(R.string.pro_servicos_vazio),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 12.dp),
                 )
+
+                else -> {
+                    if (gerais.size > 1) {
+                        FiltroAreas(
+                            areas = gerais.map { it to (nomeGeral[it] ?: "—") },
+                            selecionada = geralAtual,
+                            onSelecionar = { geralSelecionada = it },
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.pro_servicos_qtd, visiveis.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    visiveis.forEach { servico ->
+                        CardServico(
+                            servico = servico,
+                            nome = nomeEspecifica[servico.categoria?.idCategoriaEspecifica]
+                                ?: stringResource(R.string.pro_servico_sem_nome),
+                            carregando = carregandoEdicao == servico.id,
+                            onEditar = { onEditar(servico.id) },
+                            onExcluir = { onExcluir(servico.id) },
+                        )
+                    }
+                }
             }
             Spacer(Modifier.size(2.dp))
         }
@@ -341,20 +390,20 @@ private fun ListaServicos(
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltroAreas(
-    areas: List<String>,
-    selecionada: String?,
-    onSelecionar: (String) -> Unit,
+    areas: List<Pair<Long, String>>,
+    selecionada: Long?,
+    onSelecionar: (Long) -> Unit,
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        areas.forEach { area ->
-            val sel = area == selecionada
+        areas.forEach { (id, nome) ->
+            val sel = id == selecionada
             FilterChip(
                 selected = sel,
-                onClick = { onSelecionar(area) },
-                label = { Text(area, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal) },
+                onClick = { onSelecionar(id) },
+                label = { Text(nome, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal) },
                 shape = CircleShape,
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -372,7 +421,13 @@ private fun FiltroAreas(
 }
 
 @Composable
-private fun CardServico(servico: ServicoPro, onEditar: () -> Unit, onExcluir: () -> Unit) {
+private fun CardServico(
+    servico: ServicoListaRS,
+    nome: String,
+    carregando: Boolean,
+    onEditar: () -> Unit,
+    onExcluir: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -390,34 +445,43 @@ private fun CardServico(servico: ServicoPro, onEditar: () -> Unit, onExcluir: ()
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                servico.titulo,
+                nome,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            BotaoIcone(Icons.Outlined.Edit, stringResource(R.string.pro_editar_servico_cd), MaterialTheme.colorScheme.primary, onEditar)
-            Spacer(Modifier.width(6.dp))
-            BotaoIcone(Icons.Outlined.DeleteOutline, stringResource(R.string.pro_excluir_servico_cd), MaterialTheme.colorScheme.error, onExcluir)
+            if (carregando) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                BotaoIcone(Icons.Outlined.Edit, stringResource(R.string.pro_editar_servico_cd), MaterialTheme.colorScheme.primary, onEditar)
+                Spacer(Modifier.width(6.dp))
+                BotaoIcone(Icons.Outlined.DeleteOutline, stringResource(R.string.pro_excluir_servico_cd), MaterialTheme.colorScheme.error, onExcluir)
+            }
         }
 
-        Text(
-            servico.descricao,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        servico.dsDescricao?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
-        Text(
-            stringResource(R.string.a_partir_de, servico.faixaPreco),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
+        servico.vlServico?.let { preco ->
+            Text(
+                stringResource(R.string.a_partir_de, formatarPreco(preco)),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
 
-        if (servico.pontos.isNotEmpty()) {
-            FlowRowChips(servico.pontos)
+        val pontos = servico.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
+        if (pontos.isNotEmpty()) {
+            FlowRowChips(pontos)
         }
     }
 }
@@ -457,15 +521,50 @@ private fun FlowRowChips(itens: List<String>) {
     }
 }
 
-private enum class AreaAtuacao(val labelRes: Int) {
-    Limpeza(R.string.pro_cat_limpeza),
-    Reformas(R.string.pro_cat_reformas),
-    Instalacoes(R.string.pro_cat_instalacoes),
-    Moveis(R.string.pro_cat_moveis),
-    Externos(R.string.pro_cat_externos),
-    Assistencia(R.string.pro_cat_assistencia),
-    Digitais(R.string.pro_cat_digitais),
-    Profissionais(R.string.pro_cat_profissionais),
+private data class GeralOpcao(val id: Long, val nome: String)
+private data class EspecificaOpcao(val id: Long, val nome: String, val idGeral: Long)
+
+private enum class TipoExecucao(val labelRes: Int, val valorApi: String) {
+    Presencial(R.string.pro_exec_presencial, "presencial"),
+    Remoto(R.string.pro_exec_remoto, "remoto");
+
+    companion object {
+        fun fromApi(valor: String?): TipoExecucao? = entries.firstOrNull {
+            it.valorApi.equals(valor, ignoreCase = true) || it.name.equals(valor, ignoreCase = true)
+        }
+    }
+}
+
+private fun formatarPreco(valor: Double): String =
+    if (valor % 1.0 == 0.0) valor.toLong().toString()
+    else String.format(Locale.forLanguageTag("pt-BR"), "%.2f", valor)
+
+private fun horaDigitos(hora: String?): String = hora.orEmpty().filter { it.isDigit() }.take(4)
+
+/** Dígitos "0800" → "HH:mm:ss" esperado pelo LocalTime do backend. */
+private fun normalizarHora(digitos: String): String {
+    val d = digitos.filter { it.isDigit() }.take(4).padEnd(4, '0')
+    val hh = (d.substring(0, 2).toIntOrNull() ?: 0).coerceIn(0, 23)
+    val mm = (d.substring(2, 4).toIntOrNull() ?: 0).coerceIn(0, 59)
+    return "%02d:%02d:00".format(hh, mm)
+}
+
+/** Aceita dígitos que ainda podem formar um horário válido (permite vazio ao editar). */
+private fun horaParcialValida(digitos: String): Boolean {
+    if (digitos.isEmpty()) return true
+    if (digitos[0] !in '0'..'2') return false
+    if (digitos.length >= 2 && digitos.substring(0, 2).toInt() > 23) return false
+    if (digitos.length >= 3 && digitos[2] !in '0'..'5') return false
+    return true
+}
+
+/** Horário completo = 4 dígitos preenchidos. */
+private fun horaCompleta(digitos: String): Boolean = digitos.length == 4
+
+/** "0830" → 510 (minutos desde 00:00), para comparar início x fim. */
+private fun minutosDoDia(digitos: String): Int {
+    val d = digitos.padEnd(4, '0')
+    return (d.substring(0, 2).toIntOrNull() ?: 0) * 60 + (d.substring(2, 4).toIntOrNull() ?: 0)
 }
 
 private enum class DiaSemana(val curtoRes: Int, val longoRes: Int) {
@@ -492,30 +591,64 @@ private class DiaEstado(val dia: DiaSemana) {
 
 @Composable
 private fun FormServico(
-    inicial: ServicoPro?,
+    detalhe: ServicoRS?,
+    categorias: List<CategoriaRS>,
+    salvando: Boolean,
     onVoltar: () -> Unit,
-    onSalvar: (ServicoPro) -> Unit,
+    onSalvar: (ServicoCreateDTO) -> Unit,
 ) {
     val context = LocalContext.current
-    val editando = inicial != null
+    val editando = detalhe != null
     val adicionarLabel = stringResource(R.string.pro_adicionar)
-    val nomesAreas = AreaAtuacao.entries.associateWith { stringResource(it.labelRes) }
-    val areaInicial = inicial?.let { servico ->
-        AreaAtuacao.entries.firstOrNull { nomesAreas[it] == servico.categoria }
+
+    val especificas = remember(categorias) {
+        categorias.flatMap { it.categoriaEspecificaList }
+            .map { EspecificaOpcao(it.id, it.nmCategoria, it.categoriaGeral.id) }
+    }
+    val gerais = remember(categorias) {
+        categorias.flatMap { it.categoriaEspecificaList }
+            .map { it.categoriaGeral }
+            .distinctBy { it.id }
+            .map { GeralOpcao(it.id, it.nmCategoria) }
     }
 
-    var area by rememberSaveable {
-        mutableStateOf(areaInicial)
+    var idGeral by rememberSaveable { mutableStateOf(detalhe?.servicoCategoriaRS?.idCategoriaGeral) }
+    var idEspecifica by rememberSaveable { mutableStateOf(detalhe?.servicoCategoriaRS?.idCategoriaEspecifica) }
+    var tempoExpe by rememberSaveable { mutableStateOf(detalhe?.tempoExperiencia?.toString() ?: "") }
+    var descricao by rememberSaveable { mutableStateOf(detalhe?.dsDescricao ?: "") }
+    var faixaPreco by rememberSaveable { mutableStateOf(detalhe?.vlServico?.let { formatarPreco(it) } ?: "") }
+    var tipoExec by rememberSaveable { mutableStateOf(TipoExecucao.fromApi(detalhe?.tpExecucao)) }
+    val pontos = remember {
+        mutableStateListOf<String>().apply {
+            detalhe?.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }?.let { addAll(it) }
+        }
     }
-    var titulo by rememberSaveable { mutableStateOf(inicial?.titulo ?: "") }
-    var descricao by rememberSaveable { mutableStateOf(inicial?.descricao ?: "") }
-    var tempoExpe by rememberSaveable { mutableStateOf(inicial?.tempoExpe?.toString() ?: "") }
-    var faixaPreco by rememberSaveable { mutableStateOf(inicial?.faixaPreco ?: "") }
-    val pontos = remember { mutableStateListOf<String>().apply { inicial?.let { addAll(it.pontos) } } }
-    val dias = remember { DiaSemana.entries.map { DiaEstado(it) } }
+    val dias = remember(detalhe) {
+        DiaSemana.entries.map { DiaEstado(it) }.also { lista ->
+            detalhe?.servicoDisponibilidadeRSList?.forEach { disp ->
+                val estado = disp.diaSemana?.let { lista.getOrNull(it) } ?: return@forEach
+                estado.ativo = true
+                estado.intervalos.add(IntervaloEstado(horaDigitos(disp.hrInicio), horaDigitos(disp.hrFim)))
+            }
+        }
+    }
 
-    val podeSalvar = area != null && titulo.isNotBlank()
-    val categoriaSelecionada = area?.let { stringResource(it.labelRes) }
+    val especificasDaArea = especificas.filter { it.idGeral == idGeral }
+    val nomeGeral = gerais.firstOrNull { it.id == idGeral }?.nome
+    val nomeEspecifica = especificas.firstOrNull { it.id == idEspecifica }?.nome
+    val precoValido = (faixaPreco.replace(',', '.').toDoubleOrNull() ?: -1.0) >= 0.0
+
+    val diasAtivos = dias.filter { it.ativo }
+    val disponibilidadeValida = diasAtivos.isNotEmpty() && diasAtivos.all { dia ->
+        dia.intervalos.isNotEmpty() && dia.intervalos.all { intervalo ->
+            horaCompleta(intervalo.inicio) && horaCompleta(intervalo.fim) &&
+                minutosDoDia(intervalo.inicio) < minutosDoDia(intervalo.fim)
+        }
+    }
+
+    val podeSalvar = idGeral != null && idEspecifica != null && descricao.isNotBlank() &&
+        precoValido && (tempoExpe.toIntOrNull() ?: -1) >= 0 && tipoExec != null &&
+        disponibilidadeValida && !salvando
 
     Column(modifier = Modifier.fillMaxHeight()) {
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -536,35 +669,54 @@ private fun FormServico(
         ) {
             Spacer(Modifier.size(2.dp))
 
-            // 1. Área de atuação
             SecaoTitulo(stringResource(R.string.pro_area_atuacao))
-            FlowRowAreas(selecionada = area, onSelecionar = { area = it })
-            area?.let {
+            if (gerais.isEmpty()) {
                 Text(
-                    stringResource(R.string.pro_area_selecionada, stringResource(it.labelRes)),
+                    stringResource(R.string.pro_categorias_carregando),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                ChipsSelecao(
+                    opcoes = gerais.map { it.id to it.nome },
+                    selecionado = idGeral,
+                    onSelecionar = { novo ->
+                        if (novo != idGeral) {
+                            idGeral = novo
+                            idEspecifica = null
+                        }
+                    },
+                )
+            }
+            nomeGeral?.let { geral ->
+                Text(
+                    stringResource(R.string.pro_area_selecionada, geral),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-
-                // Tempo de experiencia
-                CampoPro(stringResource(R.string.tempo_experiencia, stringResource(it.labelRes)), tempoExpe, { tempoExpe = it }, "", tipoCampo = KeyboardType.Number)
+                // Tempo de experiência
+                CampoPro(stringResource(R.string.tempo_experiencia, geral), tempoExpe, { tempoExpe = it }, "", tipoCampo = KeyboardType.Number)
             }
 
-            // 2. Serviço específico (só depois de escolher a área)
-            if (area != null) {
+            // 2. Serviço específico (pré-definidos filtrados pela área)
+            if (idGeral != null) {
                 SecaoTitulo(stringResource(R.string.pro_servico_especifico))
-                OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.pro_servico_especifico_hint)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = coresCampo(),
-                )
-                if (titulo.isNotBlank()) {
+                if (especificasDaArea.isEmpty()) {
                     Text(
-                        stringResource(R.string.pro_servico_aparece, stringResource(area!!.labelRes), titulo),
+                        stringResource(R.string.pro_servico_sem_especificos),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    ChipsSelecao(
+                        opcoes = especificasDaArea.map { it.id to it.nome },
+                        selecionado = idEspecifica,
+                        onSelecionar = { idEspecifica = it },
+                    )
+                }
+                if (nomeGeral != null && nomeEspecifica != null) {
+                    Text(
+                        stringResource(R.string.pro_servico_aparece, nomeGeral, nomeEspecifica),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -573,6 +725,14 @@ private fun FormServico(
 
             // Descrição
             CampoPro(stringResource(R.string.descricao), descricao, { descricao = it }, stringResource(R.string.pro_descricao_hint), linhas = 3)
+
+            // Tipo de execução
+            SecaoTitulo(stringResource(R.string.pro_tipo_execucao))
+            ChipsSelecaoTexto(
+                opcoes = TipoExecucao.entries.map { it to stringResource(it.labelRes) },
+                selecionado = tipoExec,
+                onSelecionar = { tipoExec = it },
+            )
 
             // Imagens
             Text(stringResource(R.string.pro_imagens), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -611,28 +771,53 @@ private fun FormServico(
         ) {
             Button(
                 onClick = {
+                    val idEsp = idEspecifica ?: return@Button
+                    val exec = tipoExec ?: return@Button
                     onSalvar(
-                        ServicoPro(
-                            id = inicial?.id ?: 0,
-                            categoria = requireNotNull(categoriaSelecionada),
-                            titulo = titulo.trim(),
-                            descricao = descricao.trim(),
-                            faixaPreco = faixaPreco.trim(),
-                            pontos = pontos.toList(),
-                            tempoExpe = tempoExpe.toIntOrNull() ?: 0,
+                        ServicoCreateDTO(
+                            id = detalhe?.id,
+                            idCategoriaEspecifica = idEsp,
+                            dsDescricao = descricao.trim(),
+                            vlServico = faixaPreco.replace(',', '.').toDoubleOrNull() ?: 0.0,
+                            dsTag = pontos.joinToString("; ").ifBlank { nomeEspecifica ?: "Serviço" },
+                            tempoExperiencia = tempoExpe.toIntOrNull() ?: 0,
+                            tpExecucao = exec.valorApi,
+                            servicoDisponibilidadeCreateDTOList = dias.filter { it.ativo }.flatMap { d ->
+                                d.intervalos.map {
+                                    ServicoDisponibilidadeCreateDTO(
+                                        diaSemana = d.dia.ordinal,
+                                        hrInicio = normalizarHora(it.inicio),
+                                        hrFim = normalizarHora(it.fim),
+                                    )
+                                }
+                            },
+                            servicoImagemCreateDTOList = emptyList(),
                         )
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = podeSalvar,
             ) {
-                Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.pro_salvar_servico))
+                if (salvando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.pro_salvar_servico))
+                }
             }
-            if (!podeSalvar) {
+            if (!podeSalvar && !salvando) {
+                val aviso = if (idGeral != null && idEspecifica != null && !disponibilidadeValida) {
+                    stringResource(R.string.pro_disp_invalida)
+                } else {
+                    stringResource(R.string.pro_selecione_categoria)
+                }
                 Text(
-                    stringResource(R.string.pro_selecione_categoria),
+                    aviso,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -643,30 +828,55 @@ private fun FormServico(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FlowRowAreas(selecionada: AreaAtuacao?, onSelecionar: (AreaAtuacao) -> Unit) {
+private fun ChipsSelecao(
+    opcoes: List<Pair<Long, String>>,
+    selecionado: Long?,
+    onSelecionar: (Long) -> Unit,
+) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        AreaAtuacao.entries.forEach { opcao ->
-            val sel = opcao == selecionada
-            val cor = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            Text(
-                stringResource(opcao.labelRes),
-                style = MaterialTheme.typography.labelLarge,
-                color = cor,
-                fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .then(
-                        if (sel) Modifier.background(MaterialTheme.colorScheme.primaryContainer)
-                        else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                    )
-                    .clickable { onSelecionar(opcao) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
+        opcoes.forEach { (id, nome) ->
+            ChipEscolha(texto = nome, selecionado = id == selecionado) { onSelecionar(id) }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun <T> ChipsSelecaoTexto(
+    opcoes: List<Pair<T, String>>,
+    selecionado: T?,
+    onSelecionar: (T) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        opcoes.forEach { (valor, nome) ->
+            ChipEscolha(texto = nome, selecionado = valor == selecionado) { onSelecionar(valor) }
+        }
+    }
+}
+
+@Composable
+private fun ChipEscolha(texto: String, selecionado: Boolean, onClick: () -> Unit) {
+    val cor = if (selecionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    Text(
+        texto,
+        style = MaterialTheme.typography.labelLarge,
+        color = cor,
+        fontWeight = if (selecionado) FontWeight.Medium else FontWeight.Normal,
+        modifier = Modifier
+            .clip(CircleShape)
+            .then(
+                if (selecionado) Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    )
 }
 
 @Composable
@@ -795,7 +1005,7 @@ private fun CardDiaIntervalos(estado: DiaEstado) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .clickable { estado.intervalos.add(IntervaloEstado("08:00", "18:00")) }
+                    .clickable { estado.intervalos.add(IntervaloEstado("0800", "1800")) }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Icon(Icons.Outlined.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
@@ -824,19 +1034,34 @@ private fun CardDiaIntervalos(estado: DiaEstado) {
 private fun CampoHora(valor: String, onValor: (String) -> Unit, modifier: Modifier = Modifier) {
     OutlinedTextField(
         value = valor,
-        onValueChange = onValor,
+        onValueChange = { novo ->
+            val d = novo.filter { it.isDigit() }.take(4)
+            if (horaParcialValida(d)) onValor(d)
+        },
         modifier = modifier,
         singleLine = true,
         shape = RoundedCornerShape(10.dp),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        visualTransformation = MascaraHora,
         colors = coresCampo(),
     )
+}
+
+/** Máscara HH:mm exibida sobre os 4 dígitos digitados (ex.: "0830" → "08:30"). */
+private val MascaraHora = VisualTransformation { text ->
+    val digitos = text.text.filter { it.isDigit() }.take(4)
+    val formatado = if (digitos.length <= 2) digitos else digitos.substring(0, 2) + ":" + digitos.substring(2)
+    val mapping = object : OffsetMapping {
+        override fun originalToTransformed(offset: Int): Int = if (offset <= 2) offset else offset + 1
+        override fun transformedToOriginal(offset: Int): Int = if (offset <= 2) offset else offset - 1
+    }
+    TransformedText(AnnotatedString(formatado), mapping)
 }
 
 private fun alternarDia(estado: DiaEstado) {
     estado.ativo = !estado.ativo
     if (estado.ativo && estado.intervalos.isEmpty()) {
-        estado.intervalos.add(IntervaloEstado("08:00", "18:00"))
+        estado.intervalos.add(IntervaloEstado("0800", "1800"))
     }
 }
 

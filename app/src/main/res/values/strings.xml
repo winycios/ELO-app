@@ -249,6 +249,14 @@
     <string name="pro_selecione_categoria">Selecione uma categoria para continuar</string>
     <string name="pro_remover">Remover</string>
     <string name="pro_adicionar_item">Adicionar</string>
+    <string name="pro_servicos_vazio">Você ainda não cadastrou nenhum serviço.</string>
+    <string name="pro_servico_sem_nome">Serviço</string>
+    <string name="pro_servico_sem_especificos">Nenhum serviço disponível para esta área.</string>
+    <string name="pro_categorias_carregando">Carregando categorias…</string>
+    <string name="pro_tipo_execucao">Tipo de execução</string>
+    <string name="pro_exec_presencial">Presencial</string>
+    <string name="pro_exec_remoto">Remoto</string>
+    <string name="pro_disp_invalida">Adicione ao menos um dia com horário válido (início antes do fim).</string>
 
     <!-- Áreas de atuação -->
     <string name="pro_cat_limpeza">Limpeza</string>

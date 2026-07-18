@@ -1295,7 +1295,7 @@ private fun SeletorTipo(
 /* ---------------------------- Ajuda ---------------------------- */
 
 @Composable
-private fun AjudaScreen(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
+internal fun AjudaScreen(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
     var categoria by rememberSaveable { mutableStateOf(FAQ_TODOS) }
     val faqsVisiveis = remember(categoria) {
         if (categoria == FAQ_TODOS) FAQS else FAQS.filter { it.categoria == categoria }

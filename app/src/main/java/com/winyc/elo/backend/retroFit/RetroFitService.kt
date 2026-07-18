@@ -3,6 +3,7 @@ package com.winyc.elo.backend.retroFit
 import com.winyc.elo.backend.controller.auth.AuthInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaRepository
+import com.winyc.elo.backend.controller.profissional.ProfissionalInterface
 import com.winyc.elo.backend.controller.usuario.UsuarioInterface
 import com.winyc.elo.backend.controller.viacep.ViaCepInterface
 import com.winyc.elo.backend.controller.vitrine.VitrineInterface
@@ -63,6 +64,9 @@ object RetroFitService {
 
     fun usuarioApi(tokenStore: TokenStore): UsuarioInterface =
         retrofitAutenticado(tokenStore).create(UsuarioInterface::class.java)
+
+    fun profissionalApi(tokenStore: TokenStore): ProfissionalInterface =
+        retrofitAutenticado(tokenStore).create(ProfissionalInterface::class.java)
 
     fun authConnection(): AuthInterface = authApi
 

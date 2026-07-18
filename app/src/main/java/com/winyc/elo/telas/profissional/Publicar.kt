@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
@@ -68,13 +69,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
-
-private val SERVICOS = listOf(
-    "Instalação elétrica residencial",
-    "Manutenção e reparo elétrico",
-    "Troca de disjuntores",
-    "Instalação de chuveiro",
-)
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.winyc.elo.backend.viewModel.CategoriaViewModel
+import com.winyc.elo.backend.viewModel.ProfissionalViewModel
 
 private data class ComentarioPub(val autor: String, val texto: String, val tempo: String)
 
@@ -113,9 +112,25 @@ private val PUBLICACOES_INICIAIS = listOf(
 /** Tela "Publicar": compõe um post e lista as publicações do profissional. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PublicarScreen(modifier: Modifier = Modifier) {
+fun PublicarScreen(
+    modifier: Modifier = Modifier,
+    servicoVm: ProfissionalViewModel = viewModel(),
+    categoriaVm: CategoriaViewModel = viewModel(),
+) {
     val publicacoes = remember { mutableStateListOf<Publicacao>().apply { addAll(PUBLICACOES_INICIAIS) } }
     var comentariosDe by remember { mutableStateOf<Publicacao?>(null) }
+
+    val servicoEstado by servicoVm.estado.collectAsStateWithLifecycle()
+    val categoriaEstado by categoriaVm.estado.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { servicoVm.carregar() }
+
+    // Nomes dos serviços cadastrados pelo profissional (resolvidos via categorias).
+    val nomeEspecifica = remember(categoriaEstado.categoriasRaw) {
+        categoriaEstado.categoriasRaw.flatMap { it.categoriaEspecificaList }.associate { it.id to it.nmCategoria }
+    }
+    val servicosNomes = servicoEstado.servicos
+        .mapNotNull { nomeEspecifica[it.categoria?.idCategoriaEspecifica] }
+        .distinct()
 
     LazyColumn(
         modifier = modifier
@@ -139,7 +154,16 @@ fun PublicarScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        item { ComporPublicacao() }
+        item {
+            when {
+                // Serviços existem mas ainda resolvendo os nomes das categorias.
+                servicoEstado.servicos.isNotEmpty() && servicosNomes.isEmpty() -> ComporCarregando()
+                servicoEstado.carregando && servicoEstado.servicos.isEmpty() -> ComporCarregando()
+                // Sem serviço cadastrado: não é possível publicar.
+                servicosNomes.isEmpty() -> SemServicosPublicar()
+                else -> ComporPublicacao(servicos = servicosNomes)
+            }
+        }
 
         item {
             Text(
@@ -166,11 +190,67 @@ fun PublicarScreen(modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+private fun ComporCarregando() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 40.dp),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator(modifier = Modifier.size(28.dp)) }
+    }
+}
 
 @Composable
-private fun ComporPublicacao() {
+private fun SemServicosPublicar() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.LocalOffer, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = "Nenhum serviço cadastrado",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Cadastre um serviço em Perfil › Meus serviços para poder publicar na Vitrine.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun ComporPublicacao(servicos: List<String>) {
     val context = LocalContext.current
-    var servico by rememberSaveable { mutableStateOf(SERVICOS.first()) }
+    var servico by rememberSaveable(servicos) { mutableStateOf(servicos.first()) }
     var imagemSelecionada by rememberSaveable { mutableIntStateOf(0) }
     var descricao by rememberSaveable { mutableStateOf("") }
 
@@ -191,7 +271,7 @@ private fun ComporPublicacao() {
             }
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(SERVICOS) { s ->
+                items(servicos) { s ->
                     val sel = s == servico
                     FilterChip(
                         selected = sel,

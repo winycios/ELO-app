@@ -37,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,8 +49,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
 import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.backend.viewModel.CategoriaViewModel
+import com.winyc.elo.backend.viewModel.ProfissionalViewModel
+import com.winyc.elo.telas.cliente.AjudaScreen
 import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
 
@@ -93,16 +99,6 @@ internal data class AreaAtendimento(
 internal fun formatarCoord(lat: Double, lng: Double): String =
     String.format(java.util.Locale.US, "%.5f, %.5f", lat, lng)
 
-internal data class ServicoPro(
-    val id: Int,
-    val categoria: String,
-    val tempoExpe: Int,
-    val titulo: String,
-    val descricao: String,
-    val faixaPreco: String,
-    val pontos: List<String>,
-)
-
 private val PERFIL_INICIAL = PerfilPublico(
     nome = "Carlos Silva",
     profissao = "Eletricista",
@@ -120,27 +116,6 @@ private val PERFIL_INICIAL = PerfilPublico(
     tags = listOf("Pontual", "Organizado", "Excelente trabalho", "Justo no preço"),
 )
 
-private val SERVICOS_INICIAIS = listOf(
-    ServicoPro(
-        1, "Instalações", 2,"Instalação elétrica residencial",
-        "Instalação completa de tomadas, interruptores, luminárias e quadros de distribuição.",
-        "150",
-        listOf("Material de qualidade", "Garantia de 90 dias", "Mesmo dia"),
-    ),
-    ServicoPro(
-        2, "Assistência Técnica", 1,"Manutenção e reparo elétrico",
-        "Diagnóstico e conserto de curto-circuito, disjuntores queimados, fiação antiga.",
-        "100",
-        listOf("Atendimento emergencial", "Orçamento transparente"),
-    ),
-    ServicoPro(
-        3, "Instalações", 5,"Instalação de chuveiro",
-        "Troca e instalação de chuveiros elétricos 110V/220V com dimensionamento correto.",
-        "120",
-        listOf("Disjuntor dedicado", "Segurança garantida"),
-    ),
-)
-
 /* ============================ Tela ============================ */
 
 private enum class SheetPro { EditarPerfil, MeusServicos }
@@ -151,6 +126,8 @@ fun PerfilProScreen(
     sessao: PerfilSessao?,
     onSair: () -> Unit = {},
     modifier: Modifier = Modifier,
+    servicoVm: ProfissionalViewModel = viewModel(),
+    categoriaVm: CategoriaViewModel = viewModel(),
 ) {
     var perfil by remember(sessao) {
         mutableStateOf(
@@ -161,13 +138,28 @@ fun PerfilProScreen(
         )
     }
     var disponivel by rememberSaveable { mutableStateOf(true) }
-    val servicos = remember { mutableStateListOf<ServicoPro>().apply { addAll(SERVICOS_INICIAIS) } }
     var sheet by remember { mutableStateOf<SheetPro?>(null) }
+    var mostrarAjuda by rememberSaveable { mutableStateOf(false) }
 
-    val areasDistintas = servicos.map { it.categoria }.distinct()
-    val categorias = areasDistintas.size
-    // Se o profissional atua em mais de uma área, lista todas separadas por vírgula.
-    val areas = if (areasDistintas.isEmpty()) perfil.profissao else areasDistintas.joinToString(", ")
+    val servicoEstado by servicoVm.estado.collectAsStateWithLifecycle()
+    val categoriaEstado by categoriaVm.estado.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { servicoVm.carregar() }
+
+    BackHandler(enabled = mostrarAjuda) { mostrarAjuda = false }
+    if (mostrarAjuda) {
+        AjudaScreen(onVoltar = { mostrarAjuda = false }, modifier = modifier)
+        return
+    }
+
+    val nomesGerais = remember(categoriaEstado.categoriasRaw) {
+        categoriaEstado.categoriasRaw
+            .flatMap { it.categoriaEspecificaList }
+            .associate { it.categoriaGeral.id to it.categoriaGeral.nmCategoria }
+    }
+    val gerais = servicoEstado.servicos.mapNotNull { it.categoria?.idCategoriaGeral }.distinct()
+    val categorias = gerais.size
+    val areas = gerais.mapNotNull { nomesGerais[it] }.joinToString(", ").ifBlank { perfil.profissao }
 
     LazyColumn(
         modifier = modifier
@@ -185,7 +177,7 @@ fun PerfilProScreen(
             CardAcao(
                 icone = Icons.Outlined.WorkOutline,
                 titulo = stringResource(R.string.pro_meus_servicos),
-                subtitulo = stringResource(R.string.pro_contagem_servicos, categorias, servicos.size),
+                subtitulo = stringResource(R.string.pro_contagem_servicos, categorias, servicoEstado.servicos.size),
                 onClick = { sheet = SheetPro.MeusServicos },
             )
         }
@@ -196,7 +188,7 @@ fun PerfilProScreen(
                 icone = Icons.AutoMirrored.Outlined.HelpOutline,
                 titulo = stringResource(R.string.pro_ajuda),
                 subtitulo = stringResource(R.string.pro_ajuda_sub),
-                onClick = { },
+                onClick = { mostrarAjuda = true },
             )
         }
         item {
@@ -233,7 +225,8 @@ fun PerfilProScreen(
         )
 
         SheetPro.MeusServicos -> MeusServicosSheet(
-            servicos = servicos,
+            vm = servicoVm,
+            categorias = categoriaEstado.categoriasRaw,
             onFechar = { sheet = null },
         )
 

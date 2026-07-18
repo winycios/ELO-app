@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.categoria.CategoriaRepository
+import com.winyc.elo.backend.model.categoria.CategoriaRS
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +21,7 @@ data class CategoriaUi(
 /** Estado da lista de categorias exibida na home do cliente. */
 data class CategoriasUi(
     val categorias: List<CategoriaUi> = emptyList(),
+    val categoriasRaw: List<CategoriaRS> = emptyList(),
     val carregando: Boolean = false,
     val erro: String? = null,
 )
@@ -43,6 +45,7 @@ class CategoriaViewModel(application: Application) : AndroidViewModel(applicatio
                 .onSuccess { lista ->
                     _estado.update {
                         it.copy(
+                            categoriasRaw = lista,
                             categorias = lista.map { categoria ->
                                 CategoriaUi(
                                     nomeGeral = categoria.categoriaGeral,
