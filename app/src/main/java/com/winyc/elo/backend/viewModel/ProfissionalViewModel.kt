@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.profissional.ProfissionalRepository
+import com.winyc.elo.backend.model.profissional.ProfissionalRS
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
 import com.winyc.elo.backend.model.servico.ServicoCreateDTO
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
@@ -17,8 +19,11 @@ import kotlinx.coroutines.launch
 
 data class ProfissionalUi(
     val servicos: List<ServicoListaRS> = emptyList(),
+    val perfil: ProfissionalRS? = null,
     val carregando: Boolean = false,
+    val carregandoPerfil: Boolean = false,
     val salvando: Boolean = false,
+    val salvandoPerfil: Boolean = false,
     val erro: String? = null,
 )
 
@@ -31,7 +36,10 @@ class ProfissionalViewModel(application: Application) : AndroidViewModel(applica
     val estado: StateFlow<ProfissionalUi> = _estado.asStateFlow()
 
     init {
-        if (tokenStore.estaLogado) carregar()
+        if (tokenStore.estaLogado) {
+            carregar()
+            carregarPerfil()
+        }
         observarSessao()
     }
 
@@ -39,8 +47,22 @@ class ProfissionalViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             tokenStore.estaLogadoFlow.drop(1).collect { logado ->
                 _estado.value = ProfissionalUi()
-                if (logado) carregar()
+                if (logado) {
+                    carregar()
+                    carregarPerfil()
+                }
             }
+        }
+    }
+
+    /** Carrega os dados do profissional da sessão para popular a tela de perfil. */
+    fun carregarPerfil() {
+        if (!tokenStore.estaLogado || _estado.value.carregandoPerfil) return
+        _estado.update { it.copy(carregandoPerfil = true) }
+        viewModelScope.launch {
+            repository.buscarPerfil()
+                .onSuccess { rs -> _estado.update { it.copy(perfil = rs, carregandoPerfil = false) } }
+                .onFailure { erro -> _estado.update { it.copy(carregandoPerfil = false, erro = erro.message ?: ERRO_GENERICO) } }
         }
     }
 
@@ -54,6 +76,35 @@ class ProfissionalViewModel(application: Application) : AndroidViewModel(applica
                 }
                 .onFailure { erro ->
                     _estado.update { it.copy(carregando = false, erro = erro.message ?: ERRO_GENERICO) }
+                }
+        }
+    }
+
+    /** Atualiza os dados públicos do profissional (apresentação, foto, especialidades e área). */
+    fun salvarPerfil(dto: ProfissionalUpdateDTO, onResultado: (Boolean) -> Unit = {}) {
+        if (_estado.value.salvandoPerfil) return
+        _estado.update { it.copy(salvandoPerfil = true, erro = null) }
+        viewModelScope.launch {
+            repository.salvarPerfil(dto)
+                .onSuccess { rs ->
+                    _estado.update { it.copy(salvandoPerfil = false, perfil = rs) }
+                    onResultado(true)
+                }
+                .onFailure { erro ->
+                    _estado.update { it.copy(salvandoPerfil = false, erro = erro.message ?: ERRO_GENERICO) }
+                    onResultado(false)
+                }
+        }
+    }
+
+    /** Liga/desliga a disponibilidade do profissional para receber serviços. */
+    fun definirDisponibilidade(isAtivar: Boolean, onResultado: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            repository.habilitarDisponibilidade(isAtivar)
+                .onSuccess { onResultado(true) }
+                .onFailure { erro ->
+                    _estado.update { it.copy(erro = erro.message ?: ERRO_GENERICO) }
+                    onResultado(false)
                 }
         }
     }

@@ -74,6 +74,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -94,6 +96,8 @@ import com.google.maps.android.compose.rememberMarkerState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.winyc.elo.R
 import com.winyc.elo.backend.model.categoria.CategoriaRS
+import com.winyc.elo.backend.model.profissional.AreaAtendimentoUpdateDTO
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
 import com.winyc.elo.backend.model.servico.ServicoCreateDTO
 import com.winyc.elo.backend.model.servico.ServicoDisponibilidadeCreateDTO
 import com.winyc.elo.backend.model.servico.ServicoListaRS
@@ -112,20 +116,31 @@ private fun fecharSheet(scope: CoroutineScope, sheetState: SheetState, aoFim: ()
     }
 }
 
+private fun PerfilPublico.paraUpdateDTO() = ProfissionalUpdateDTO(
+    apresentacao = bio.trim().take(200),
+    uriPerfil = fotoUrl.trim().take(200),
+    especialidades = tags.joinToString("; ").take(200),
+    areaAtendimentoUpdateDTO = AreaAtendimentoUpdateDTO(
+        nrLatitude = area.latitude,
+        nrLongitude = area.longitude,
+        nrRaio = area.raioKm,
+        nmCidade = area.cidade,
+        nmEstado = area.estado,
+        nmBairro = area.bairro?.takeIf { it.isNotBlank() } ?: area.cidade,
+    ),
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EditarPerfilPublicoSheet(
     perfil: PerfilPublico,
+    vm: ProfissionalViewModel,
+    carregando: Boolean,
     onSalvar: (PerfilPublico) -> Unit,
     onFechar: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
-    var nome by rememberSaveable { mutableStateOf(perfil.nome) }
-    var fotoUrl by rememberSaveable { mutableStateOf(perfil.fotoUrl) }
-    var bio by rememberSaveable { mutableStateOf(perfil.bio) }
-    var area by remember { mutableStateOf(perfil.area) }
-    val tags = remember { mutableStateListOf<String>().apply { addAll(perfil.tags) } }
 
     ModalBottomSheet(
         onDismissRequest = onFechar,
@@ -133,19 +148,61 @@ internal fun EditarPerfilPublicoSheet(
         sheetGesturesEnabled = false,
         dragHandle = null,
     ) {
-        Column(modifier = Modifier.fillMaxHeight(0.92f)) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                CabecalhoSheetPro(
-                    titulo = stringResource(R.string.pro_editar_perfil_publico),
-                    subtitulo = stringResource(R.string.pro_editar_sub),
-                    onFechar = { fecharSheet(scope, sheetState, onFechar) },
+        Box(modifier = Modifier.fillMaxHeight(0.92f)) {
+            if (carregando) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(48.dp),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator() }
+            } else {
+                // Só compõe o formulário depois que os dados chegam, para os campos
+                // já iniciarem preenchidos com o perfil carregado.
+                FormularioEditarPerfil(
+                    perfil = perfil,
+                    vm = vm,
+                    scope = scope,
+                    sheetState = sheetState,
+                    onSalvar = onSalvar,
+                    onFechar = onFechar,
                 )
             }
+        }
+    }
+}
 
-            Column(
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FormularioEditarPerfil(
+    perfil: PerfilPublico,
+    vm: ProfissionalViewModel,
+    scope: CoroutineScope,
+    sheetState: SheetState,
+    onSalvar: (PerfilPublico) -> Unit,
+    onFechar: () -> Unit,
+) {
+    val estado by vm.estado.collectAsStateWithLifecycle()
+    var nome by rememberSaveable { mutableStateOf(perfil.nome) }
+    var fotoUrl by rememberSaveable { mutableStateOf(perfil.fotoUrl) }
+    var bio by rememberSaveable { mutableStateOf(perfil.bio) }
+    var area by remember { mutableStateOf(perfil.area) }
+    val tags = remember { mutableStateListOf<String>().apply { addAll(perfil.tags) } }
+    var mapaEmUso by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxHeight()) {
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+            CabecalhoSheetPro(
+                titulo = stringResource(R.string.pro_editar_perfil_publico),
+                subtitulo = stringResource(R.string.pro_editar_sub),
+                onFechar = { fecharSheet(scope, sheetState, onFechar) },
+            )
+        }
+
+        Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState(), enabled = !mapaEmUso)
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -182,12 +239,23 @@ internal fun EditarPerfilPublicoSheet(
                     }
                 }
 
-                CampoPro(stringResource(R.string.perfil_campo_nome), nome, { nome = it }, stringResource(R.string.perfil_campo_nome_hint))
+                CampoPro(
+                    label = stringResource(R.string.perfil_campo_nome),
+                    valor = nome,
+                    onValor = { nome = it },
+                    placeholder = stringResource(R.string.perfil_campo_nome_hint),
+                    habilitado = false,
+                    apoio = stringResource(R.string.pro_nome_apoio),
+                )
                 CampoPro(
                     stringResource(R.string.pro_bio), bio, { bio = it },
                     stringResource(R.string.pro_bio_hint), linhas = 4,
                 )
-                SeletorAreaAtendimento(area = area, onArea = { area = it })
+                SeletorAreaAtendimento(
+                    area = area,
+                    onArea = { area = it },
+                    onMapaEmUso = { mapaEmUso = it },
+                )
 
                 ChipsEditaveis(
                     titulo = stringResource(R.string.pro_tags_especialidade),
@@ -205,27 +273,37 @@ internal fun EditarPerfilPublicoSheet(
             ) {
                 Button(
                     onClick = {
-                        onSalvar(
-                            perfil.copy(
-                                nome = nome.trim(),
-                                fotoUrl = fotoUrl.trim(),
-                                bio = bio.trim(),
-                                area = area,
-                                tags = tags.toList(),
-                            )
+                        val atualizado = perfil.copy(
+                            nome = nome.trim(),
+                            fotoUrl = fotoUrl.trim(),
+                            bio = bio.trim(),
+                            area = area,
+                            tags = tags.toList(),
                         )
-                        fecharSheet(scope, sheetState, onFechar)
+                        vm.salvarPerfil(atualizado.paraUpdateDTO()) { ok ->
+                            if (ok) {
+                                onSalvar(atualizado)
+                                fecharSheet(scope, sheetState, onFechar)
+                            }
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = nome.isNotBlank(),
+                    enabled = nome.isNotBlank() && !estado.salvandoPerfil,
                 ) {
-                    Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.pro_salvar_perfil))
+                    if (estado.salvandoPerfil) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.pro_salvar_perfil))
+                    }
                 }
             }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1123,12 +1201,15 @@ private fun CampoPro(
     modifier: Modifier = Modifier,
     linhas: Int = 1,
     tipoCampo: KeyboardType = KeyboardType.Text,
+    habilitado: Boolean = true,
+    apoio: String? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(
             value = valor,
             onValueChange = onValor,
+            enabled = habilitado,
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (linhas > 1) Modifier.height((44 + linhas * 22).dp) else Modifier),
@@ -1139,6 +1220,9 @@ private fun CampoPro(
             keyboardOptions = KeyboardOptions(keyboardType = tipoCampo),
             colors = coresCampo(),
         )
+        apoio?.let {
+            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -1202,6 +1286,7 @@ private fun ChipsEditaveis(titulo: String, itens: SnapshotStateList<String>, hin
 private fun SeletorAreaAtendimento(
     area: AreaAtendimento,
     onArea: (AreaAtendimento) -> Unit,
+    onMapaEmUso: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1301,7 +1386,17 @@ private fun SeletorAreaAtendimento(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
-                .clip(RoundedCornerShape(16.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                // Observa os toques antes do mapa (fase Initial) e avisa o container para
+                // não roubar o gesto de arrastar; assim o mapa navega em vez da sheet rolar.
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val evento = awaitPointerEvent(PointerEventPass.Initial)
+                            onMapaEmUso(evento.changes.any { it.pressed })
+                        }
+                    }
+                },
         ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),

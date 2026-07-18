@@ -1,6 +1,8 @@
 package com.winyc.elo.backend.controller.profissional
 
 import com.winyc.elo.backend.model.CursorPageRS
+import com.winyc.elo.backend.model.profissional.ProfissionalRS
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
 import com.winyc.elo.backend.model.servico.ServicoCreateDTO
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
@@ -10,7 +12,9 @@ import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -19,6 +23,15 @@ interface ProfissionalInterface {
     companion object {
         private const val PATH = "profissional/"
     }
+
+    @GET(PATH + "perfil")
+    fun buscarPerfil(): Call<ProfissionalRS>
+
+    @PUT(PATH + "perfil")
+    fun salvarPerfil(@Body dto: ProfissionalUpdateDTO): Call<ProfissionalRS>
+
+    @PATCH(PATH + "disponivel/{isAtivar}")
+    fun habilitarDisponibilidade(@Path("isAtivar") isAtivar: Boolean): Call<Void>
 
     @POST(PATH + "servico")
     fun salvarServico(@Body dto: ServicoCreateDTO): Call<ServicoRS>

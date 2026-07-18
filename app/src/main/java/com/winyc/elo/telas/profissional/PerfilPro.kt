@@ -54,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.profissional.ProfissionalRS
 import com.winyc.elo.backend.security.PerfilSessao
 import com.winyc.elo.backend.viewModel.CategoriaViewModel
 import com.winyc.elo.backend.viewModel.ProfissionalViewModel
@@ -67,7 +68,6 @@ private val Verde = Color(0xFF12A15A)
 private val Azul = Color(0xFF2F6BFF)
 private val Ambar = Color(0xFFDD8A15)
 
-/* ============================ Modelos (mock, compartilhados) ============================ */
 
 /** Dados públicos do profissional — o que o cliente vê e o que o Pro edita. */
 internal data class PerfilPublico(
@@ -76,6 +76,9 @@ internal data class PerfilPublico(
     val fotoUrl: String,
     val bio: String,
     val area: AreaAtendimento,
+    val qtdServicos: Int,
+    val avaliacaoGeralPorcento: Double,
+    val qtdAvalicao: Int,
     val tags: List<String>,
 )
 
@@ -99,22 +102,56 @@ internal data class AreaAtendimento(
 internal fun formatarCoord(lat: Double, lng: Double): String =
     String.format(java.util.Locale.US, "%.5f, %.5f", lat, lng)
 
-private val PERFIL_INICIAL = PerfilPublico(
-    nome = "Carlos Silva",
-    profissao = "Eletricista",
-    fotoUrl = "https://images.unsplash.com/photo-1621905252507",
-    bio = "Eletricista profissional com mais de 15 anos de experiência. " +
-        "Especializado em instalações residenciais e comerciais, manutenção preventiva e corretiva.",
-    area = AreaAtendimento(
-        latitude = -23.52660,
-        longitude = -46.68900,
-        raioKm = 10,
-        cidade = "São Paulo",
-        estado = "SP",
-        bairro = "Zona Oeste e Centro",
-    ),
-    tags = listOf("Pontual", "Organizado", "Excelente trabalho", "Justo no preço"),
+private val AREA_PADRAO = AreaAtendimento(
+    latitude = -23.52560,
+    longitude = -46.69110,
+    raioKm = 10,
+    cidade = "São Paulo",
+    estado = "SP",
+    bairro = "Pompeia",
 )
+
+private val PERFIL_INICIAL = PerfilPublico(
+    nome = "",
+    profissao = "-",
+    fotoUrl = "",
+    bio = "",
+    area = AREA_PADRAO,
+    qtdServicos = 0,
+    avaliacaoGeralPorcento = 0.0,
+    qtdAvalicao = 0,
+    tags = emptyList(),
+)
+
+private fun ProfissionalRS.paraPerfilPublico(
+    sessao: PerfilSessao?,
+    base: PerfilPublico
+): PerfilPublico {
+    val rs = areaAtendimentoRS
+    val area = if (rs?.nrLatitude != null && rs.nrLongitude != null) {
+        AreaAtendimento(
+            latitude = rs.nrLatitude,
+            longitude = rs.nrLongitude,
+            raioKm = rs.nrRaio ?: AREA_PADRAO.raioKm,
+            cidade = rs.nmCidade.orEmpty(),
+            estado = rs.nmEstado.orEmpty(),
+            bairro = rs.nmBairro,
+        )
+    } else {
+        AREA_PADRAO
+    }
+    return base.copy(
+        nome = sessao?.nome?.takeIf { it.isNotBlank() } ?: base.nome,
+        fotoUrl = uriPerfil?.takeIf { it.isNotBlank() } ?: sessao?.urlPerfilPro?.takeIf { it.isNotBlank() } ?: base.fotoUrl,
+        bio = apresentacao.orEmpty(),
+        area = area,
+        tags = dsEspecialidades?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty(),
+        qtdAvalicao = qtRespostaGeral ?: 0,
+        qtdServicos = qtServicos ?: 0,
+        avaliacaoGeralPorcento = 0.0
+
+    )
+}
 
 /* ============================ Tela ============================ */
 
@@ -144,7 +181,18 @@ fun PerfilProScreen(
     val servicoEstado by servicoVm.estado.collectAsStateWithLifecycle()
     val categoriaEstado by categoriaVm.estado.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { servicoVm.carregar() }
+    LaunchedEffect(Unit) {
+        servicoVm.carregar()
+        servicoVm.carregarPerfil()
+    }
+
+    val perfilRs = servicoEstado.perfil
+    LaunchedEffect(perfilRs, sessao) {
+        if (perfilRs != null) {
+            perfil = perfilRs.paraPerfilPublico(sessao, perfil)
+            perfilRs.stDisponivel?.let { disponivel = it }
+        }
+    }
 
     BackHandler(enabled = mostrarAjuda) { mostrarAjuda = false }
     if (mostrarAjuda) {
@@ -159,7 +207,8 @@ fun PerfilProScreen(
     }
     val gerais = servicoEstado.servicos.mapNotNull { it.categoria?.idCategoriaGeral }.distinct()
     val categorias = gerais.size
-    val areas = gerais.mapNotNull { nomesGerais[it] }.joinToString(", ").ifBlank { perfil.profissao }
+    val areas =
+        gerais.mapNotNull { nomesGerais[it] }.joinToString(", ").ifBlank { perfil.profissao }
 
     LazyColumn(
         modifier = modifier
@@ -169,15 +218,29 @@ fun PerfilProScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            CabecalhoPro(perfil = perfil, areas = areas, onEditar = { sheet = SheetPro.EditarPerfil })
+            CabecalhoPro(
+                perfil = perfil,
+                areas = areas,
+                onEditar = { sheet = SheetPro.EditarPerfil })
         }
-        item { CardEstatisticas() }
-        item { CardDisponibilidade(disponivel = disponivel, onMudar = { disponivel = it }) }
+        item {
+            CardDisponibilidade(
+                disponivel = disponivel,
+                onMudar = { novo ->
+                    disponivel = novo
+                    servicoVm.definirDisponibilidade(novo) { ok -> if (!ok) disponivel = !novo }
+                },
+            )
+        }
         item {
             CardAcao(
                 icone = Icons.Outlined.WorkOutline,
                 titulo = stringResource(R.string.pro_meus_servicos),
-                subtitulo = stringResource(R.string.pro_contagem_servicos, categorias, servicoEstado.servicos.size),
+                subtitulo = stringResource(
+                    R.string.pro_contagem_servicos,
+                    categorias,
+                    servicoEstado.servicos.size
+                ),
                 onClick = { sheet = SheetPro.MeusServicos },
             )
         }
@@ -220,6 +283,8 @@ fun PerfilProScreen(
     when (sheet) {
         SheetPro.EditarPerfil -> EditarPerfilPublicoSheet(
             perfil = perfil,
+            vm = servicoVm,
+            carregando = perfilRs == null && servicoEstado.carregandoPerfil,
             onSalvar = { perfil = it },
             onFechar = { sheet = null },
         )
@@ -242,11 +307,14 @@ private fun CabecalhoPro(perfil: PerfilPublico, areas: String, onEditar: () -> U
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AvatarPerfil(
                     nome = perfil.nome,
-                    fotoUrl = perfil.fotoUrl,
+                    fotoUrl = perfil.fotoUrl.ifEmpty { null },
                     tamanho = 64.dp,
                     fonte = MaterialTheme.typography.titleLarge,
                 )
@@ -283,7 +351,7 @@ private fun CabecalhoPro(perfil: PerfilPublico, areas: String, onEditar: () -> U
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "4.9 (247 ${stringResource(R.string.avaliacoes)})",
+                            "${perfil.avaliacaoGeralPorcento} (${perfil.qtdAvalicao} ${stringResource(R.string.avaliacoes)})",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                         )
@@ -319,37 +387,22 @@ private fun CabecalhoPro(perfil: PerfilPublico, areas: String, onEditar: () -> U
 }
 
 @Composable
-private fun CardEstatisticas() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(vertical = 16.dp),
-        ) {
-            EstatItem("512", stringResource(R.string.pro_stat_servicos), Modifier.weight(1f))
-            VerticalDivider(color = MaterialTheme.colorScheme.outline)
-            EstatItem("4.9", stringResource(R.string.pro_stat_avaliacao), Modifier.weight(1f))
-            VerticalDivider(color = MaterialTheme.colorScheme.outline)
-            EstatItem("96%", stringResource(R.string.pro_stat_resposta), Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
 private fun EstatItem(valor: String, rotulo: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(valor, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-        Text(rotulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            valor,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            rotulo,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -408,12 +461,25 @@ private fun CardAcao(icone: ImageVector, titulo: String, subtitulo: String, onCl
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Icon(
+                    icone,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(titulo, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    titulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    subtitulo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -430,9 +496,24 @@ private fun LinhaSelos() {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Selo(Icons.Filled.Verified, Verde, stringResource(R.string.pro_badge_verificado), Modifier.weight(1f))
-        Selo(Icons.Outlined.EmojiEvents, Ambar, stringResource(R.string.pro_badge_top), Modifier.weight(1f))
-        Selo(Icons.Outlined.Schedule, Azul, stringResource(R.string.pro_badge_pontual), Modifier.weight(1f))
+        Selo(
+            Icons.Filled.Verified,
+            Verde,
+            stringResource(R.string.pro_badge_verificado),
+            Modifier.weight(1f)
+        )
+        Selo(
+            Icons.Outlined.EmojiEvents,
+            Ambar,
+            stringResource(R.string.pro_badge_top),
+            Modifier.weight(1f)
+        )
+        Selo(
+            Icons.Outlined.Schedule,
+            Azul,
+            stringResource(R.string.pro_badge_pontual),
+            Modifier.weight(1f)
+        )
     }
 }
 
@@ -448,7 +529,12 @@ private fun Selo(icone: ImageVector, cor: Color, texto: String, modifier: Modifi
     ) {
         Icon(icone, null, tint = cor, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        Text(texto, style = MaterialTheme.typography.labelMedium, color = cor, fontWeight = FontWeight.Medium)
+        Text(
+            texto,
+            style = MaterialTheme.typography.labelMedium,
+            color = cor,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -460,7 +546,10 @@ private fun CardAreaAtendimento(area: AreaAtendimento) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Outlined.LocationOn,

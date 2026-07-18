@@ -1,0 +1,39 @@
+package com.winyc.elo.backend.model.profissional
+
+data class ProfissionalRS(
+    val usuarioId: Long? = null,
+    val qtServicos: Int? = null,
+    val qtRespostaGeral: Int? = null,
+    val stDisponivel: Boolean? = null,
+    val apresentacao: String? = null,
+    val uriPerfil: String? = null,
+    val dsEspecialidades: String? = null,
+    val areaAtendimentoRS: AreaAtendimentoRS? = null,
+)
+
+data class AreaAtendimentoRS(
+    val id: Long? = null,
+    val nrLatitude: Double? = null,
+    val nrLongitude: Double? = null,
+    val nrRaio: Int? = null,
+    val nmCidade: String? = null,
+    val nmBairro: String? = null,
+    val nmEstado: String? = null,
+)
+
+data class ProfissionalUpdateDTO(
+    val apresentacao: String?,
+    val uriPerfil: String?,
+    val especialidades: String?,
+    val areaAtendimentoUpdateDTO: AreaAtendimentoUpdateDTO,
+)
+
+data class AreaAtendimentoUpdateDTO(
+    val id: Long? = null,
+    val nrLatitude: Double,
+    val nrLongitude: Double,
+    val nrRaio: Int,
+    val nmCidade: String,
+    val nmEstado: String,
+    val nmBairro: String,
+)

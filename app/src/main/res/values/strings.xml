@@ -199,6 +199,7 @@
 
     <!-- Editar perfil público -->
     <string name="pro_editar_sub">Visível para todos os clientes</string>
+    <string name="pro_nome_apoio">O nome é gerenciado na sua conta</string>
     <string name="pro_url_foto">URL da foto</string>
     <string name="pro_url_foto_hint">https://…</string>
     <string name="pro_bio">Bio / Apresentação</string>

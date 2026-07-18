@@ -3,6 +3,8 @@ package com.winyc.elo.backend.controller.profissional
 import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
 import com.winyc.elo.backend.model.CursorPageRS
+import com.winyc.elo.backend.model.profissional.ProfissionalRS
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
 import com.winyc.elo.backend.model.servico.ServicoCreateDTO
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
@@ -22,6 +24,15 @@ class ProfissionalRepository(
     private val tokenStore: TokenStore,
     private val api: ProfissionalInterface = RetroFitService.profissionalApi(tokenStore),
 ) {
+    suspend fun buscarPerfil(): Result<ProfissionalRS> =
+        executar { verificaErro(api.buscarPerfil().execute()) }
+
+    suspend fun salvarPerfil(dto: ProfissionalUpdateDTO): Result<ProfissionalRS> =
+        executar { verificaErro(api.salvarPerfil(dto).execute()) }
+
+    suspend fun habilitarDisponibilidade(isAtivar: Boolean): Result<Unit> =
+        executar { conferir(api.habilitarDisponibilidade(isAtivar).execute()) }
+
     suspend fun listarServicos(): Result<List<ServicoListaRS>> =
         executar {
             val resposta = api.listarServicos().execute()
