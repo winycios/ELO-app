@@ -2,9 +2,12 @@ package com.winyc.elo.backend.controller.profissional
 
 import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
+import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.servico.ServicoCreateDTO
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
+import com.winyc.elo.backend.model.vitrine.PublicacaoCreateDTO
+import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
 import com.winyc.elo.backend.retroFit.RetroFitService
 import com.winyc.elo.backend.security.TokenStore
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +36,19 @@ class ProfissionalRepository(
 
     suspend fun desativarServico(id: Long): Result<Unit> =
         executar { conferir(api.desativarServico(id).execute()) }
+
+    suspend fun listarMinhasPublicacoes(categoriaId: Long?, cursor: String?): Result<CursorPageRS<PublicacaoFeedRS>> =
+        executar {
+            val resposta = api.listarMinhasPublicacoes(categoriaId, cursor).execute()
+            if (resposta.code() == 204) CursorPageRS(items = emptyList(), nextCursor = null, hasNext = false)
+            else verificaErro(resposta)
+        }
+
+    suspend fun salvarPublicacao(dto: PublicacaoCreateDTO): Result<PublicacaoFeedRS> =
+        executar { verificaErro(api.salvarPublicacao(dto).execute()) }
+
+    suspend fun desativarPublicacao(id: Long): Result<Unit> =
+        executar { conferir(api.desativarPublicacao(id).execute()) }
 
     private suspend fun <T> executar(bloco: () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching(bloco) }.recoverCatching { erro -> throw IllegalStateException(mensagemDeFalha(erro)) }

@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -164,9 +166,13 @@ fun VitrineScreen(
     }
 
     comentarios?.let { estadoComentarios ->
+        val profissionalNome = estado.posts
+            .firstOrNull { it.id == estadoComentarios.publicacaoId }
+            ?.profissionalNome
         ComentariosSheet(
             estado = estadoComentarios,
             logado = logado,
+            profissionalNome = profissionalNome,
             onFechar = vm::fecharComentarios,
             onEnviar = vm::enviarComentario,
             onCarregarMais = vm::carregarMaisComentarios,
@@ -470,6 +476,7 @@ private fun RodapeVazio() {
 private fun ComentariosSheet(
     estado: ComentariosUi,
     logado: Boolean,
+    profissionalNome: String?,
     onEnviar: (String) -> Unit,
     onFechar: () -> Unit,
     onCarregarMais: () -> Unit,
@@ -477,6 +484,11 @@ private fun ComentariosSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val listState = rememberLazyListState()
+
+    val raizes = remember(estado.comentarios) { estado.comentarios.filter { it.comentarioPaiId == null } }
+    val respostasPorPai = remember(estado.comentarios) {
+        estado.comentarios.filter { it.comentarioPaiId != null }.groupBy { it.comentarioPaiId }
+    }
 
     val precisaCarregarMais by remember {
         derivedStateOf {
@@ -524,9 +536,14 @@ private fun ComentariosSheet(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        items(estado.comentarios, key = { it.id }) { comentario ->
-                            ComentarioItem(comentario)
+                        items(raizes, key = { it.id }) { raiz ->
+                            ComentarioComRespostas(
+                                raiz = raiz,
+                                respostas = respostasPorPai[raiz.id].orEmpty(),
+                                profissionalNome = profissionalNome,
+                            )
                         }
                         if (estado.carregandoMais) {
                             item { RodapeCarregando() }
@@ -559,27 +576,85 @@ private fun MensagemCentral(texto: String) {
 }
 
 @Composable
-private fun ComentarioItem(comentario: ComentarioRS) {
+private fun ComentarioComRespostas(
+    raiz: ComentarioRS,
+    respostas: List<ComentarioRS>,
+    profissionalNome: String?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        ComentarioItem(
+            comentario = raiz,
+            destacado = ehComentarioDoProfissional(raiz, profissionalNome),
+        )
+        respostas.forEach { resposta ->
+            ComentarioItem(
+                comentario = resposta,
+                destacado = ehComentarioDoProfissional(resposta, profissionalNome),
+                ehResposta = true,
+            )
+        }
+    }
+}
+
+private fun ehComentarioDoProfissional(comentario: ComentarioRS, profissionalNome: String?): Boolean =
+    !profissionalNome.isNullOrBlank() &&
+        comentario.usuarioNome?.trim().equals(profissionalNome.trim(), ignoreCase = true)
+
+@Composable
+private fun ComentarioItem(
+    comentario: ComentarioRS,
+    destacado: Boolean = false,
+    ehResposta: Boolean = false,
+) {
     val nome = comentario.usuarioNome.orEmpty()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(start = if (ehResposta) 28.dp else 0.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .height(IntrinsicSize.Min),
     ) {
+        if (destacado) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+            Spacer(Modifier.width(10.dp))
+        }
         AvatarPerfil(
             nome = nome,
             fotoUrl = comentario.usuarioFotoUrl,
-            tamanho = 36.dp,
+            tamanho = if (ehResposta) 30.dp else 36.dp,
             fonte = MaterialTheme.typography.labelMedium,
         )
         Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (destacado) {
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = nome,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                if (destacado) {
+                    Spacer(Modifier.width(6.dp))
+                    BadgeProfissional()
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = tempoRelativo(comentario.comentadoEm),
@@ -595,6 +670,19 @@ private fun ComentarioItem(comentario: ComentarioRS) {
             )
         }
     }
+}
+
+@Composable
+private fun BadgeProfissional() {
+    Text(
+        text = stringResource(R.string.vitrine_selo_profissional),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
 }
 
 @Composable

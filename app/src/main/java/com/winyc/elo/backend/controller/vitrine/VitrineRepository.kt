@@ -32,8 +32,12 @@ class VitrineRepository(
     suspend fun descurtir(publicacaoId: Long): Result<Unit> =
         executar { conferir(api.descurtir(publicacaoId).execute()) }
 
-    suspend fun comentar(publicacaoId: Long, texto: String): Result<ComentarioRS> =
-        executar { verificaErro(api.comentar(publicacaoId, ComentarioCreateRQ(texto = texto)).execute()) }
+    suspend fun comentar(publicacaoId: Long, texto: String, comentarioPaiId: Long? = null): Result<ComentarioRS> =
+        executar {
+            verificaErro(
+                api.comentar(publicacaoId, ComentarioCreateRQ(texto = texto, comentarioPaiId = comentarioPaiId)).execute(),
+            )
+        }
 
     private suspend fun <T> executar(bloco: () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching(bloco) }.recoverCatching { erro -> throw IllegalStateException(mensagemDeFalha(erro)) }

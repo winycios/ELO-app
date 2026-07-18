@@ -42,3 +42,14 @@ data class ComentarioCreateRQ(
     val texto: String,
     val comentarioPaiId: Long? = null,
 )
+
+data class PublicacaoCreateDTO(
+    val idCategoriaEspecifica: Long,
+    val dsPublicacao: String,
+    val publicacaoImagemDTOList: List<PublicacaoImagemDTO> = emptyList(),
+)
+
+data class PublicacaoImagemDTO(
+    val urlImagem: String,
+    val nrOrdem: Int,
+)
