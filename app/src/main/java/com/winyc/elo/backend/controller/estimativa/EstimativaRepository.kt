@@ -45,6 +45,7 @@ class EstimativaRepository(
             ?.use { reader -> runCatching { Gson().fromJson(reader, ApiError::class.java) }.getOrNull() }
 
     private fun mensagemDeErro(codigo: Int, apiError: ApiError?): String = when (codigo) {
+        400 -> apiError?.message ?: "Verifique os dados informados e tente novamente."
         404 -> apiError?.message ?: "Profissional não encontrado."
         in 500..599 -> "Servidor indisponível. Tente novamente em instantes."
         else -> apiError?.message ?: "Não foi possível carregar o perfil. Verifique sua conexão."

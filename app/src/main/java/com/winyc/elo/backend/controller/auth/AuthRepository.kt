@@ -55,6 +55,7 @@ class AuthRepository(
 
 
     private fun mensagemDeErro(codigo: Int, apiError: ApiError?): String = when (codigo) {
+        400 -> apiError?.message ?: "Verifique os dados informados e tente novamente."
         401, 403 -> apiError?.message ?: "E-mail ou senha inválidos."
         409 -> "Já existe uma conta com esse e-mail."
         in 500..599 -> "Servidor indisponível. Tente novamente em instantes."

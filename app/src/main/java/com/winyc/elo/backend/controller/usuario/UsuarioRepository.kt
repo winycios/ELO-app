@@ -69,6 +69,7 @@ class UsuarioRepository(
             ?.use { reader -> runCatching { Gson().fromJson(reader, ApiError::class.java) }.getOrNull() }
 
     private fun mensagemDeErro(codigo: Int, apiError: ApiError?): String = when (codigo) {
+        400 -> apiError?.message ?: "Verifique os dados informados e tente novamente."
         401, 403 -> apiError?.message ?: "Entre na sua conta para continuar."
         404 -> apiError?.message ?: "Não encontrado."
         in 500..599 -> "Servidor indisponível. Tente novamente em instantes."

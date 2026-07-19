@@ -2,6 +2,7 @@ package com.winyc.elo.backend.controller.auth
 
 import com.winyc.elo.backend.model.AuthRQ
 import com.winyc.elo.backend.model.AuthRS
+import com.winyc.elo.backend.model.RefreshTokenRQ
 import com.winyc.elo.backend.model.UsuarioRQ
 import retrofit2.Call
 import retrofit2.http.Body
@@ -19,9 +20,9 @@ interface AuthInterface {
         "Accept: */*",
         "Connection: keep-alive",
         "Cache-Control: no-cache",
-        "Content-Type: application/x-www-form-urlencoded"
+        "Content-Type: application/json",
     )
-    fun recarregarToken(@Body refreshToken: String): Call<AuthRS>
+    fun recarregarToken(@Body refreshToken: RefreshTokenRQ): Call<AuthRS>
 
     @POST(PATH + "login")
     @Headers(

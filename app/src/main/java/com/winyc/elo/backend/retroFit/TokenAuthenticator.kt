@@ -1,6 +1,7 @@
 package com.winyc.elo.backend.retroFit
 
 import com.winyc.elo.backend.controller.auth.AuthInterface
+import com.winyc.elo.backend.model.RefreshTokenRQ
 import com.winyc.elo.backend.security.TokenStore
 import okhttp3.Authenticator
 import okhttp3.Request
@@ -31,7 +32,7 @@ class TokenAuthenticator(
             }
 
             val nova = try {
-                authApi.recarregarToken(refresh).execute()
+                authApi.recarregarToken(RefreshTokenRQ(refresh)).execute()
             } catch (_: Exception) {
                 null
             }

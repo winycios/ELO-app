@@ -16,3 +16,7 @@ data class AuthRQ(
     val senha: String,
     val deviceCode: String
 )
+
+data class RefreshTokenRQ(
+    val refreshToken: String
+)
