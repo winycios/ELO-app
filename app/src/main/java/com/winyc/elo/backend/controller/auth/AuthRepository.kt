@@ -13,7 +13,6 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import kotlin.jvm.java
 
 class AuthRepository(
     private val api: AuthInterface = RetroFitService.authConnection(),
@@ -54,8 +53,6 @@ class AuthRepository(
             )
         }.recoverCatching { erro -> throw IllegalStateException(mensagemDeFalha(erro)) }
 
-
-suspend fun logout() = tokenStore.limpar()
 
     private fun mensagemDeErro(codigo: Int, apiError: ApiError?): String = when (codigo) {
         401, 403 -> apiError?.message ?: "E-mail ou senha inválidos."

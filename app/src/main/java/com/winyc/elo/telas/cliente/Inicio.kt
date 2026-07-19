@@ -7,8 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,21 +29,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Architecture
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Cake
@@ -58,15 +49,20 @@ import androidx.compose.material.icons.outlined.DeliveryDining
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.Elderly
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.FormatPaint
 import androidx.compose.material.icons.outlined.Foundation
 import androidx.compose.material.icons.outlined.Grass
 import androidx.compose.material.icons.outlined.GridOn
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.HomeRepairService
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PestControl
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Plumbing
@@ -74,17 +70,20 @@ import androidx.compose.material.icons.outlined.Pool
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.SolarPower
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.TireRepair
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Window
 import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -129,7 +128,12 @@ typealias AbrirPerfil = (profissionalId: Long, nome: String, servicoId: Long?) -
 
 private data class Categoria(val id: Long, val nome: String, val icone: ImageVector)
 
-private data class Area(val id: Long, val nome: String, val icone: ImageVector, val servicos: List<String>)
+private data class Area(
+    val id: Long,
+    val nome: String,
+    val icone: ImageVector,
+    val servicos: List<String>
+)
 
 private data class CategoriaSelecionada(val id: Long, val titulo: String, val texto: String?)
 
@@ -183,6 +187,7 @@ private val ICONES: Map<String, ImageVector> = mapOf(
     "DeliveryDining" to Icons.Outlined.DeliveryDining,
     "LocalShipping" to Icons.Outlined.LocalShipping,
 )
+
 fun obterIcone(nomeIcone: String?): ImageVector {
     return ICONES[nomeIcone] ?: Icons.Outlined.Work
 }
@@ -247,13 +252,14 @@ fun InicioScreen(
     }
 }
 
-private val CategoriaSelecionadaSaver = androidx.compose.runtime.saveable.listSaver<CategoriaSelecionada?, Any?>(
-    save = { it?.let { s -> listOf(s.id, s.titulo, s.texto) } ?: emptyList() },
-    restore = {
-        if (it.isEmpty()) null
-        else CategoriaSelecionada(it[0] as Long, it[1] as String, it[2] as String?)
-    },
-)
+private val CategoriaSelecionadaSaver =
+    androidx.compose.runtime.saveable.listSaver<CategoriaSelecionada?, Any?>(
+        save = { it?.let { s -> listOf(s.id, s.titulo, s.texto) } ?: emptyList() },
+        restore = {
+            if (it.isEmpty()) null
+            else CategoriaSelecionada(it[0] as Long, it[1] as String, it[2] as String?)
+        },
+    )
 
 @Composable
 private fun HomeConteudo(
@@ -467,7 +473,10 @@ private fun SecaoEnderecoPrincipal(
             }
             Spacer(Modifier.width(12.dp))
             if (endereco != null) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         text = stringResource(R.string.home_endereco_principal),
                         style = MaterialTheme.typography.labelSmall,
@@ -490,7 +499,10 @@ private fun SecaoEnderecoPrincipal(
                     }
                 }
             } else {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         text = stringResource(R.string.home_endereco_vazio_titulo),
                         style = MaterialTheme.typography.titleSmall,
@@ -679,7 +691,11 @@ private fun SecaoCarrossel(
                             pro = pro,
                             emAlta = emAlta,
                             onClick = {
-                                onAbrirPerfil(pro.profissionalId, pro.nome, pro.servicos.firstOrNull()?.servicoId)
+                                onAbrirPerfil(
+                                    pro.profissionalId,
+                                    pro.nome,
+                                    pro.servicos.firstOrNull()?.servicoId
+                                )
                             },
                         )
                     }
@@ -699,7 +715,11 @@ private fun CardProfissionalHome(pro: ProfissionalBuscaRS, emAlta: Boolean, onCl
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        FotoPro(fotoUrl = pro.fotoPerfil, badgeInicio = pro.servicos.firstOrNull()?.categoriaGeral, emAlta = emAlta)
+        FotoPro(
+            fotoUrl = pro.fotoPerfil,
+            badgeInicio = pro.servicos.firstOrNull()?.categoriaGeral,
+            emAlta = emAlta
+        )
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1053,7 +1073,12 @@ private fun CategoriaScreen(
                 }
 
                 estado.profissionais.isEmpty() && estado.erro != null -> {
-                    item { BlocoErro(mensagem = estado.erro!!, onTentarNovamente = buscaVm::tentarNovamenteCategoria) }
+                    item {
+                        BlocoErro(
+                            mensagem = estado.erro!!,
+                            onTentarNovamente = buscaVm::tentarNovamenteCategoria
+                        )
+                    }
                 }
 
                 estado.profissionais.isEmpty() -> {
@@ -1345,4 +1370,5 @@ private fun formatarPreco(preco: Double): String =
     if (preco % 1.0 == 0.0) preco.toInt().toString() else "%.2f".format(preco).replace('.', ',')
 
 private fun formatarAvaliacao(avaliacao: Double): String =
-    if (avaliacao % 1.0 == 0.0) avaliacao.toInt().toString() else "%.1f".format(avaliacao).replace('.', ',')
+    if (avaliacao % 1.0 == 0.0) avaliacao.toInt().toString() else "%.1f".format(avaliacao)
+        .replace('.', ',')

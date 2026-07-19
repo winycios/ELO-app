@@ -1,18 +1,9 @@
 package com.winyc.elo.backend.controller.categoria
 
-import com.google.gson.Gson
-import com.winyc.elo.backend.controller.vitrine.VitrineInterface
-import com.winyc.elo.backend.model.ApiError
-import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.categoria.CategoriaRS
-import com.winyc.elo.backend.model.vitrine.ComentarioCreateRQ
-import com.winyc.elo.backend.model.vitrine.ComentarioRS
-import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
 import com.winyc.elo.backend.retroFit.RetroFitService
-import com.winyc.elo.backend.security.TokenStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.Response
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException

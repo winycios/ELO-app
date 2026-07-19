@@ -2,9 +2,8 @@ package com.winyc.elo.backend.retroFit
 
 import com.winyc.elo.backend.controller.auth.AuthInterface
 import com.winyc.elo.backend.controller.busca.BuscaInterface
-import com.winyc.elo.backend.controller.estimativa.EstimativaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaInterface
-import com.winyc.elo.backend.controller.categoria.CategoriaRepository
+import com.winyc.elo.backend.controller.estimativa.EstimativaInterface
 import com.winyc.elo.backend.controller.profissional.ProfissionalInterface
 import com.winyc.elo.backend.controller.usuario.UsuarioInterface
 import com.winyc.elo.backend.controller.viacep.ViaCepInterface

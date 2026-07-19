@@ -73,9 +73,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.winyc.elo.R
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 private val Verde = Color(0xFF12A15A)
 private val Ambar = Color(0xFFDD8A15)
