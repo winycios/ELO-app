@@ -2,6 +2,7 @@ package com.winyc.elo.backend.retroFit
 
 import com.winyc.elo.backend.controller.auth.AuthInterface
 import com.winyc.elo.backend.controller.busca.BuscaInterface
+import com.winyc.elo.backend.controller.estimativa.EstimativaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaRepository
 import com.winyc.elo.backend.controller.profissional.ProfissionalInterface
@@ -68,6 +69,10 @@ object RetroFitService {
 
     fun profissionalApi(tokenStore: TokenStore): ProfissionalInterface =
         retrofitAutenticado(tokenStore).create(ProfissionalInterface::class.java)
+
+    // Público, mas usa o token quando presente (para calcular a distância).
+    fun estimativaApi(tokenStore: TokenStore): EstimativaInterface =
+        retrofitAutenticado(tokenStore).create(EstimativaInterface::class.java)
 
     fun authConnection(): AuthInterface = authApi
 

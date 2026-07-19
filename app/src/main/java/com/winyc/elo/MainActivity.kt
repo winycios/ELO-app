@@ -108,7 +108,7 @@ private enum class EloScreen(val route: String) {
     Vitrine("cliente/vitrine"),
     Pedidos("cliente/pedidos"),
     Perfil("cliente/perfil"),
-    PerfilProfissional("cliente/profissional/{nome}?proId={proId}&servicoId={servicoId}"),
+    PerfilProfissional("cliente/profissional/{nome}?proId={proId}&servicoId={servicoId}&categoriaId={categoriaId}"),
 
     // Profissional (teal)
     Painel("${PRO_PREFIX}painel"),
@@ -281,7 +281,9 @@ private fun EloApp() {
                 composable(EloScreen.Vitrine.route) {
                     VitrineScreen(
                         logado = logado,
-                        onAbrirPerfil = { navController.abrirPerfilProfissional(it) },
+                        onAbrirPerfil = { proId, nome, categoriaId ->
+                            navController.abrirPerfilProfissional(nome, proId = proId, categoriaId = categoriaId)
+                        },
                         onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
                     )
                 }
@@ -303,15 +305,18 @@ private fun EloApp() {
                         navArgument("nome") { type = NavType.StringType },
                         navArgument("proId") { type = NavType.LongType; defaultValue = -1L },
                         navArgument("servicoId") { type = NavType.LongType; defaultValue = -1L },
+                        navArgument("categoriaId") { type = NavType.LongType; defaultValue = -1L },
                     ),
                 ) { entry ->
                     val nome = entry.arguments?.getString("nome").orEmpty()
                     val proId = entry.arguments?.getLong("proId") ?: -1L
                     val servicoId = entry.arguments?.getLong("servicoId") ?: -1L
+                    val categoriaId = entry.arguments?.getLong("categoriaId") ?: -1L
                     PerfilProfissionalScreen(
                         nome = nome,
                         proId = proId,
-                        servicoIdInicial = servicoId.takeIf { it > 0 },
+                        servicoId = servicoId.takeIf { it > 0 },
+                        categoriaId = categoriaId.takeIf { it > 0 },
                         logado = logado,
                         onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
                         onVoltar = { navController.popBackStack() },
@@ -364,9 +369,10 @@ private fun NavController.abrirPerfilProfissional(
     nome: String,
     proId: Long = -1L,
     servicoId: Long? = null,
+    categoriaId: Long? = null,
 ) {
     val destino = "${PRO_PERFIL_PREFIX}${Uri.encode(nome)}" +
-        "?proId=$proId&servicoId=${servicoId ?: -1L}"
+        "?proId=$proId&servicoId=${servicoId ?: -1L}&categoriaId=${categoriaId ?: -1L}"
     navigate(destino) {
         launchSingleTop = true
     }

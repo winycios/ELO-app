@@ -88,7 +88,7 @@ private const val GATILHO_PROXIMA_PAGINA = 5
 @Composable
 fun VitrineScreen(
     logado: Boolean,
-    onAbrirPerfil: (String) -> Unit = {},
+    onAbrirPerfil: (profissionalId: Long, nome: String, categoriaId: Long) -> Unit = { _, _, _ -> },
     onPrecisaLogin: () -> Unit = {},
     modifier: Modifier = Modifier,
     vm: VitrineViewModel = viewModel(),
@@ -145,7 +145,13 @@ fun VitrineScreen(
         items(estado.posts, key = { it.id }) { post ->
             TrabalhoCard(
                 post = post,
-                onAbrirPerfil = { post.profissionalNome?.let(onAbrirPerfil) },
+                onAbrirPerfil = {
+                    val proId = post.profissionalId
+                    val catId = post.categoriaId
+                    if (proId != null && catId != null) {
+                        onAbrirPerfil(proId, post.profissionalNome.orEmpty(), catId)
+                    }
+                },
                 onCurtir = { if (logado) vm.alternarCurtida(post.id) else null },
                 onComentar = { vm.abrirComentarios(post.id) },
             )

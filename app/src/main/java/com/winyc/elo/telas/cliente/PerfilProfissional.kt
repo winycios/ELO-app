@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -33,7 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -49,16 +47,17 @@ import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Reviews
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +69,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,6 +86,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -93,119 +94,32 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.estimativa.AvaliacaoRS
+import com.winyc.elo.backend.model.estimativa.ProfissionalDetalhesRS
+import com.winyc.elo.backend.model.estimativa.ResumoAvaliacoesRS
+import com.winyc.elo.backend.model.estimativa.ServicoOferecidoRS
+import com.winyc.elo.backend.model.estimativa.pontos
+import com.winyc.elo.backend.viewModel.ProfissionalPerfilViewModel
+import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
-
-/* ============================ Modelo (mock) ============================ */
-
-private data class ServicoPro(
-    val numero: Int,
-    val nome: String,
-    val precoMin: Int,
-    val descricao: String,
-    val diferenciais: List<String>,
-)
-
-private enum class Sentimento(val rotulo: String) {
-    Positivo("Positivo"),
-    Neutro("Neutro"),
-    Negativo("Negativo"),
-}
-
-private data class AvaliacaoPro(
-    val autor: String,
-    val data: String,
-    val nota: Int,
-    val texto: String,
-    val uteis: Int,
-    val sentimento: Sentimento,
-)
 
 // Cores de apoio (fora do contexto coral/teal, iguais às usadas na home).
 private val Verde = Color(0xFF12A15A)
 private val Azul = Color(0xFF2F6BFF)
 private val Roxo = Color(0xFF8B5CF6)
-private val Amarelo = Color(0xFFB98900)
-private val Vermelho = Color(0xFFE05353)
 
-private const val CATEGORIA_DEMO = "Eletricista"
-private const val AVALIACAO_DEMO = 4.9
-private const val NUM_AVALIACOES = 247
-private const val FAIXA_PRECO = "80"
+// Id sentinela para "Outro serviço" (cliente descreve livremente).
+private const val OUTRO_SERVICO_ID = -1L
 
-// Número sentinela usado quando o cliente escolhe "Outro serviço" (descreve livremente).
-private const val OUTRO_SERVICO = 0
-
-private const val SOBRE_DEMO =
-    "Eletricista profissional com mais de 15 anos de experiência. " +
-    "Especializado em instalações residenciais e comerciais, " +
-    "manutenção preventiva e corretiva."
-
-private val CLIENTES_DESTACAM =
-    listOf("Pontual", "Organizado", "Excelente trabalho", "Justo no preço")
-
-private val SERVICOS = listOf(
-    ServicoPro(
-        1, "Instalação elétrica residencial", 150,
-        "Instalação completa de pontos de luz, tomadas e quadros de distribuição " +
-            "para residências, seguindo as normas de segurança.",
-        listOf("Material de primeira linha", "Garantia de 90 dias", "Limpeza ao final"),
-    ),
-    ServicoPro(
-        2, "Manutenção e reparo elétrico", 100,
-        "Diagnóstico e correção de curtos, disjuntores que desarmam, tomadas " +
-            "queimadas e demais problemas elétricos.",
-        listOf("Atendimento no mesmo dia", "Diagnóstico incluso", "Orçamento sem compromisso"),
-    ),
-    ServicoPro(
-        3, "Instalação de chuveiro elétrico", 120,
-        "Troca e instalação de chuveiros elétricos com dimensionamento correto " +
-            "de fiação e disjuntor.",
-        listOf("Fiação dimensionada", "Teste de segurança", "Garantia de 90 dias"),
-    ),
-)
-
-private val AVALIACOES = listOf(
-    AvaliacaoPro(
-        "Maria L.", "12/04/2026", 5,
-        "Carlos foi extremamente pontual e resolveu o problema elétrico da minha " +
-            "casa rapidamente. Trabalho impecável!",
-        24, Sentimento.Positivo,
-    ),
-    AvaliacaoPro(
-        "João P.", "08/04/2026", 5,
-        "Excelente profissional. Muito organizado, deixou tudo limpo após o " +
-            "serviço. Preço justo pelo trabalho realizado.",
-        18, Sentimento.Positivo,
-    ),
-    AvaliacaoPro(
-        "Lúcia S.", "02/04/2026", 4,
-        "Bom serviço no geral. Demorou um pouco mais do que o combinado, mas o " +
-            "resultado ficou ótimo.",
-        7, Sentimento.Neutro,
-    ),
-    AvaliacaoPro(
-        "Rafael M.", "28/03/2026", 5,
-        "Recomendo demais! Explicou tudo com calma e o preço foi honesto.",
-        12, Sentimento.Positivo,
-    ),
-    AvaliacaoPro(
-        "Beatriz R.", "20/03/2026", 5,
-        "Serviço rápido e bem feito. Voltarei a chamar com certeza.",
-        9, Sentimento.Positivo,
-    ),
-    AvaliacaoPro(
-        "Igor T.", "11/03/2026", 2,
-        "O serviço ficou bom, mas o profissional atrasou bastante e não avisou.",
-        3, Sentimento.Negativo,
-    ),
-)
-
-private val HISTOGRAMA = listOf(5 to 0.82f, 4 to 0.28f, 3 to 0.20f, 2 to 0.06f, 1 to 0.04f)
-
-private fun primeiroNome(nome: String): String = nome.trim().split(" ").first()
+private fun primeiroNome(nome: String): String =
+    nome.trim().split(" ").firstOrNull().orEmpty().ifBlank { nome }
 
 /* ============================ Tela ============================ */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilProfissionalScreen(
@@ -214,41 +128,71 @@ fun PerfilProfissionalScreen(
     onPrecisaLogin: () -> Unit,
     onVoltar: () -> Unit,
     proId: Long = -1L,
-    servicoIdInicial: Long? = null,
+    servicoId: Long? = null,
+    categoriaId: Long? = null,
     onIrParaInicio: () -> Unit = {},
     onVerPedidos: () -> Unit = {},
     modifier: Modifier = Modifier,
+    vm: ProfissionalPerfilViewModel = viewModel(),
 ) {
-    var verTodasAvaliacoes by rememberSaveable(nome) { mutableStateOf(false) }
-    var escolhendoServico by rememberSaveable(nome) { mutableStateOf(false) }
-    var servicoDetalhe by rememberSaveable(nome) { mutableStateOf<Int?>(null) }
-    var servicoInfo by rememberSaveable(nome) { mutableStateOf<Int?>(null) }
-    var sucesso by rememberSaveable(nome) { mutableStateOf(false) }
-    var pedindoLogin by rememberSaveable(nome) { mutableStateOf(false) }
+    val estadoVm by vm.estado.collectAsStateWithLifecycle()
+    val dados = estadoVm.perfil
 
-    // Só quem está logado pode iniciar um orçamento; deslogado vê o convite para entrar.
-    val iniciarOrcamento = { if (logado) escolhendoServico = true else pedindoLogin = true }
+    LaunchedEffect(proId, servicoId, categoriaId) {
+        when {
+            proId <= 0 -> Unit
+            servicoId != null && servicoId > 0 -> vm.carregarPorServico(proId, servicoId)
+            categoriaId != null && categoriaId > 0 -> vm.carregarPorCategoria(proId, categoriaId)
+        }
+    }
+
+    var verTodasAvaliacoes by rememberSaveable(proId) { mutableStateOf(false) }
+    var escolhendoServico by rememberSaveable(proId) { mutableStateOf(false) }
+    var servicoDetalhe by rememberSaveable(proId) { mutableStateOf<Long?>(null) }
+    var servicoInfo by rememberSaveable(proId) { mutableStateOf<Long?>(null) }
+    var sucesso by rememberSaveable(proId) { mutableStateOf(false) }
+    var pedindoLogin by rememberSaveable(proId) { mutableStateOf(false) }
+
+    val servicos = dados?.servicosOferecidos.orEmpty()
+    val nomeExibicao = dados?.profissional?.nome?.takeIf { it.isNotBlank() } ?: nome
+
+    // Só quem está logado pode iniciar um orçamento; deslogado vê o convite.
+    val iniciarOrcamento = {
+        if (!logado) {
+            pedindoLogin = true
+        } else {
+            val selecionado = dados?.servicoSelecionado?.id
+            if (selecionado != null) servicoDetalhe = selecionado else escolhendoServico = true
+        }
+    }
 
     BackHandler(enabled = sucesso) { onIrParaInicio() }
     BackHandler(enabled = !sucesso && servicoDetalhe != null) { servicoDetalhe = null }
-    BackHandler(enabled = !sucesso && servicoDetalhe == null && escolhendoServico) {
-        escolhendoServico = false
-    }
+    BackHandler(enabled = !sucesso && servicoDetalhe == null && escolhendoServico) { escolhendoServico = false }
     BackHandler(
         enabled = !sucesso && servicoDetalhe == null && !escolhendoServico && verTodasAvaliacoes,
     ) { verTodasAvaliacoes = false }
 
     when {
         sucesso -> SolicitacaoEnviadaScreen(
-            nome = nome,
+            nome = nomeExibicao,
             onInicio = onIrParaInicio,
             onPedidos = onVerPedidos,
             modifier = modifier,
         )
 
+        dados == null && estadoVm.carregando -> CarregandoPerfil(onVoltar, modifier)
+
+        dados == null -> ErroPerfil(
+            mensagem = estadoVm.erro ?: "Não foi possível carregar o perfil.",
+            onVoltar = onVoltar,
+            onTentarNovamente = vm::tentarNovamente,
+            modifier = modifier,
+        )
+
         servicoDetalhe != null -> DetalhesServicoScreen(
-            nome = nome,
-            servico = SERVICOS.firstOrNull { it.numero == servicoDetalhe },
+            nome = nomeExibicao,
+            servico = servicos.firstOrNull { it.id == servicoDetalhe },
             onVoltar = { servicoDetalhe = null },
             onTrocar = {
                 servicoDetalhe = null
@@ -263,15 +207,18 @@ fun PerfilProfissionalScreen(
         )
 
         escolhendoServico -> EscolherServicoScreen(
-            nome = nome,
+            nome = nomeExibicao,
+            servicos = servicos,
             onVoltar = { escolhendoServico = false },
-            onAbrirInfo = { numero -> servicoInfo = numero },
-            onOutroServico = { servicoDetalhe = OUTRO_SERVICO },
+            onAbrirInfo = { id -> servicoInfo = id },
+            onOutroServico = { servicoDetalhe = OUTRO_SERVICO_ID },
             modifier = modifier,
         )
 
         verTodasAvaliacoes -> AvaliacoesScreen(
-            nome = nome,
+            nome = nomeExibicao,
+            resumo = dados.resumoAvaliacoes,
+            avaliacoes = dados.ultimasAvaliacoes,
             onVoltar = { verTodasAvaliacoes = false },
             modifier = modifier,
         )
@@ -281,30 +228,49 @@ fun PerfilProfissionalScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
+            val profissional = dados.profissional
+            // Carrossel do topo: imagens dos serviços (não a foto de perfil).
+            val imagensServicos = remember(servicos) {
+                servicos.flatMap { it.imagens }
+                    .sortedBy { it.ordem ?: Int.MAX_VALUE }
+                    .mapNotNull { it.url?.takeIf { url -> url.isNotBlank() } }
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 150.dp),
             ) {
                 item {
                     Column {
-                        HeroCarrossel(nome = nome, onVoltar = onVoltar)
+                        Hero(
+                            profissional = profissional,
+                            nome = nomeExibicao,
+                            imagens = imagensServicos,
+                            onVoltar = onVoltar,
+                        )
                         CardEstatisticas(
+                            profissional = profissional,
                             modifier = Modifier
-                                .offset(y = (-28).dp)
+                                .offset(y = (-15).dp)
                                 .padding(horizontal = 16.dp),
                         )
                     }
                 }
 
                 item {
-                    SecaoSobre(modifier = Modifier.padding(horizontal = 16.dp))
+                    SecaoSobre(
+                        apresentacao = profissional?.apresentacao,
+                        especialidades = profissional?.especialidades,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
 
                 item {
                     Spacer(Modifier.height(20.dp))
                     SecaoServicos(
+                        servicos = servicos,
+                        categoria = servicos.firstOrNull()?.categoria?.categoriaGeral,
                         onAbrirServico = { servicoInfo = it },
-                        onVerTodos = iniciarOrcamento,
+                        onVerTodos = { escolhendoServico = true },
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -312,6 +278,8 @@ fun PerfilProfissionalScreen(
                 item {
                     Spacer(Modifier.height(24.dp))
                     SecaoAvaliacoes(
+                        resumo = dados.resumoAvaliacoes,
+                        avaliacoes = dados.ultimasAvaliacoes,
                         onVerTodas = { verTodasAvaliacoes = true },
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
@@ -320,22 +288,27 @@ fun PerfilProfissionalScreen(
             }
 
             BarraContratar(
-                nome = nome,
+                nome = nomeExibicao,
+                precoMin = servicos.mapNotNull { it.valor }.minOrNull(),
+                avaliacao = profissional?.avaliacao,
+                quantidadeAvaliacoes = profissional?.quantidadeAvaliacoes ?: 0,
                 onContratar = iniciarOrcamento,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
 
-    servicoInfo?.let { numero ->
-        ServicoSheet(
-            servico = SERVICOS.first { it.numero == numero },
-            onFechar = { servicoInfo = null },
-            onContratar = {
-                servicoInfo = null
-                if (logado) servicoDetalhe = numero else pedindoLogin = true
-            },
-        )
+    servicoInfo?.let { id ->
+        servicos.firstOrNull { it.id == id }?.let { servico ->
+            ServicoSheet(
+                servico = servico,
+                onFechar = { servicoInfo = null },
+                onContratar = {
+                    servicoInfo = null
+                    if (logado) servicoDetalhe = id else pedindoLogin = true
+                },
+            )
+        }
     }
 
     if (pedindoLogin) {
@@ -349,49 +322,142 @@ fun PerfilProfissionalScreen(
     }
 }
 
-/** Convite para login quando um usuário deslogado tenta solicitar um orçamento. */
+/* ---------------------------- Estados de carga ---------------------------- */
+
 @Composable
-private fun DialogPrecisaLogin(onEntrar: () -> Unit, onCancelar: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        icon = {
-            Icon(
-                Icons.Outlined.Lock,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        },
-        title = { Text(stringResource(R.string.orcar_login_titulo)) },
-        text = { Text(stringResource(R.string.orcar_login_texto)) },
-        confirmButton = {
-            Button(onClick = onEntrar) { Text(stringResource(R.string.orcar_login_entrar)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) { Text(stringResource(R.string.orcar_login_agora_nao)) }
-        },
-    )
+private fun CarregandoPerfil(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        TopoSimples(onVoltar = onVoltar)
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    }
 }
 
 @Composable
-private fun HeroCarrossel(nome: String, onVoltar: () -> Unit) {
-    val paginas = 3
-    val pagerState = rememberPagerState(pageCount = { paginas })
+private fun ErroPerfil(
+    mensagem: String,
+    onVoltar: () -> Unit,
+    onTentarNovamente: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        TopoSimples(onVoltar = onVoltar)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                mensagem,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onTentarNovamente) { Text("Tentar novamente") }
+        }
+    }
+}
 
+@Composable
+private fun TopoSimples(onVoltar: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            "Voltar",
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onVoltar)
+                .padding(8.dp),
+        )
+    }
+}
+
+/* ---------------------------- Hero ---------------------------- */
+
+@Composable
+private fun Hero(
+    profissional: ProfissionalDetalhesRS?,
+    nome: String,
+    imagens: List<String>,
+    onVoltar: () -> Unit,
+) {
     Box(modifier = Modifier.fillMaxWidth()) {
-        HorizontalPager(state = pagerState) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (imagens.isEmpty()) {
                 Icon(
                     Icons.Outlined.Image,
                     null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                     modifier = Modifier.size(44.dp),
                 )
+            } else {
+                val pagerState = rememberPagerState(pageCount = { imagens.size })
+                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pagina ->
+                    AsyncImage(
+                        model = imagens[pagina],
+                        contentDescription = nome,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                if (imagens.size > 1) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .statusBarsPadding()
+                            .padding(12.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.45f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = "${pagerState.currentPage + 1}/${imagens.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        repeat(imagens.size) { indice ->
+                            val ativo = indice == pagerState.currentPage
+                            Box(
+                                modifier = Modifier
+                                    .size(if (ativo) 8.dp else 6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = if (ativo) 1f else 0.5f)),
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -399,7 +465,6 @@ private fun HeroCarrossel(nome: String, onVoltar: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp)
-                .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
@@ -418,23 +483,6 @@ private fun HeroCarrossel(nome: String, onVoltar: () -> Unit) {
                 .padding(12.dp),
         )
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(12.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.45f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        ) {
-            Text(
-                text = "${pagerState.currentPage + 1}/$paginas",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
-            )
-        }
-
-        // Identificação do profissional
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -442,19 +490,12 @@ private fun HeroCarrossel(nome: String, onVoltar: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.25f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = iniciais(nome),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White,
-                    )
-                }
+                AvatarPerfil(
+                    nome = nome,
+                    fotoUrl = profissional?.fotoPerfil,
+                    tamanho = 48.dp,
+                    fonte = MaterialTheme.typography.titleSmall,
+                )
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -472,44 +513,43 @@ private fun HeroCarrossel(nome: String, onVoltar: () -> Unit) {
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Filled.Star,
-                            null,
-                            tint = EloTheme.colors.avaliacao,
-                            modifier = Modifier.size(15.dp),
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "$AVALIACAO_DEMO ($NUM_AVALIACOES)",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White,
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Icon(
-                            Icons.Outlined.LocationOn,
-                            null,
-                            tint = Color.White.copy(alpha = 0.9f),
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Spacer(Modifier.width(3.dp))
-                        Text(
-                            "2,3 km",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.9f),
-                        )
+                        val avaliacao = profissional?.avaliacao
+                        if (avaliacao != null && (profissional.quantidadeAvaliacoes ?: 0) > 0) {
+                            Icon(
+                                Icons.Filled.Star,
+                                null,
+                                tint = EloTheme.colors.avaliacao,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "${formatarNota(avaliacao)} (${profissional.quantidadeAvaliacoes})",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White,
+                            )
+                        } else {
+                            Text(
+                                "Novo na plataforma",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White,
+                            )
+                        }
+                        profissional?.distanciaKm?.let {
+                            Spacer(Modifier.width(10.dp))
+                            Icon(
+                                Icons.Outlined.LocationOn,
+                                null,
+                                tint = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                formatarKm(it),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.9f),
+                            )
+                        }
                     }
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                repeat(paginas) { indice ->
-                    val ativo = indice == pagerState.currentPage
-                    Box(
-                        modifier = Modifier
-                            .size(if (ativo) 8.dp else 6.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = if (ativo) 1f else 0.5f)),
-                    )
                 }
             }
         }
@@ -538,7 +578,7 @@ private fun BotaoCircular(
 /* ---------------------------- Estatísticas ---------------------------- */
 
 @Composable
-private fun CardEstatisticas(modifier: Modifier = Modifier) {
+private fun CardEstatisticas(profissional: ProfissionalDetalhesRS?, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -551,9 +591,25 @@ private fun CardEstatisticas(modifier: Modifier = Modifier) {
                 .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Estatistica(Icons.Outlined.Shield, Verde, "97%", "Reputação")
-            Estatistica(Icons.Outlined.ThumbUp, Azul, "512", "Serviços")
-            Estatistica(Icons.Outlined.Schedule, Roxo, "15 anos", "Experiência")
+            val avaliacao = profissional?.avaliacao
+            Estatistica(
+                Icons.Filled.Star,
+                EloTheme.colors.avaliacao,
+                if (avaliacao != null && (profissional.quantidadeAvaliacoes ?: 0) > 0) formatarNota(avaliacao) else "—",
+                "Avaliação",
+            )
+            Estatistica(
+                Icons.Outlined.ThumbUp,
+                Azul,
+                (profissional?.servicosConcluidos ?: 0).toString(),
+                "Serviços",
+            )
+            Estatistica(
+                Icons.Outlined.Schedule,
+                Roxo,
+                profissional?.tempoExperiencia?.let { "$it ${if (it == 1) "ano" else "anos"}" } ?: "—",
+                "Experiência",
+            )
         }
     }
 }
@@ -582,61 +638,44 @@ private fun Estatistica(icone: ImageVector, cor: Color, valor: String, rotulo: S
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SecaoSobre(modifier: Modifier = Modifier) {
+private fun SecaoSobre(apresentacao: String?, especialidades: String?, modifier: Modifier = Modifier) {
+    val tags = remember(especialidades) {
+        especialidades?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
+    }
+    if (apresentacao.isNullOrBlank() && tags.isEmpty()) return
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Sobre", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-        Text(
-            SOBRE_DEMO,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            "Clientes destacam:",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            CLIENTES_DESTACAM.forEach { destaque ->
-                Text(
-                    text = destaque,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Verde,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Verde.copy(alpha = 0.12f))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                )
+        if (!apresentacao.isNullOrBlank()) {
+            Text(
+                apresentacao,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (tags.isNotEmpty()) {
+            Text(
+                "Especialidades:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                tags.forEach { tag ->
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Verde,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Verde.copy(alpha = 0.12f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
-        BannerRequisitado()
-    }
-}
-
-@Composable
-private fun BannerRequisitado() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.AutoMirrored.Filled.TrendingUp,
-            null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            "Muito requisitado — agende logo!",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
     }
 }
 
@@ -644,7 +683,9 @@ private fun BannerRequisitado() {
 
 @Composable
 private fun SecaoServicos(
-    onAbrirServico: (Int) -> Unit,
+    servicos: List<ServicoOferecidoRS>,
+    categoria: String?,
+    onAbrirServico: (Long) -> Unit,
     onVerTodos: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -656,44 +697,52 @@ private fun SecaoServicos(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
+            if (!categoria.isNullOrBlank()) {
+                Text(
+                    text = categoria,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
+        }
+        if (servicos.isEmpty()) {
             Text(
-                text = CATEGORIA_DEMO,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                "Este profissional ainda não cadastrou serviços.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            return@Column
         }
         Text(
             stringResource(R.string.servico_descricao_valor_diferencial),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        SERVICOS.take(3).forEach { servico ->
-            CardServico(servico = servico, onClick = { onAbrirServico(servico.numero) })
+        servicos.take(3).forEachIndexed { indice, servico ->
+            CardServico(numero = indice + 1, servico = servico, onClick = { onAbrirServico(servico.id) })
         }
-        OutlinedButton(
-            onClick = onVerTodos,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Icon(Icons.Outlined.Layers, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.todos_servicos))
-            Spacer(Modifier.width(6.dp))
-            Text(
-                "(${SERVICOS.size})",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (servicos.size > 3) {
+            OutlinedButton(
+                onClick = onVerTodos,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Icon(Icons.Outlined.Layers, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.todos_servicos))
+                Spacer(Modifier.width(6.dp))
+                Text("(${servicos.size})", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
 
-/** Card compacto do perfil (img_1): número, nome, faixa de preço e seta. */
 @Composable
-private fun CardServico(servico: ServicoPro, onClick: () -> Unit) {
+private fun CardServico(numero: Int, servico: ServicoOferecidoRS, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -714,7 +763,7 @@ private fun CardServico(servico: ServicoPro, onClick: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    servico.numero.toString(),
+                    numero.toString(),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -722,15 +771,17 @@ private fun CardServico(servico: ServicoPro, onClick: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    servico.nome,
+                    servico.nome.orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    stringResource(R.string.a_partir_de, servico.precoMin),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                servico.valor?.let {
+                    Text(
+                        stringResource(R.string.a_partir_de, formatarPreco(it)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -741,9 +792,8 @@ private fun CardServico(servico: ServicoPro, onClick: () -> Unit) {
     }
 }
 
-/** Card rico de serviço (ícone, descrição, faixa de preço e diferenciais). */
 @Composable
-private fun CardServicoDisponivel(servico: ServicoPro, onClick: () -> Unit) {
+private fun CardServicoDisponivel(servico: ServicoOferecidoRS, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -773,23 +823,27 @@ private fun CardServicoDisponivel(servico: ServicoPro, onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    servico.nome,
+                    servico.nome.orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    servico.descricao,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    stringResource(R.string.a_partir_de, servico.precoMin),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                DiferenciaisResumo(servico.diferenciais)
+                servico.descricao?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                servico.valor?.let {
+                    Text(
+                        stringResource(R.string.a_partir_de, formatarPreco(it)),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                DiferenciaisResumo(servico.pontos())
             }
             Spacer(Modifier.width(8.dp))
             Icon(
@@ -801,10 +855,10 @@ private fun CardServicoDisponivel(servico: ServicoPro, onClick: () -> Unit) {
     }
 }
 
-/** Mostra os 2 primeiros diferenciais como chips e resume o resto em "+N". */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DiferenciaisResumo(diferenciais: List<String>) {
+    if (diferenciais.isEmpty()) return
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -835,10 +889,16 @@ private fun ChipDiferencial(texto: String) {
     }
 }
 
-/* ---------------------------- Avaliações (prévia) ---------------------------- */
+/* ---------------------------- Avaliações (dados reais) ---------------------------- */
 
 @Composable
-private fun SecaoAvaliacoes(onVerTodas: () -> Unit, modifier: Modifier = Modifier) {
+private fun SecaoAvaliacoes(
+    resumo: ResumoAvaliacoesRS?,
+    avaliacoes: List<AvaliacaoRS>,
+    onVerTodas: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val quantidade = resumo?.quantidade ?: 0
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -847,66 +907,106 @@ private fun SecaoAvaliacoes(onVerTodas: () -> Unit, modifier: Modifier = Modifie
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                "Ver todas",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .clickable(onClick = onVerTodas)
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                AVALIACAO_DEMO.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Estrelas(5)
+            if (avaliacoes.size > 2) {
                 Text(
-                    "$NUM_AVALIACOES avaliações · 67% positivas",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "Ver todas",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onVerTodas)
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
                 )
             }
         }
-        AVALIACOES.take(2).forEach { avaliacao ->
-            CardAvaliacaoCompacto(avaliacao)
+
+        if (quantidade == 0 && avaliacoes.isEmpty()) {
+            AvaliacoesVazio()
+            return@Column
         }
+
+        if (resumo != null && quantidade > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    formatarNota(resumo.media ?: 0.0),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Estrelas((resumo.media ?: 0.0).toInt())
+                    Text(
+                        buildString {
+                            append("$quantidade avaliações")
+                            resumo.percentualPositivas?.let { append(" · ${it.toInt()}% positivas") }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        avaliacoes.take(2).forEach { CardAvaliacao(it) }
     }
 }
 
 @Composable
-private fun CardAvaliacaoCompacto(avaliacao: AvaliacaoPro) {
+private fun AvaliacoesVazio() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Reviews,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            "Ainda não há avaliações. Seja o primeiro a avaliar depois de contratar.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun CardAvaliacao(avaliacao: AvaliacaoRS) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                AvatarPerfil(
+                    nome = avaliacao.avaliador.orEmpty(),
+                    fotoUrl = avaliacao.fotoAvaliador,
+                    tamanho = 36.dp,
+                    fonte = MaterialTheme.typography.labelMedium,
+                )
+                Spacer(Modifier.width(10.dp))
                 Text(
-                    avaliacao.autor,
+                    avaliacao.avaliador.orEmpty().ifBlank { "Cliente" },
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
+                Estrelas(avaliacao.nota ?: 0)
+            }
+            if (!avaliacao.comentario.isNullOrBlank()) {
                 Text(
-                    avaliacao.data,
-                    style = MaterialTheme.typography.bodySmall,
+                    avaliacao.comentario,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Estrelas(avaliacao.nota)
-            Text(
-                avaliacao.texto,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -914,7 +1014,14 @@ private fun CardAvaliacaoCompacto(avaliacao: AvaliacaoPro) {
 /* ---------------------------- Barra fixa: Contratar ---------------------------- */
 
 @Composable
-private fun BarraContratar(nome: String, onContratar: () -> Unit, modifier: Modifier = Modifier) {
+private fun BarraContratar(
+    nome: String,
+    precoMin: Double?,
+    avaliacao: Double?,
+    quantidadeAvaliacoes: Int,
+    onContratar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -929,23 +1036,26 @@ private fun BarraContratar(nome: String, onContratar: () -> Unit, modifier: Modi
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        stringResource(R.string.a_partir_de, FAIXA_PRECO),
+                        precoMin?.let { stringResource(R.string.a_partir_de, formatarPreco(it)) }
+                            ?: "Valores a combinar",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
-                Icon(
-                    Icons.Filled.Star,
-                    null,
-                    tint = EloTheme.colors.avaliacao,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    "$AVALIACAO_DEMO ($NUM_AVALIACOES)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                if (avaliacao != null && quantidadeAvaliacoes > 0) {
+                    Icon(
+                        Icons.Filled.Star,
+                        null,
+                        tint = EloTheme.colors.avaliacao,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${formatarNota(avaliacao)} ($quantidadeAvaliacoes)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
             Button(
                 onClick = onContratar,
@@ -954,10 +1064,7 @@ private fun BarraContratar(nome: String, onContratar: () -> Unit, modifier: Modi
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text(
-                    "Contratar ${primeiroNome(nome)}",
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Text("Contratar ${primeiroNome(nome)}", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -966,13 +1073,13 @@ private fun BarraContratar(nome: String, onContratar: () -> Unit, modifier: Modi
 /* ---------------------------- Tela: todas as avaliações ---------------------------- */
 
 @Composable
-private fun AvaliacoesScreen(nome: String, onVoltar: () -> Unit, modifier: Modifier = Modifier) {
-    var filtro by rememberSaveable(nome) { mutableStateOf<Sentimento?>(null) }
-
-    val lista = remember(filtro) {
-        if (filtro == null) AVALIACOES else AVALIACOES.filter { it.sentimento == filtro }
-    }
-
+private fun AvaliacoesScreen(
+    nome: String,
+    resumo: ResumoAvaliacoesRS?,
+    avaliacoes: List<AvaliacaoRS>,
+    onVoltar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -1007,19 +1114,20 @@ private fun AvaliacoesScreen(nome: String, onVoltar: () -> Unit, modifier: Modif
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { CardResumoAvaliacoes() }
-            item {
-                FiltrosSentimento(selecionado = filtro, onSelecionar = { filtro = it })
+            if (resumo != null && (resumo.quantidade ?: 0) > 0) {
+                item { CardResumoAvaliacoes(resumo) }
             }
-            items(lista) { avaliacao ->
-                CardAvaliacaoCompleto(avaliacao)
+            if (avaliacoes.isEmpty()) {
+                item { AvaliacoesVazio() }
+            } else {
+                items(avaliacoes, key = { it.id }) { CardAvaliacao(it) }
             }
         }
     }
 }
 
 @Composable
-private fun CardResumoAvaliacoes() {
+private fun CardResumoAvaliacoes(resumo: ResumoAvaliacoesRS) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -1035,162 +1143,34 @@ private fun CardResumoAvaliacoes() {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    AVALIACAO_DEMO.toString(),
+                    formatarNota(resumo.media ?: 0.0),
                     style = MaterialTheme.typography.displaySmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Estrelas(5)
+                Estrelas((resumo.media ?: 0.0).toInt())
                 Text(
-                    "$NUM_AVALIACOES avaliações",
+                    "${resumo.quantidade ?: 0} avaliações",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Spacer(Modifier.width(20.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                HISTOGRAMA.forEach { (estrelas, fracao) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            estrelas.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(12.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(8.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(fracao)
-                                    .height(8.dp)
-                                    .clip(CircleShape)
-                                    .background(EloTheme.colors.avaliacao),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FiltrosSentimento(selecionado: Sentimento?, onSelecionar: (Sentimento?) -> Unit) {
-    val opcoes: List<Pair<String, Sentimento?>> = listOf(
-        "Todas (${AVALIACOES.size})" to null,
-        "Positivo (${AVALIACOES.count { it.sentimento == Sentimento.Positivo }})" to Sentimento.Positivo,
-        "Neutro (${AVALIACOES.count { it.sentimento == Sentimento.Neutro }})" to Sentimento.Neutro,
-        "Negativo (${AVALIACOES.count { it.sentimento == Sentimento.Negativo }})" to Sentimento.Negativo,
-    )
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(opcoes) { (rotulo, sentimento) ->
-            val ativo = selecionado == sentimento
-            FilterChip(
-                selected = ativo,
-                onClick = { onSelecionar(sentimento) },
-                label = { Text(rotulo, fontWeight = if (ativo) FontWeight.Medium else FontWeight.Normal) },
-                shape = CircleShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = ativo,
-                    borderColor = MaterialTheme.colorScheme.outline,
-                    selectedBorderColor = Color.Transparent,
-                ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun CardAvaliacaoCompleto(avaliacao: AvaliacaoPro) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
+            resumo.percentualPositivas?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        avaliacao.autor.first().uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        avaliacao.autor,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        "${it.toInt()}% positivas",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Verde,
                     )
                     Text(
-                        avaliacao.data,
+                        "com base nas avaliações recebidas",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                SeloSentimento(avaliacao.sentimento)
-            }
-            Estrelas(avaliacao.nota)
-            Text(
-                avaliacao.texto,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.ThumbUp,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(14.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "${avaliacao.uteis} acharam útil",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }
-}
-
-@Composable
-private fun SeloSentimento(sentimento: Sentimento) {
-    val cor = when (sentimento) {
-        Sentimento.Positivo -> Verde
-        Sentimento.Neutro -> Amarelo
-        Sentimento.Negativo -> Vermelho
-    }
-    Text(
-        text = sentimento.rotulo,
-        style = MaterialTheme.typography.labelSmall,
-        color = cor,
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(cor.copy(alpha = 0.12f))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    )
 }
 
 /* ---------------------------- Fluxo: escolher serviço ---------------------------- */
@@ -1198,8 +1178,9 @@ private fun SeloSentimento(sentimento: Sentimento) {
 @Composable
 private fun EscolherServicoScreen(
     nome: String,
+    servicos: List<ServicoOferecidoRS>,
     onVoltar: () -> Unit,
-    onAbrirInfo: (Int) -> Unit,
+    onAbrirInfo: (Long) -> Unit,
     onOutroServico: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1219,8 +1200,8 @@ private fun EscolherServicoScreen(
         ) {
             item { ProHeaderCard(nome) }
             item { RotuloSecao(stringResource(R.string.servicos_disponiveis)) }
-            items(SERVICOS) { servico ->
-                CardServicoDisponivel(servico = servico, onClick = { onAbrirInfo(servico.numero) })
+            items(servicos, key = { it.id }) { servico ->
+                CardServicoDisponivel(servico = servico, onClick = { onAbrirInfo(servico.id) })
             }
             item { CardOutroServico(onClick = onOutroServico) }
         }
@@ -1274,18 +1255,18 @@ private fun CardOutroServico(onClick: () -> Unit) {
     }
 }
 
-/* ---------------------------- Fluxo: detalhes do serviço (img_4) ---------------------------- */
+/* ---------------------------- Fluxo: detalhes do serviço ---------------------------- */
 
 @Composable
 private fun DetalhesServicoScreen(
     nome: String,
-    servico: ServicoPro?,
+    servico: ServicoOferecidoRS?,
     onVoltar: () -> Unit,
     onTrocar: () -> Unit,
     onConfirmar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var descricao by rememberSaveable(servico?.numero) { mutableStateOf("") }
+    var descricao by rememberSaveable(servico?.id) { mutableStateOf("") }
     val podeConfirmar = servico != null || descricao.isNotBlank()
 
     Column(
@@ -1328,7 +1309,7 @@ private fun DetalhesServicoScreen(
 }
 
 @Composable
-private fun ServicoSelecionadoBanner(servico: ServicoPro?, onTrocar: () -> Unit) {
+private fun ServicoSelecionadoBanner(servico: ServicoOferecidoRS?, onTrocar: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1553,19 +1534,12 @@ private fun ProHeaderCard(nome: String) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    iniciais(nome),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            AvatarPerfil(
+                nome = nome,
+                fotoUrl = null,
+                tamanho = 48.dp,
+                fonte = MaterialTheme.typography.titleSmall,
+            )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1582,29 +1556,12 @@ private fun ProHeaderCard(nome: String) {
                         modifier = Modifier.size(16.dp),
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Star,
-                        null,
-                        tint = EloTheme.colors.avaliacao,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "$AVALIACAO_DEMO ($NUM_AVALIACOES)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
-            Text(
-                text = CATEGORIA_DEMO,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            Icon(
+                Icons.Outlined.WorkspacePremium,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -1641,19 +1598,16 @@ private fun Modifier.bordaTracejada(cor: Color, raio: Dp): Modifier = drawBehind
 
 /* ---------------------------- Detalhes rápidos do serviço (bottom sheet) ---------------------------- */
 
-/**
- * Abre ao tocar num serviço do perfil e mostra as principais informações
- * (descrição, faixa de preço e diferenciais), com atalho para solicitar.
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun ServicoSheet(
-    servico: ServicoPro,
+    servico: ServicoOferecidoRS,
     onFechar: () -> Unit,
     onContratar: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
+    val pontos = servico.pontos()
 
     ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
         Column(
@@ -1663,33 +1617,35 @@ private fun ServicoSheet(
                 .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Cabeçalho: número + nome + faixa de preço + recolher.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        servico.numero.toString(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                    Icon(
+                        Icons.Outlined.LocalOffer,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        servico.nome,
+                        servico.nome.orEmpty(),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        stringResource(R.string.a_partir_de, servico.precoMin),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    servico.valor?.let {
+                        Text(
+                            stringResource(R.string.a_partir_de, formatarPreco(it)),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
@@ -1704,41 +1660,46 @@ private fun ServicoSheet(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-            Text(
-                servico.descricao,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            // Faixa de valor em destaque.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            servico.descricao?.let {
                 Text(
-                    stringResource(R.string.a_partir),
+                    it,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    "R$ " + servico.precoMin,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
                 )
             }
 
-            RotuloSecao("PONTOS PRINCIPAIS")
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                servico.diferenciais.forEach { ChipDiferencial(it) }
+            servico.valor?.let { valor ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.a_partir),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "R$ " + formatarPreco(valor),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+
+            if (pontos.isNotEmpty()) {
+                RotuloSecao("PONTOS PRINCIPAIS")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    pontos.forEach { ChipDiferencial(it) }
+                }
             }
 
             Spacer(Modifier.height(4.dp))
@@ -1753,6 +1714,30 @@ private fun ServicoSheet(
             }
         }
     }
+}
+
+/* ---------------------------- Convite login ---------------------------- */
+
+@Composable
+private fun DialogPrecisaLogin(onEntrar: () -> Unit, onCancelar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        icon = {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        title = { Text(stringResource(R.string.orcar_login_titulo)) },
+        text = { Text(stringResource(R.string.orcar_login_texto)) },
+        confirmButton = {
+            Button(onClick = onEntrar) { Text(stringResource(R.string.orcar_login_entrar)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) { Text(stringResource(R.string.orcar_login_agora_nao)) }
+        },
+    )
 }
 
 /* ---------------------------- Solicitação enviada (sucesso) ---------------------------- */
@@ -1866,8 +1851,15 @@ private fun Estrelas(nota: Int) {
     }
 }
 
-private fun iniciais(nome: String): String =
-    nome.split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
+/* ---------------------------- Formatação ---------------------------- */
+
+private fun formatarPreco(valor: Double): String =
+    if (valor % 1.0 == 0.0) valor.toInt().toString() else "%.2f".format(valor).replace('.', ',')
+
+private fun formatarKm(km: Double): String {
+    val texto = if (km % 1.0 == 0.0) km.toInt().toString() else "%.1f".format(km)
+    return "${texto.replace('.', ',')} km"
+}
+
+private fun formatarNota(nota: Double): String =
+    if (nota % 1.0 == 0.0) nota.toInt().toString() else "%.1f".format(nota).replace('.', ',')
