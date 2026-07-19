@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 
 /** Categoria geral com seus serviços específicos, já pronta para a UI. */
 data class CategoriaUi(
+    val idGeral: Long,
     val nomeGeral: String,
     val descricaoIcon: String,
     val servicos: List<String>,
@@ -47,9 +48,13 @@ class CategoriaViewModel(application: Application) : AndroidViewModel(applicatio
                         it.copy(
                             categoriasRaw = lista,
                             categorias = lista.map { categoria ->
+                                val geral = categoria.categoriaEspecificaList
+                                    .find { e -> e.categoriaGeral.nmCategoria == categoria.categoriaGeral }
+                                    ?.categoriaGeral
                                 CategoriaUi(
+                                    idGeral = geral?.id ?: 0L,
                                     nomeGeral = categoria.categoriaGeral,
-                                    descricaoIcon = categoria.categoriaEspecificaList.find { e -> e.categoriaGeral.nmCategoria == categoria.categoriaGeral }?.categoriaGeral?.dsIcon ?: "Work",
+                                    descricaoIcon = geral?.dsIcon ?: "Work",
                                     servicos = categoria.categoriaEspecificaList.map { e -> e.nmCategoria },
                                 )
                             },

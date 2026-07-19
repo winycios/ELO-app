@@ -213,6 +213,8 @@ fun PerfilProfissionalScreen(
     logado: Boolean,
     onPrecisaLogin: () -> Unit,
     onVoltar: () -> Unit,
+    proId: Long = -1L,
+    servicoIdInicial: Long? = null,
     onIrParaInicio: () -> Unit = {},
     onVerPedidos: () -> Unit = {},
     modifier: Modifier = Modifier,

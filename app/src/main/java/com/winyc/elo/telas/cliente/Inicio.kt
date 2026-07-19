@@ -31,13 +31,19 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Architecture
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Cake
@@ -52,20 +58,15 @@ import androidx.compose.material.icons.outlined.DeliveryDining
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.Elderly
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.FormatPaint
 import androidx.compose.material.icons.outlined.Foundation
 import androidx.compose.material.icons.outlined.Grass
 import androidx.compose.material.icons.outlined.GridOn
-import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.HomeRepairService
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.LocalShipping
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PestControl
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Plumbing
@@ -73,13 +74,10 @@ import androidx.compose.material.icons.outlined.Pool
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material.icons.outlined.School
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.SolarPower
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.TireRepair
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Window
@@ -93,6 +91,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,75 +102,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.LaunchedEffect
+import coil.compose.AsyncImage
 import com.winyc.elo.R
 import com.winyc.elo.backend.model.endereco.EnderecoRS
 import com.winyc.elo.backend.model.endereco.linhaEndereco
+import com.winyc.elo.backend.model.search.OrdenacaoBusca
+import com.winyc.elo.backend.model.search.ProfissionalBuscaRS
+import com.winyc.elo.backend.model.search.servicoDeInteresse
 import com.winyc.elo.backend.security.PerfilSessao
+import com.winyc.elo.backend.viewModel.BuscaViewModel
 import com.winyc.elo.backend.viewModel.CategoriaUi
 import com.winyc.elo.backend.viewModel.CategoriaViewModel
+import com.winyc.elo.backend.viewModel.Localizacao
 import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
 
 
-private data class Categoria(val nome: String, val icone: ImageVector)
+typealias AbrirPerfil = (profissionalId: Long, nome: String, servicoId: Long?) -> Unit
 
-/** Profissional exibido nos carrosséis da home. */
-private data class ProHome(
-    val nome: String,
-    val categoria: String,
-    val avaliacao: Double,
-    val numAvaliacoes: Int,
-    val preco: String,
-    val distancia: String,
-    val requisitado: Boolean = false,
-)
+private data class Categoria(val id: Long, val nome: String, val icone: ImageVector)
 
-/** Grupo de especialidades em "Serviços por área". */
-private data class Area(val nome: String, val icone: ImageVector, val servicos: List<String>)
+private data class Area(val id: Long, val nome: String, val icone: ImageVector, val servicos: List<String>)
 
-/** Profissional na lista "Outros profissionais" da tela de categoria (filtrável). */
-private data class ProFiltravel(
-    val nome: String,
-    val avaliacao: Double,
-    val numAvaliacoes: Int,
-    val precoMin: Int,
-    val distanciaKm: Double,
-    val servicos: Int,
-)
-
-/** Selo de um profissional recomendado (não afetado pelos filtros). */
-private enum class Destaque(val rotulo: String, val subtitulo: String, val icone: ImageVector) {
-    MelhorEscolha("Melhor escolha", "Alta reputação e perto de você", Icons.Filled.AutoAwesome),
-    PertoPopular("Perto e popular", "Bem avaliado na sua região", Icons.Filled.Place),
-    TalentoRegiao(
-        "Talento da região",
-        "Novo na plataforma e mora pertinho",
-        Icons.Filled.WorkspacePremium
-    ),
-}
-
-private data class ProDestacado(
-    val nome: String,
-    val avaliacao: Double,
-    val numAvaliacoes: Int,
-    val distanciaKm: Double,
-    val precoMin: Int,
-    val destaque: Destaque,
-)
-
-private enum class Ordenacao(val rotulo: String) {
-    Recomendados("Recomendados"),
-    Avaliacao("Avaliação"),
-    Distancia("Distância"),
-    Preco("Preço"),
-}
+private data class CategoriaSelecionada(val id: Long, val titulo: String, val texto: String?)
 
 private enum class AvaliacaoMinima(val rotulo: String, val minimo: Double) {
     Todos("Todos", 0.0),
@@ -181,7 +141,6 @@ private enum class AvaliacaoMinima(val rotulo: String, val minimo: Double) {
 }
 
 private val VerdeDestaque = Color(0xFF12A15A)
-private val RoxoDestaque = Color(0xFF8B5CF6)
 
 private val ICONES: Map<String, ImageVector> = mapOf(
     "Bolt" to Icons.Outlined.Bolt,
@@ -228,68 +187,59 @@ fun obterIcone(nomeIcone: String?): ImageVector {
     return ICONES[nomeIcone] ?: Icons.Outlined.Work
 }
 
-private val RECOMENDADOS_HOME = listOf(
-    ProHome("Carlos", "Eletricista", 4.9, 247, "150", "2,3 km", requisitado = true),
-    ProHome("Roberto", "Encanador", 4.8, 183, "200", "3,1 km"),
-    ProHome("Ana", "Diarista", 4.9, 321, "180", "1,8 km", requisitado = true),
-)
-
-private val EM_ALTA = listOf(
-    ProHome("Sérgio", "Pintor", 4.7, 121, "160", "3,8 km"),
-    ProHome("Patrícia", "Diarista", 4.7, 198, "170", "2,5 km"),
-    ProHome("Rafael", "Eletricista", 4.7, 142, "140", "3,5 km"),
-)
-
-private val RECOMENDADOS_CATEGORIA = listOf(
-    ProDestacado("Carlos Silva", 4.9, 247, 2.3, 80, Destaque.MelhorEscolha),
-    ProDestacado("Rafael Costa", 4.7, 142, 3.5, 70, Destaque.PertoPopular),
-    ProDestacado("Diego Alves", 4.5, 32, 1.2, 60, Destaque.TalentoRegiao),
-)
-
-private val OUTROS_PROFISSIONAIS = listOf(
-    ProFiltravel("Fábio Nunes", 4.6, 64, 75, 5.8, 118),
-    ProFiltravel("Marta Silveira", 4.8, 156, 130, 5.4, 312),
-    ProFiltravel("Bruno Teixeira", 4.2, 41, 60, 1.9, 47),
-    ProFiltravel("Helena Dias", 4.9, 203, 140, 6.7, 289),
-    ProFiltravel("Igor Ramos", 3.9, 18, 55, 2.4, 22),
-)
-
 /* ============================ Tela ============================ */
 
 /** Home do cliente: busca de serviços, categorias e recomendações. */
 @Composable
 fun InicioScreen(
-    onAbrirPerfil: (String) -> Unit = {},
+    onAbrirPerfil: AbrirPerfil = { _, _, _ -> },
     onIrParaEnderecos: () -> Unit = {},
     perfil: PerfilSessao?,
     usuarioVm: UsuarioViewModel,
     modifier: Modifier = Modifier,
     vm: CategoriaViewModel = viewModel(),
+    buscaVm: BuscaViewModel = viewModel(),
 ) {
-    var categoriaAberta by rememberSaveable { mutableStateOf<String?>(null) }
+    var categoriaAberta by rememberSaveable(stateSaver = CategoriaSelecionadaSaver) {
+        mutableStateOf<CategoriaSelecionada?>(null)
+    }
     val estado by vm.estado.collectAsStateWithLifecycle()
     val usuarioEstado by usuarioVm.estado.collectAsStateWithLifecycle()
+    val homeEstado by buscaVm.home.collectAsStateWithLifecycle()
 
     LaunchedEffect(perfil?.id) { if (perfil != null) usuarioVm.carregar() }
+
+    val principal = usuarioEstado.principal
+    val localizacao = if (perfil != null) {
+        Localizacao(principal?.latitude, principal?.longitude)
+    } else {
+        Localizacao.NENHUMA
+    }
+    LaunchedEffect(localizacao) { buscaVm.carregarHome(localizacao) }
 
     BackHandler(enabled = categoriaAberta != null) { categoriaAberta = null }
 
     if (categoriaAberta == null) {
         HomeConteudo(
             categorias = estado.categorias,
-            carregando = estado.carregando,
-            erro = estado.erro,
+            carregandoCategorias = estado.carregando,
+            erroCategorias = estado.erro,
             onTentarNovamente = vm::carregar,
-            onAbrirCategoria = { categoriaAberta = it },
+            home = homeEstado,
+            onRecarregarHome = buscaVm::recarregarHome,
+            onAbrirCategoria = { selecao ->
+                buscaVm.abrirCategoria(selecao.id.takeIf { it > 0 }, selecao.titulo, selecao.texto)
+                categoriaAberta = selecao
+            },
             onAbrirPerfil = onAbrirPerfil,
             modifier = modifier,
             perfil = perfil,
-            enderecoPrincipal = usuarioEstado.principal,
+            enderecoPrincipal = principal,
             onIrParaEnderecos = onIrParaEnderecos,
         )
     } else {
         CategoriaScreen(
-            categoria = categoriaAberta!!,
+            buscaVm = buscaVm,
             onVoltar = { categoriaAberta = null },
             onAbrirPerfil = onAbrirPerfil,
             modifier = modifier,
@@ -297,24 +247,34 @@ fun InicioScreen(
     }
 }
 
+private val CategoriaSelecionadaSaver = androidx.compose.runtime.saveable.listSaver<CategoriaSelecionada?, Any?>(
+    save = { it?.let { s -> listOf(s.id, s.titulo, s.texto) } ?: emptyList() },
+    restore = {
+        if (it.isEmpty()) null
+        else CategoriaSelecionada(it[0] as Long, it[1] as String, it[2] as String?)
+    },
+)
+
 @Composable
 private fun HomeConteudo(
     categorias: List<CategoriaUi>,
-    carregando: Boolean,
-    erro: String?,
+    carregandoCategorias: Boolean,
+    erroCategorias: String?,
     onTentarNovamente: () -> Unit,
-    onAbrirCategoria: (String) -> Unit,
+    home: com.winyc.elo.backend.viewModel.BuscaHomeUi,
+    onRecarregarHome: () -> Unit,
+    onAbrirCategoria: (CategoriaSelecionada) -> Unit,
     perfil: PerfilSessao?,
     enderecoPrincipal: EnderecoRS?,
     onIrParaEnderecos: () -> Unit,
-    onAbrirPerfil: (String) -> Unit,
+    onAbrirPerfil: AbrirPerfil,
     modifier: Modifier = Modifier,
 ) {
     val tiles = remember(categorias) {
-        categorias.map { Categoria(it.nomeGeral, obterIcone(it.descricaoIcon)) }
+        categorias.map { Categoria(it.idGeral, it.nomeGeral, obterIcone(it.descricaoIcon)) }
     }
     val areas = remember(categorias) {
-        categorias.map { Area(it.nomeGeral, obterIcone(it.descricaoIcon), it.servicos) }
+        categorias.map { Area(it.idGeral, it.nomeGeral, obterIcone(it.descricaoIcon), it.servicos) }
     }
 
     LazyColumn(
@@ -339,51 +299,41 @@ private fun HomeConteudo(
 
         item {
             SecaoCategorias(
-                categorias = if (tiles.isEmpty()) tiles else tiles.subList(0, 8),
-                carregando = carregando,
-                erro = erro,
+                categorias = if (tiles.isEmpty()) tiles else tiles.subList(0, minOf(8, tiles.size)),
+                carregando = carregandoCategorias,
+                erro = erroCategorias,
                 onTentarNovamente = onTentarNovamente,
-                onAbrirCategoria = onAbrirCategoria,
+                onAbrirCategoria = { onAbrirCategoria(CategoriaSelecionada(it.id, it.nome, null)) },
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
 
         item {
-            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                SecaoHeader(
-                    icone = Icons.Outlined.AutoAwesome,
-                    titulo = "Recomendados para você",
-                    subtitulo = "Profissionais top avaliados perto de você",
-                )
-                Spacer(Modifier.height(12.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 2.dp),
-                ) {
-                    items(RECOMENDADOS_HOME) { pro ->
-                        CardRecomendado(pro, onClick = { onAbrirPerfil(pro.nome) })
-                    }
-                }
-            }
+            SecaoCarrossel(
+                icone = Icons.Outlined.AutoAwesome,
+                titulo = "Recomendados para você",
+                subtitulo = "Profissionais top avaliados perto de você",
+                profissionais = home.recomendados,
+                carregando = home.carregando,
+                erro = home.erro,
+                onTentarNovamente = onRecarregarHome,
+                emAlta = false,
+                onAbrirPerfil = onAbrirPerfil,
+            )
         }
 
         item {
-            Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                SecaoHeader(
-                    icone = Icons.Outlined.LocalFireDepartment,
-                    titulo = "Em alta na sua região",
-                    subtitulo = "Populares entre clientes próximos de você",
-                )
-                Spacer(Modifier.height(12.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 2.dp),
-                ) {
-                    items(EM_ALTA) { pro ->
-                        CardEmAlta(pro, onClick = { onAbrirPerfil(pro.nome) })
-                    }
-                }
-            }
+            SecaoCarrossel(
+                icone = Icons.Outlined.LocalFireDepartment,
+                titulo = "Em alta na sua região",
+                subtitulo = "Populares entre clientes próximos de você",
+                profissionais = home.emAlta,
+                carregando = home.carregando,
+                erro = null, // o erro já é sinalizado no carrossel acima
+                onTentarNovamente = onRecarregarHome,
+                emAlta = true,
+                onAbrirPerfil = onAbrirPerfil,
+            )
         }
 
         if (areas.isNotEmpty()) {
@@ -400,7 +350,9 @@ private fun HomeConteudo(
             items(areas) { area ->
                 AreaAccordion(
                     area = area,
-                    onAbrirServico = onAbrirCategoria,
+                    onAbrirServico = { servico ->
+                        onAbrirCategoria(CategoriaSelecionada(area.id, servico, servico))
+                    },
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
@@ -567,7 +519,7 @@ private fun SecaoCategorias(
     carregando: Boolean,
     erro: String?,
     onTentarNovamente: () -> Unit,
-    onAbrirCategoria: (String) -> Unit,
+    onAbrirCategoria: (Categoria) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -589,29 +541,7 @@ private fun SecaoCategorias(
             }
 
             categorias.isEmpty() && erro != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = erro,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "Tentar novamente",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(onClick = onTentarNovamente)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
+                BlocoErro(mensagem = erro, onTentarNovamente = onTentarNovamente)
             }
 
             else -> {
@@ -620,7 +550,7 @@ private fun SecaoCategorias(
                         linha.forEach { categoria ->
                             CategoriaTile(
                                 categoria = categoria,
-                                onClick = { onAbrirCategoria(categoria.nome) },
+                                onClick = { onAbrirCategoria(categoria) },
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -702,7 +632,65 @@ private fun SecaoHeader(icone: ImageVector, titulo: String, subtitulo: String) {
 }
 
 @Composable
-private fun CardRecomendado(pro: ProHome, onClick: () -> Unit) {
+private fun SecaoCarrossel(
+    icone: ImageVector,
+    titulo: String,
+    subtitulo: String,
+    profissionais: List<ProfissionalBuscaRS>,
+    carregando: Boolean,
+    erro: String?,
+    onTentarNovamente: () -> Unit,
+    emAlta: Boolean,
+    onAbrirPerfil: AbrirPerfil,
+) {
+    Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+        SecaoHeader(icone = icone, titulo = titulo, subtitulo = subtitulo)
+        Spacer(Modifier.height(12.dp))
+        when {
+            profissionais.isEmpty() && carregando -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(modifier = Modifier.size(28.dp)) }
+            }
+
+            profissionais.isEmpty() && erro != null -> {
+                BlocoErro(mensagem = erro, onTentarNovamente = onTentarNovamente)
+            }
+
+            profissionais.isEmpty() -> {
+                Text(
+                    text = "Nenhum profissional por aqui ainda.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
+            }
+
+            else -> {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp),
+                ) {
+                    items(profissionais, key = { it.profissionalId }) { pro ->
+                        CardProfissionalHome(
+                            pro = pro,
+                            emAlta = emAlta,
+                            onClick = {
+                                onAbrirPerfil(pro.profissionalId, pro.nome, pro.servicos.firstOrNull()?.servicoId)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardProfissionalHome(pro: ProfissionalBuscaRS, emAlta: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .width(210.dp)
@@ -711,19 +699,23 @@ private fun CardRecomendado(pro: ProHome, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        FotoPro(badgeInicio = pro.categoria)
+        FotoPro(fotoUrl = pro.fotoPerfil, badgeInicio = pro.servicos.firstOrNull()?.categoriaGeral, emAlta = emAlta)
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             NomeVerificado(pro.nome)
-            LinhaAvaliacao(pro.avaliacao, pro.numAvaliacoes)
-            Text(
-                text = stringResource(R.string.a_partir_de, pro.preco),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (pro.requisitado) {
+            LinhaAvaliacao(pro.avaliacao, pro.quantidadeAvaliacoes)
+            pro.precoInicial?.let {
+                Text(
+                    text = stringResource(R.string.a_partir_de, formatarPreco(it)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            if (emAlta) {
+                pro.distanciaKm?.let { LinhaDistancia(it) }
+            } else if (pro.servicosConcluidos > 0) {
                 Row(
                     modifier = Modifier
                         .clip(CircleShape)
@@ -739,7 +731,7 @@ private fun CardRecomendado(pro: ProHome, onClick: () -> Unit) {
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        "Requisitado",
+                        "${pro.servicosConcluidos} concluídos",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -750,47 +742,7 @@ private fun CardRecomendado(pro: ProHome, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CardEmAlta(pro: ProHome, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .width(210.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        FotoPro(badgeInicio = pro.categoria, emAlta = true)
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            NomeVerificado(pro.nome)
-            LinhaAvaliacao(pro.avaliacao, pro.numAvaliacoes)
-            Text(
-                text = stringResource(R.string.a_partir_de, pro.preco),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.LocationOn,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    pro.distancia,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FotoPro(badgeInicio: String, emAlta: Boolean = false) {
+private fun FotoPro(fotoUrl: String?, badgeInicio: String?, emAlta: Boolean = false) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -798,20 +750,31 @@ private fun FotoPro(badgeInicio: String, emAlta: Boolean = false) {
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            Icons.Outlined.Image,
-            null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-            modifier = Modifier.size(36.dp),
-        )
-        Pill(
-            texto = badgeInicio,
-            fundo = MaterialTheme.colorScheme.surface,
-            corTexto = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(10.dp),
-        )
+        if (fotoUrl.isNullOrBlank()) {
+            Icon(
+                Icons.Outlined.Image,
+                null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                modifier = Modifier.size(36.dp),
+            )
+        } else {
+            AsyncImage(
+                model = fotoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        badgeInicio?.takeIf { it.isNotBlank() }?.let {
+            Pill(
+                texto = it,
+                fundo = MaterialTheme.colorScheme.surface,
+                corTexto = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(10.dp),
+            )
+        }
         if (emAlta) {
             Pill(
                 texto = "Em alta",
@@ -868,8 +831,17 @@ private fun NomeVerificado(nome: String) {
     }
 }
 
+/** Estrelas + nº de avaliações; para quem ainda não tem nota, mostra "Novo". */
 @Composable
-private fun LinhaAvaliacao(avaliacao: Double, numAvaliacoes: Int) {
+private fun LinhaAvaliacao(avaliacao: Double?, numAvaliacoes: Int) {
+    if (avaliacao == null || numAvaliacoes == 0) {
+        Text(
+            text = "Novo na plataforma",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             Icons.Filled.Star,
@@ -879,7 +851,7 @@ private fun LinhaAvaliacao(avaliacao: Double, numAvaliacoes: Int) {
         )
         Spacer(Modifier.width(4.dp))
         Text(
-            text = avaliacao.toString(),
+            text = formatarAvaliacao(avaliacao),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -888,6 +860,52 @@ private fun LinhaAvaliacao(avaliacao: Double, numAvaliacoes: Int) {
             text = "($numAvaliacoes)",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun LinhaDistancia(km: Double) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Outlined.LocationOn,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            formatarKm(km),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** Bloco de erro reaproveitado com ação de "Tentar novamente". */
+@Composable
+private fun BlocoErro(mensagem: String, onTentarNovamente: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "Tentar novamente",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onTentarNovamente)
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }
 }
@@ -975,30 +993,17 @@ private fun AreaAccordion(
     }
 }
 
-/* ---------------------------- Categoria (filtros) ---------------------------- */
+/* ---------------------------- Categoria (resultados) ---------------------------- */
+
 @Composable
 private fun CategoriaScreen(
-    categoria: String,
+    buscaVm: BuscaViewModel,
     onVoltar: () -> Unit,
-    onAbrirPerfil: (String) -> Unit,
+    onAbrirPerfil: AbrirPerfil,
     modifier: Modifier = Modifier
 ) {
-    var filtrosAbertos by rememberSaveable(categoria) { mutableStateOf(false) }
-    var ordenacao by rememberSaveable(categoria) { mutableStateOf(Ordenacao.Recomendados) }
-    var avaliacaoMinima by rememberSaveable(categoria) { mutableStateOf(AvaliacaoMinima.Todos) }
-
-    val outros = remember(ordenacao, avaliacaoMinima) {
-        OUTROS_PROFISSIONAIS
-            .filter { it.avaliacao >= avaliacaoMinima.minimo }
-            .let { lista ->
-                when (ordenacao) {
-                    Ordenacao.Recomendados -> lista
-                    Ordenacao.Avaliacao -> lista.sortedByDescending { it.avaliacao }
-                    Ordenacao.Distancia -> lista.sortedBy { it.distanciaKm }
-                    Ordenacao.Preco -> lista.sortedBy { it.precoMin }
-                }
-            }
-    }
+    val estado by buscaVm.categoria.collectAsStateWithLifecycle()
+    var filtrosAbertos by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -1006,7 +1011,7 @@ private fun CategoriaScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         CabecalhoCategoria(
-            categoria = categoria,
+            titulo = estado.titulo,
             filtrosAbertos = filtrosAbertos,
             onVoltar = onVoltar,
             onToggleFiltros = { filtrosAbertos = !filtrosAbertos },
@@ -1019,10 +1024,10 @@ private fun CategoriaScreen(
             if (filtrosAbertos) {
                 item {
                     PainelFiltros(
-                        ordenacao = ordenacao,
-                        avaliacaoMinima = avaliacaoMinima,
-                        onOrdenacao = { ordenacao = it },
-                        onAvaliacaoMinima = { avaliacaoMinima = it },
+                        ordenacao = estado.ordenacao,
+                        avaliacaoMinima = avaliacaoMinimaDe(estado.avaliacaoMinima),
+                        onOrdenacao = buscaVm::mudarOrdenacao,
+                        onAvaliacaoMinima = { buscaVm.mudarAvaliacaoMinima(it.minimo) },
                     )
                 }
             }
@@ -1030,36 +1035,83 @@ private fun CategoriaScreen(
             item {
                 SecaoHeader(
                     icone = Icons.Outlined.AutoAwesome,
-                    titulo = "Recomendados para você",
-                    subtitulo = "Selecionados por proximidade, popularidade e oportunidade",
+                    titulo = "Profissionais",
+                    subtitulo = "Selecionados por proximidade, popularidade e avaliação",
                 )
             }
 
-            items(RECOMENDADOS_CATEGORIA) { pro ->
-                CardDestacado(pro, onClick = { onAbrirPerfil(pro.nome) })
-            }
-
-            item {
-                Text(
-                    text = "Outros profissionais (${outros.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-
-            if (outros.isEmpty()) {
-                item {
-                    Text(
-                        text = "Nenhum profissional atende a esse filtro.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
+            when {
+                estado.profissionais.isEmpty() && estado.carregando -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 40.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { CircularProgressIndicator() }
+                    }
                 }
-            } else {
-                items(outros) { pro ->
-                    CardOutro(pro, onClick = { onAbrirPerfil(pro.nome) })
+
+                estado.profissionais.isEmpty() && estado.erro != null -> {
+                    item { BlocoErro(mensagem = estado.erro!!, onTentarNovamente = buscaVm::tentarNovamenteCategoria) }
+                }
+
+                estado.profissionais.isEmpty() -> {
+                    item {
+                        Text(
+                            text = "Nenhum profissional atende a esses filtros.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                    }
+                }
+
+                else -> {
+                    item {
+                        Text(
+                            text = "${estado.total} profissional(is) encontrado(s)",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    items(estado.profissionais, key = { it.profissionalId }) { pro ->
+                        CardProfissionalBusca(
+                            pro = pro,
+                            onClick = {
+                                onAbrirPerfil(
+                                    pro.profissionalId,
+                                    pro.nome,
+                                    pro.servicoDeInteresse(estado.categoriaId),
+                                )
+                            },
+                        )
+                    }
+                    if (estado.temMais) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (estado.carregandoMais) {
+                                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                                } else {
+                                    Text(
+                                        text = "Carregar mais",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .clickable(onClick = buscaVm::carregarMais)
+                                            .background(MaterialTheme.colorScheme.primaryContainer)
+                                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1068,7 +1120,7 @@ private fun CategoriaScreen(
 
 @Composable
 private fun CabecalhoCategoria(
-    categoria: String,
+    titulo: String,
     filtrosAbertos: Boolean,
     onVoltar: () -> Unit,
     onToggleFiltros: () -> Unit,
@@ -1107,7 +1159,7 @@ private fun CabecalhoCategoria(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                categoria,
+                titulo,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -1132,9 +1184,9 @@ private fun CabecalhoCategoria(
 
 @Composable
 private fun PainelFiltros(
-    ordenacao: Ordenacao,
+    ordenacao: OrdenacaoBusca,
     avaliacaoMinima: AvaliacaoMinima,
-    onOrdenacao: (Ordenacao) -> Unit,
+    onOrdenacao: (OrdenacaoBusca) -> Unit,
     onAvaliacaoMinima: (AvaliacaoMinima) -> Unit,
 ) {
     Card(
@@ -1153,7 +1205,7 @@ private fun PainelFiltros(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Ordenacao.entries) { op ->
+                items(OrdenacaoBusca.entries) { op ->
                     ChipFiltro(
                         rotulo = op.rotulo,
                         selecionado = op == ordenacao,
@@ -1202,99 +1254,9 @@ private fun ChipFiltro(rotulo: String, selecionado: Boolean, onClick: () -> Unit
     )
 }
 
+/** Card de profissional na lista de resultados de uma categoria. */
 @Composable
-private fun corDestaque(destaque: Destaque): Color = when (destaque) {
-    Destaque.MelhorEscolha -> MaterialTheme.colorScheme.primary
-    Destaque.PertoPopular -> VerdeDestaque
-    Destaque.TalentoRegiao -> RoxoDestaque
-}
-
-@Composable
-private fun CardDestacado(pro: ProDestacado, onClick: () -> Unit) {
-    val cor = corDestaque(pro.destaque)
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, cor),
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FotoQuadrada()
-            Spacer(Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        pro.nome,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        Icons.Filled.Verified,
-                        "Verificado",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-                Pill(
-                    texto = pro.destaque.rotulo,
-                    fundo = cor,
-                    corTexto = Color.White,
-                    icone = pro.destaque.icone,
-                )
-                Text(
-                    pro.destaque.subtitulo,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Star,
-                        null,
-                        tint = EloTheme.colors.avaliacao,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        "${pro.avaliacao} (${pro.numAvaliacoes})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Icon(
-                        Icons.Outlined.LocationOn,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        formatarKm(pro.distanciaKm),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.a_partir_de, pro.precoMin),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CardOutro(pro: ProFiltravel, onClick: () -> Unit) {
+private fun CardProfissionalBusca(pro: ProfissionalBuscaRS, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1307,82 +1269,43 @@ private fun CardOutro(pro: ProFiltravel, onClick: () -> Unit) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FotoQuadrada()
+            FotoQuadrada(pro.fotoPerfil)
             Spacer(Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                NomeVerificado(pro.nome)
+                LinhaAvaliacao(pro.avaliacao, pro.quantidadeAvaliacoes)
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    pro.precoInicial?.let {
+                        Text(
+                            text = stringResource(R.string.a_partir_de, formatarPreco(it)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    pro.distanciaKm?.let { LinhaDistancia(it) }
+                }
+                if (pro.servicos.isNotEmpty()) {
                     Text(
-                        pro.nome,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        Icons.Filled.Verified,
-                        "Verificado",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(15.dp)
+                        text = "${pro.servicos.size} serviço(s)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Star,
-                        null,
-                        tint = EloTheme.colors.avaliacao,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        pro.avaliacao.toString(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "(${pro.numAvaliacoes} avaliações)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.a_partir_de, pro.precoMin),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Icon(
-                        Icons.Outlined.LocationOn,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        formatarKm(pro.distanciaKm),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = "${pro.servicos} serviços",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                )
             }
         }
     }
 }
 
 @Composable
-private fun FotoQuadrada() {
+private fun FotoQuadrada(fotoUrl: String?) {
     Box(
         modifier = Modifier
             .size(72.dp)
@@ -1390,13 +1313,36 @@ private fun FotoQuadrada() {
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            Icons.Outlined.Image,
-            null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-            modifier = Modifier.size(28.dp),
-        )
+        if (fotoUrl.isNullOrBlank()) {
+            Icon(
+                Icons.Outlined.Image,
+                null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                modifier = Modifier.size(28.dp),
+            )
+        } else {
+            AsyncImage(
+                model = fotoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 
-private fun formatarKm(km: Double): String = "${km.toString().replace('.', ',')} km"
+/* ---------------------------- Formatação ---------------------------- */
+
+private fun avaliacaoMinimaDe(valor: Double): AvaliacaoMinima =
+    AvaliacaoMinima.entries.lastOrNull { valor >= it.minimo } ?: AvaliacaoMinima.Todos
+
+private fun formatarKm(km: Double): String {
+    val texto = if (km % 1.0 == 0.0) km.toInt().toString() else "%.1f".format(km)
+    return "${texto.replace('.', ',')} km"
+}
+
+private fun formatarPreco(preco: Double): String =
+    if (preco % 1.0 == 0.0) preco.toInt().toString() else "%.2f".format(preco).replace('.', ',')
+
+private fun formatarAvaliacao(avaliacao: Double): String =
+    if (avaliacao % 1.0 == 0.0) avaliacao.toInt().toString() else "%.1f".format(avaliacao).replace('.', ',')

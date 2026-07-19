@@ -1,6 +1,7 @@
 package com.winyc.elo.backend.retroFit
 
 import com.winyc.elo.backend.controller.auth.AuthInterface
+import com.winyc.elo.backend.controller.busca.BuscaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaRepository
 import com.winyc.elo.backend.controller.profissional.ProfissionalInterface
@@ -71,6 +72,9 @@ object RetroFitService {
     fun authConnection(): AuthInterface = authApi
 
     fun categoriaApi(): CategoriaInterface = authRetrofit.create(CategoriaInterface::class.java)
+
+    // Endpoint público: funciona logado ou deslogado, sem enviar token.
+    fun buscaApi(): BuscaInterface = authRetrofit.create(BuscaInterface::class.java)
 
     private val viaCepRetrofit: Retrofit by lazy {
         val client = OkHttpClient.Builder()

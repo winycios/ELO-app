@@ -187,6 +187,9 @@
     <string name="pro_disponivel_titulo">Disponível para novos serviços</string>
     <string name="pro_disponivel_sub_on">Aparecendo nas buscas</string>
     <string name="pro_disponivel_sub_off">Oculto nas buscas</string>
+    <string name="pro_disponivel_bloqueado">Para aparecer nas buscas, complete seu cadastro:</string>
+    <string name="pro_disponivel_falta_area">Defina sua área de atendimento</string>
+    <string name="pro_disponivel_falta_servico">Cadastre ao menos um serviço</string>
     <string name="pro_meus_servicos">Meus serviços</string>
     <string name="pro_contagem_servicos">%1$d categoria · %2$d serviços</string>
     <string name="pro_badge_verificado">Verificado</string>

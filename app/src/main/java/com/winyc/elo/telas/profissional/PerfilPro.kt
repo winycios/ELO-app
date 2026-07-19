@@ -224,12 +224,24 @@ fun PerfilProScreen(
                 onEditar = { sheet = SheetPro.EditarPerfil })
         }
         item {
+            // Só pode ficar disponível (aparecer nas buscas) quem tem destino
+            // (área de atendimento com coordenadas) e ao menos um serviço.
+            val temArea = perfilRs?.areaAtendimentoRS
+                ?.let { it.nrLatitude != null && it.nrLongitude != null } == true
+            val temServico = servicoEstado.servicos.isNotEmpty()
+            val carregandoRequisitos = servicoEstado.carregando || servicoEstado.carregandoPerfil
             CardDisponibilidade(
                 disponivel = disponivel,
+                temArea = temArea,
+                temServico = temServico,
+                carregando = carregandoRequisitos,
                 onMudar = { novo ->
+                    if (novo && !(temArea && temServico)) return@CardDisponibilidade
                     disponivel = novo
                     servicoVm.definirDisponibilidade(novo) { ok -> if (!ok) disponivel = !novo }
                 },
+                onResolverArea = { sheet = SheetPro.EditarPerfil },
+                onResolverServico = { sheet = SheetPro.MeusServicos },
             )
         }
         item {
@@ -407,35 +419,103 @@ private fun EstatItem(valor: String, rotulo: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun CardDisponibilidade(disponivel: Boolean, onMudar: (Boolean) -> Unit) {
+private fun CardDisponibilidade(
+    disponivel: Boolean,
+    temArea: Boolean,
+    temServico: Boolean,
+    carregando: Boolean,
+    onMudar: (Boolean) -> Unit,
+    onResolverArea: () -> Unit,
+    onResolverServico: () -> Unit,
+) {
+    val podeHabilitar = temArea && temServico
+    // Já disponível pode sempre desligar; para ligar, exige cadastro completo.
+    val switchHabilitado = !carregando && (disponivel || podeHabilitar)
+    val mostrarPendencias = !carregando && !podeHabilitar && !disponivel
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.pro_disponivel_titulo),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.pro_disponivel_titulo),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        stringResource(
+                            if (disponivel) R.string.pro_disponivel_sub_on else R.string.pro_disponivel_sub_off
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = disponivel,
+                    onCheckedChange = onMudar,
+                    enabled = switchHabilitado,
                 )
+            }
+
+            if (mostrarPendencias) {
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    stringResource(
-                        if (disponivel) R.string.pro_disponivel_sub_on else R.string.pro_disponivel_sub_off
-                    ),
+                    stringResource(R.string.pro_disponivel_bloqueado),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(8.dp))
+                if (!temArea) {
+                    PendenciaDisponibilidade(
+                        icone = Icons.Outlined.LocationOn,
+                        texto = stringResource(R.string.pro_disponivel_falta_area),
+                        onClick = onResolverArea,
+                    )
+                }
+                if (!temServico) {
+                    if (!temArea) Spacer(Modifier.height(8.dp))
+                    PendenciaDisponibilidade(
+                        icone = Icons.Outlined.WorkOutline,
+                        texto = stringResource(R.string.pro_disponivel_falta_servico),
+                        onClick = onResolverServico,
+                    )
+                }
             }
-            Switch(checked = disponivel, onCheckedChange = onMudar)
         }
+    }
+}
+
+/** Item de pendência clicável que leva o Pro à tela que resolve o requisito. */
+@Composable
+private fun PendenciaDisponibilidade(icone: ImageVector, texto: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(EloTheme.colors.coral.copy(alpha = 0.10f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icone, null, tint = EloTheme.colors.coral, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            texto,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
