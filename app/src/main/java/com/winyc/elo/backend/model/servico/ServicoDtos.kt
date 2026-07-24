@@ -40,7 +40,7 @@ data class ServicoDisponibilidadeRS(
     val hrFim: String? = null,
 )
 
-data class ServicoCreateDTO(
+data class ServicoCreateRQ(
     val id: Long? = null,
     val idCategoriaEspecifica: Long,
     val dsDescricao: String,
@@ -48,18 +48,18 @@ data class ServicoCreateDTO(
     val dsTag: String,
     val tempoExperiencia: Int,
     val tpExecucao: String,
-    val servicoDisponibilidadeCreateDTOList: List<ServicoDisponibilidadeCreateDTO> = emptyList(),
-    val servicoImagemCreateDTOList: List<ServicoImagemCreateDTO> = emptyList(),
+    val servicoDisponibilidadeCreateRQList: List<ServicoDisponibilidadeCreateRQ> = emptyList(),
+    val servicoImagemCreateRQList: List<ServicoImagemCreateRQ> = emptyList(),
 )
 
-data class ServicoDisponibilidadeCreateDTO(
+data class ServicoDisponibilidadeCreateRQ(
     val id: Long? = null,
     val diaSemana: Int,
     val hrInicio: String,
     val hrFim: String,
 )
 
-data class ServicoImagemCreateDTO(
+data class ServicoImagemCreateRQ(
     val id: Long? = null,
     val url: String,
     val ordem: Int,

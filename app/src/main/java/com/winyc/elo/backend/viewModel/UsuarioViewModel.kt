@@ -4,9 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.usuario.UsuarioRepository
-import com.winyc.elo.backend.model.endereco.EnderecoCreateDTO
+import com.winyc.elo.backend.model.endereco.EnderecoCreateRQ
 import com.winyc.elo.backend.model.endereco.EnderecoRS
-import com.winyc.elo.backend.model.usuario.UsuarioEditDTO
+import com.winyc.elo.backend.model.usuario.UsuarioEditRQ
 import com.winyc.elo.backend.model.usuario.UsuarioRS
 import com.winyc.elo.backend.security.TokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,7 +80,7 @@ class UsuarioViewModel(application: Application) : AndroidViewModel(application)
     ) {
         if (_estado.value.salvando) return
         _estado.update { it.copy(salvando = true, erro = null) }
-        val dto = UsuarioEditDTO(
+        val dto = UsuarioEditRQ(
             id = _estado.value.perfil?.id,
             nome = nome.trim(),
             sobrenome = sobrenome.trim(),
@@ -101,7 +101,7 @@ class UsuarioViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun salvarEndereco(dto: EnderecoCreateDTO, onResultado: (Boolean) -> Unit = {}) {
+    fun salvarEndereco(dto: EnderecoCreateRQ, onResultado: (Boolean) -> Unit = {}) {
         if (_estado.value.salvando) return
         _estado.update { it.copy(salvando = true, erro = null) }
         viewModelScope.launch {

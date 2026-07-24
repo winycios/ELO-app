@@ -21,14 +21,14 @@ data class AreaAtendimentoRS(
     val nmEstado: String? = null,
 )
 
-data class ProfissionalUpdateDTO(
+data class ProfissionalUpdateRQ(
     val apresentacao: String?,
     val uriPerfil: String?,
     val especialidades: String?,
-    val areaAtendimentoUpdateDTO: AreaAtendimentoUpdateDTO,
+    val areaAtendimentoUpdateRQ: AreaAtendimentoUpdateRQ,
 )
 
-data class AreaAtendimentoUpdateDTO(
+data class AreaAtendimentoUpdateRQ(
     val id: Long? = null,
     val nrLatitude: Double,
     val nrLongitude: Double,

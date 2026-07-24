@@ -2,11 +2,11 @@ package com.winyc.elo.backend.controller.profissional
 
 import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.profissional.ProfissionalRS
-import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
-import com.winyc.elo.backend.model.servico.ServicoCreateDTO
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateRQ
+import com.winyc.elo.backend.model.servico.ServicoCreateRQ
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
-import com.winyc.elo.backend.model.vitrine.PublicacaoCreateDTO
+import com.winyc.elo.backend.model.vitrine.PublicacaoCreateRQ
 import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
 import retrofit2.Call
 import retrofit2.http.Body
@@ -28,13 +28,13 @@ interface ProfissionalInterface {
     fun buscarPerfil(): Call<ProfissionalRS>
 
     @PUT(PATH + "perfil")
-    fun salvarPerfil(@Body dto: ProfissionalUpdateDTO): Call<ProfissionalRS>
+    fun salvarPerfil(@Body dto: ProfissionalUpdateRQ): Call<ProfissionalRS>
 
     @PATCH(PATH + "disponivel/{isAtivar}")
     fun habilitarDisponibilidade(@Path("isAtivar") isAtivar: Boolean): Call<Void>
 
     @POST(PATH + "servico")
-    fun salvarServico(@Body dto: ServicoCreateDTO): Call<ServicoRS>
+    fun salvarServico(@Body dto: ServicoCreateRQ): Call<ServicoRS>
 
     @GET(PATH + "servico/listar")
     fun listarServicos(): Call<List<ServicoListaRS>>
@@ -52,7 +52,7 @@ interface ProfissionalInterface {
     ): Call<CursorPageRS<PublicacaoFeedRS>>
 
     @POST("vitrine/" + PATH + "publicacao")
-    fun salvarPublicacao(@Body dto: PublicacaoCreateDTO): Call<PublicacaoFeedRS>
+    fun salvarPublicacao(@Body dto: PublicacaoCreateRQ): Call<PublicacaoFeedRS>
 
     @DELETE("vitrine/" + PATH + "publicacao/{id}")
     fun desativarPublicacao(@Path("id") id: Long): Call<Void>

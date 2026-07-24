@@ -5,8 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.profissional.ProfissionalRepository
 import com.winyc.elo.backend.model.profissional.ProfissionalRS
-import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
-import com.winyc.elo.backend.model.servico.ServicoCreateDTO
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateRQ
+import com.winyc.elo.backend.model.servico.ServicoCreateRQ
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
 import com.winyc.elo.backend.security.TokenStore
@@ -81,7 +81,7 @@ class ProfissionalViewModel(application: Application) : AndroidViewModel(applica
     }
 
     /** Atualiza os dados públicos do profissional (apresentação, foto, especialidades e área). */
-    fun salvarPerfil(dto: ProfissionalUpdateDTO, onResultado: (Boolean) -> Unit = {}) {
+    fun salvarPerfil(dto: ProfissionalUpdateRQ, onResultado: (Boolean) -> Unit = {}) {
         if (_estado.value.salvandoPerfil) return
         _estado.update { it.copy(salvandoPerfil = true, erro = null) }
         viewModelScope.launch {
@@ -110,7 +110,7 @@ class ProfissionalViewModel(application: Application) : AndroidViewModel(applica
     }
 
     /** Cria ou edita (quando o DTO traz `id`) e recarrega a lista ao concluir. */
-    fun salvarServico(dto: ServicoCreateDTO, onResultado: (Boolean) -> Unit = {}) {
+    fun salvarServico(dto: ServicoCreateRQ, onResultado: (Boolean) -> Unit = {}) {
         if (_estado.value.salvando) return
         _estado.update { it.copy(salvando = true, erro = null) }
         viewModelScope.launch {

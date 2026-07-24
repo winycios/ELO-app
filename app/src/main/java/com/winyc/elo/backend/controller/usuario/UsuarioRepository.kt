@@ -2,9 +2,9 @@ package com.winyc.elo.backend.controller.usuario
 
 import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
-import com.winyc.elo.backend.model.endereco.EnderecoCreateDTO
+import com.winyc.elo.backend.model.endereco.EnderecoCreateRQ
 import com.winyc.elo.backend.model.endereco.EnderecoRS
-import com.winyc.elo.backend.model.usuario.UsuarioEditDTO
+import com.winyc.elo.backend.model.usuario.UsuarioEditRQ
 import com.winyc.elo.backend.model.usuario.UsuarioRS
 import com.winyc.elo.backend.retroFit.RetroFitService
 import com.winyc.elo.backend.security.TokenStore
@@ -23,7 +23,7 @@ class UsuarioRepository(
     suspend fun pegarPerfil(): Result<UsuarioRS> =
         executar { verificaErro(api.pegarPerfil().execute()) }
 
-    suspend fun editarPerfil(dto: UsuarioEditDTO): Result<UsuarioRS> =
+    suspend fun editarPerfil(dto: UsuarioEditRQ): Result<UsuarioRS> =
         executar { verificaErro(api.editarPerfil(dto).execute()) }
 
     suspend fun listarEnderecos(): Result<List<EnderecoRS>> =
@@ -38,7 +38,7 @@ class UsuarioRepository(
             if (resposta.code() == 204) null else verificaErro(resposta)
         }
 
-    suspend fun salvarEndereco(dto: EnderecoCreateDTO): Result<EnderecoRS> =
+    suspend fun salvarEndereco(dto: EnderecoCreateRQ): Result<EnderecoRS> =
         executar { verificaErro(api.salvarEndereco(dto).execute()) }
 
     suspend fun definirPrincipal(id: Long): Result<Unit> =

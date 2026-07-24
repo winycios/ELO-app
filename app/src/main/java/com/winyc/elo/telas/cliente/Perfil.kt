@@ -89,7 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.winyc.elo.R
 import com.winyc.elo.backend.controller.viacep.ViaCepRepository
-import com.winyc.elo.backend.model.endereco.EnderecoCreateDTO
+import com.winyc.elo.backend.model.endereco.EnderecoCreateRQ
 import com.winyc.elo.backend.model.endereco.EnderecoRS
 import com.winyc.elo.backend.model.endereco.linhaEndereco
 import com.winyc.elo.backend.model.usuario.UsuarioRS
@@ -1058,7 +1058,7 @@ private fun EditarEnderecoScreen(
     textoBotao: String,
     salvando: Boolean,
     erro: String?,
-    onSalvar: (EnderecoCreateDTO, (Boolean) -> Unit) -> Unit,
+    onSalvar: (EnderecoCreateRQ, (Boolean) -> Unit) -> Unit,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1222,7 +1222,7 @@ private fun EditarEnderecoScreen(
             item {
                 Button(
                     onClick = {
-                        val dto = EnderecoCreateDTO(
+                        val dto = EnderecoCreateRQ(
                             id = endereco?.id,
                             nmApelido = nome.trim(),
                             tipoEndereco = tipo.valorApi,

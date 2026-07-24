@@ -96,10 +96,10 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import com.winyc.elo.R
 import com.winyc.elo.backend.model.categoria.CategoriaRS
-import com.winyc.elo.backend.model.profissional.AreaAtendimentoUpdateDTO
-import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
-import com.winyc.elo.backend.model.servico.ServicoCreateDTO
-import com.winyc.elo.backend.model.servico.ServicoDisponibilidadeCreateDTO
+import com.winyc.elo.backend.model.profissional.AreaAtendimentoUpdateRQ
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateRQ
+import com.winyc.elo.backend.model.servico.ServicoCreateRQ
+import com.winyc.elo.backend.model.servico.ServicoDisponibilidadeCreateRQ
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
 import com.winyc.elo.backend.viewModel.ProfissionalUi
@@ -116,11 +116,11 @@ private fun fecharSheet(scope: CoroutineScope, sheetState: SheetState, aoFim: ()
     }
 }
 
-private fun PerfilPublico.paraUpdateDTO() = ProfissionalUpdateDTO(
+private fun PerfilPublico.paraUpdateDTO() = ProfissionalUpdateRQ(
     apresentacao = bio.trim().take(200),
     uriPerfil = fotoUrl.trim().take(200),
     especialidades = tags.joinToString("; ").take(200),
-    areaAtendimentoUpdateDTO = AreaAtendimentoUpdateDTO(
+    areaAtendimentoUpdateRQ = AreaAtendimentoUpdateRQ(
         nrLatitude = area.latitude,
         nrLongitude = area.longitude,
         nrRaio = area.raioKm,
@@ -673,7 +673,7 @@ private fun FormServico(
     categorias: List<CategoriaRS>,
     salvando: Boolean,
     onVoltar: () -> Unit,
-    onSalvar: (ServicoCreateDTO) -> Unit,
+    onSalvar: (ServicoCreateRQ) -> Unit,
 ) {
     val context = LocalContext.current
     val editando = detalhe != null
@@ -852,7 +852,7 @@ private fun FormServico(
                     val idEsp = idEspecifica ?: return@Button
                     val exec = tipoExec ?: return@Button
                     onSalvar(
-                        ServicoCreateDTO(
+                        ServicoCreateRQ(
                             id = detalhe?.id,
                             idCategoriaEspecifica = idEsp,
                             dsDescricao = descricao.trim(),
@@ -860,16 +860,16 @@ private fun FormServico(
                             dsTag = pontos.joinToString("; ").ifBlank { nomeEspecifica ?: "Serviço" },
                             tempoExperiencia = tempoExpe.toIntOrNull() ?: 0,
                             tpExecucao = exec.valorApi,
-                            servicoDisponibilidadeCreateDTOList = dias.filter { it.ativo }.flatMap { d ->
+                            servicoDisponibilidadeCreateRQList = dias.filter { it.ativo }.flatMap { d ->
                                 d.intervalos.map {
-                                    ServicoDisponibilidadeCreateDTO(
+                                    ServicoDisponibilidadeCreateRQ(
                                         diaSemana = d.dia.ordinal,
                                         hrInicio = normalizarHora(it.inicio),
                                         hrFim = normalizarHora(it.fim),
                                     )
                                 }
                             },
-                            servicoImagemCreateDTOList = emptyList(),
+                            servicoImagemCreateRQList = emptyList(),
                         )
                     )
                 },

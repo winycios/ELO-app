@@ -39,7 +39,7 @@ fun EnderecoRS.linhaEndereco(): String {
     ).joinToString(" • ")
 }
 
-data class EnderecoCreateDTO(
+data class EnderecoCreateRQ(
     val id: Long?,
     val nmApelido: String,
     val tipoEndereco: String,

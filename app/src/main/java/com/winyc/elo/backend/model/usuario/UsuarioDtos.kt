@@ -11,7 +11,7 @@ data class UsuarioRS(
     val avaliacaoGeral: Double? = null,
 )
 
-data class UsuarioEditDTO(
+data class UsuarioEditRQ(
     val id: Long?,
     val nome: String,
     val sobrenome: String,

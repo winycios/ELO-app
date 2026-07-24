@@ -80,7 +80,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.winyc.elo.backend.model.vitrine.ComentarioRS
 import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
-import com.winyc.elo.backend.model.vitrine.PublicacaoImagemDTO
+import com.winyc.elo.backend.model.vitrine.PublicacaoImagemRQ
 import com.winyc.elo.backend.model.vitrine.PublicacaoImagemRS
 import com.winyc.elo.backend.viewModel.CategoriaViewModel
 import com.winyc.elo.backend.viewModel.ComentariosPubUi
@@ -276,7 +276,7 @@ private const val MAX_DESCRICAO = 200
 private fun ComporPublicacao(
     servicos: List<ServicoOpcao>,
     publicando: Boolean,
-    onPublicar: (idCategoriaEspecifica: Long, descricao: String, imagens: List<PublicacaoImagemDTO>, onSucesso: () -> Unit) -> Unit,
+    onPublicar: (idCategoriaEspecifica: Long, descricao: String, imagens: List<PublicacaoImagemRQ>, onSucesso: () -> Unit) -> Unit,
 ) {
     var servico by rememberSaveable(servicos) { mutableStateOf(servicos.first().idCategoriaEspecifica) }
     var descricao by rememberSaveable { mutableStateOf("") }
@@ -389,7 +389,7 @@ private fun ComporPublicacao(
                     val imagens = imagensUrl
                         .map { it.trim() }
                         .filter { it.isNotBlank() }
-                        .mapIndexed { i, u -> PublicacaoImagemDTO(urlImagem = u, nrOrdem = i) }
+                        .mapIndexed { i, u -> PublicacaoImagemRQ(urlImagem = u, nrOrdem = i) }
                     onPublicar(selecionado.idCategoriaEspecifica, descricao, imagens) {
                         descricao = ""
                         imagensUrl.clear()

@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.profissional.ProfissionalRepository
 import com.winyc.elo.backend.controller.vitrine.VitrineRepository
 import com.winyc.elo.backend.model.vitrine.ComentarioRS
-import com.winyc.elo.backend.model.vitrine.PublicacaoCreateDTO
+import com.winyc.elo.backend.model.vitrine.PublicacaoCreateRQ
 import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
-import com.winyc.elo.backend.model.vitrine.PublicacaoImagemDTO
+import com.winyc.elo.backend.model.vitrine.PublicacaoImagemRQ
 import com.winyc.elo.backend.security.TokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -123,15 +123,15 @@ class PublicacaoViewModel(application: Application) : AndroidViewModel(applicati
     fun publicar(
         idCategoriaEspecifica: Long,
         descricao: String,
-        imagens: List<PublicacaoImagemDTO> = emptyList(),
+        imagens: List<PublicacaoImagemRQ> = emptyList(),
         onResultado: (Boolean) -> Unit = {},
     ) {
         if (_estado.value.publicando || descricao.isBlank()) return
         _estado.update { it.copy(publicando = true, erro = null) }
-        val dto = PublicacaoCreateDTO(
+        val dto = PublicacaoCreateRQ(
             idCategoriaEspecifica = idCategoriaEspecifica,
             dsPublicacao = descricao.trim(),
-            publicacaoImagemDTOList = imagens,
+            publicacaoImagemRQList = imagens,
         )
         viewModelScope.launch {
             repository.salvarPublicacao(dto)

@@ -1,8 +1,8 @@
 package com.winyc.elo.backend.controller.usuario
 
-import com.winyc.elo.backend.model.endereco.EnderecoCreateDTO
+import com.winyc.elo.backend.model.endereco.EnderecoCreateRQ
 import com.winyc.elo.backend.model.endereco.EnderecoRS
-import com.winyc.elo.backend.model.usuario.UsuarioEditDTO
+import com.winyc.elo.backend.model.usuario.UsuarioEditRQ
 import com.winyc.elo.backend.model.usuario.UsuarioRS
 import retrofit2.Call
 import retrofit2.http.Body
@@ -23,10 +23,10 @@ interface UsuarioInterface {
     fun pegarPerfil(): Call<UsuarioRS>
 
     @PUT(PATH + "perfil")
-    fun editarPerfil(@Body dto: UsuarioEditDTO): Call<UsuarioRS>
+    fun editarPerfil(@Body dto: UsuarioEditRQ): Call<UsuarioRS>
 
     @POST(PATH + "endereco")
-    fun salvarEndereco(@Body dto: EnderecoCreateDTO): Call<EnderecoRS>
+    fun salvarEndereco(@Body dto: EnderecoCreateRQ): Call<EnderecoRS>
 
     @GET(PATH + "endereco/principal")
     fun buscarPrincipal(): Call<EnderecoRS>

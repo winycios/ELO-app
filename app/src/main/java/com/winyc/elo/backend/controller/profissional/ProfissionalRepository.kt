@@ -4,11 +4,11 @@ import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
 import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.profissional.ProfissionalRS
-import com.winyc.elo.backend.model.profissional.ProfissionalUpdateDTO
-import com.winyc.elo.backend.model.servico.ServicoCreateDTO
+import com.winyc.elo.backend.model.profissional.ProfissionalUpdateRQ
+import com.winyc.elo.backend.model.servico.ServicoCreateRQ
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
-import com.winyc.elo.backend.model.vitrine.PublicacaoCreateDTO
+import com.winyc.elo.backend.model.vitrine.PublicacaoCreateRQ
 import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
 import com.winyc.elo.backend.retroFit.RetroFitService
 import com.winyc.elo.backend.security.TokenStore
@@ -27,7 +27,7 @@ class ProfissionalRepository(
     suspend fun buscarPerfil(): Result<ProfissionalRS> =
         executar { verificaErro(api.buscarPerfil().execute()) }
 
-    suspend fun salvarPerfil(dto: ProfissionalUpdateDTO): Result<ProfissionalRS> =
+    suspend fun salvarPerfil(dto: ProfissionalUpdateRQ): Result<ProfissionalRS> =
         executar { verificaErro(api.salvarPerfil(dto).execute()) }
 
     suspend fun habilitarDisponibilidade(isAtivar: Boolean): Result<Unit> =
@@ -42,7 +42,7 @@ class ProfissionalRepository(
     suspend fun buscarServico(id: Long): Result<ServicoRS> =
         executar { verificaErro(api.buscarServico(id).execute()) }
 
-    suspend fun salvarServico(dto: ServicoCreateDTO): Result<ServicoRS> =
+    suspend fun salvarServico(dto: ServicoCreateRQ): Result<ServicoRS> =
         executar { verificaErro(api.salvarServico(dto).execute()) }
 
     suspend fun desativarServico(id: Long): Result<Unit> =
@@ -55,7 +55,7 @@ class ProfissionalRepository(
             else verificaErro(resposta)
         }
 
-    suspend fun salvarPublicacao(dto: PublicacaoCreateDTO): Result<PublicacaoFeedRS> =
+    suspend fun salvarPublicacao(dto: PublicacaoCreateRQ): Result<PublicacaoFeedRS> =
         executar { verificaErro(api.salvarPublicacao(dto).execute()) }
 
     suspend fun desativarPublicacao(id: Long): Result<Unit> =
