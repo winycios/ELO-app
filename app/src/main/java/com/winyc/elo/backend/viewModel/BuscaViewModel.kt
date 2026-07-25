@@ -25,6 +25,7 @@ data class BuscaHomeUi(
     val recomendados: List<ProfissionalBuscaRS> = emptyList(),
     val emAlta: List<ProfissionalBuscaRS> = emptyList(),
     val carregando: Boolean = false,
+    val atualizando: Boolean = false,
     val erro: String? = null,
 )
 
@@ -66,6 +67,17 @@ class BuscaViewModel(application: Application) : AndroidViewModel(application) {
         if (_home.value.carregando) return
         if (homeCarregadaCom == loc && _home.value.erro == null && _home.value.recomendados.isNotEmpty()) return
         homeCarregadaCom = loc
+        executarBuscaHome(loc)
+    }
+
+    fun recarregarHome() {
+        if (_home.value.carregando) return
+        homeCarregadaCom = null
+        _home.update { it.copy(atualizando = true) }
+        executarBuscaHome(localizacao)
+    }
+
+    private fun executarBuscaHome(loc: Localizacao) {
         _home.update { it.copy(carregando = true, erro = null) }
         viewModelScope.launch {
             val recomendados = async {
@@ -81,15 +93,11 @@ class BuscaViewModel(application: Application) : AndroidViewModel(application) {
                     recomendados = resRecomendados.getOrNull()?.profissionais ?: atual.recomendados,
                     emAlta = resEmAlta.getOrNull()?.profissionais ?: atual.emAlta,
                     carregando = false,
+                    atualizando = false,
                     erro = (resRecomendados.exceptionOrNull() ?: resEmAlta.exceptionOrNull())?.message,
                 )
             }
         }
-    }
-
-    fun recarregarHome() {
-        homeCarregadaCom = null
-        carregarHome(localizacao)
     }
 
     /** Abre uma categoria (tile) ou um serviço específico (texto). */

@@ -2,9 +2,7 @@ package com.winyc.elo.telas.cliente
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +32,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
@@ -57,7 +57,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -98,22 +102,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.endereco.EnderecoRS
+import com.winyc.elo.backend.model.endereco.linhaEndereco
 import com.winyc.elo.backend.model.estimativa.AvaliacaoRS
 import com.winyc.elo.backend.model.estimativa.ProfissionalDetalhesRS
 import com.winyc.elo.backend.model.estimativa.ResumoAvaliacoesRS
 import com.winyc.elo.backend.model.estimativa.ServicoOferecidoRS
 import com.winyc.elo.backend.model.estimativa.pontos
+import com.winyc.elo.backend.model.orcamento.DiaHorariosRS
+import com.winyc.elo.backend.viewModel.EnderecosUi
+import com.winyc.elo.backend.viewModel.HorariosUi
+import com.winyc.elo.backend.viewModel.OrcamentoViewModel
 import com.winyc.elo.backend.viewModel.ProfissionalPerfilViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
 import com.winyc.elo.ui.theme.EloTheme
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 // Cores de apoio (fora do contexto coral/teal, iguais às usadas na home).
 private val Verde = Color(0xFF12A15A)
 private val Azul = Color(0xFF2F6BFF)
 private val Roxo = Color(0xFF8B5CF6)
-
-// Id sentinela para "Outro serviço" (cliente descreve livremente).
-private const val OUTRO_SERVICO_ID = -1L
 
 private fun primeiroNome(nome: String): String =
     nome.trim().split(" ").firstOrNull().orEmpty().ifBlank { nome }
@@ -132,6 +142,7 @@ fun PerfilProfissionalScreen(
     categoriaId: Long? = null,
     onIrParaInicio: () -> Unit = {},
     onVerPedidos: () -> Unit = {},
+    onIrParaEnderecos: () -> Unit = {},
     modifier: Modifier = Modifier,
     vm: ProfissionalPerfilViewModel = viewModel(),
 ) {
@@ -203,6 +214,7 @@ fun PerfilProfissionalScreen(
                 escolhendoServico = false
                 sucesso = true
             },
+            onIrParaEnderecos = onIrParaEnderecos,
             modifier = modifier,
         )
 
@@ -211,7 +223,6 @@ fun PerfilProfissionalScreen(
             servicos = servicos,
             onVoltar = { escolhendoServico = false },
             onAbrirInfo = { id -> servicoInfo = id },
-            onOutroServico = { servicoDetalhe = OUTRO_SERVICO_ID },
             modifier = modifier,
         )
 
@@ -1181,7 +1192,6 @@ private fun EscolherServicoScreen(
     servicos: List<ServicoOferecidoRS>,
     onVoltar: () -> Unit,
     onAbrirInfo: (Long) -> Unit,
-    onOutroServico: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -1203,55 +1213,7 @@ private fun EscolherServicoScreen(
             items(servicos, key = { it.id }) { servico ->
                 CardServicoDisponivel(servico = servico, onClick = { onAbrirInfo(servico.id) })
             }
-            item { CardOutroServico(onClick = onOutroServico) }
         }
-    }
-}
-
-@Composable
-private fun CardOutroServico(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .bordaTracejada(MaterialTheme.colorScheme.outline, 14.dp)
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Outlined.Description,
-                null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                "Outro serviço",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                "Não encontrou o que precisa? Descreva livremente.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -1264,10 +1226,53 @@ private fun DetalhesServicoScreen(
     onVoltar: () -> Unit,
     onTrocar: () -> Unit,
     onConfirmar: () -> Unit,
+    onIrParaEnderecos: () -> Unit,
     modifier: Modifier = Modifier,
+    vm: OrcamentoViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+    val servicoId = servico?.id ?: -1L
+    val servicoValido = servicoId > 0
+
+    val horariosUi by vm.horarios.collectAsStateWithLifecycle()
+    val enderecosUi by vm.enderecos.collectAsStateWithLifecycle()
+    val envioUi by vm.envio.collectAsStateWithLifecycle()
+
+    LaunchedEffect(servicoId) { if (servicoValido) vm.iniciar(servicoId) }
+    LaunchedEffect(envioUi.sucesso) { if (envioUi.sucesso) onConfirmar() }
+    LaunchedEffect(envioUi.erro) {
+        envioUi.erro?.let { mensagem ->
+            Toast.makeText(context, mensagem, Toast.LENGTH_LONG).show()
+            vm.limparErroEnvio()
+        }
+    }
+
     var descricao by rememberSaveable(servico?.id) { mutableStateOf("") }
-    val podeConfirmar = servico != null || descricao.isNotBlank()
+    var diaSelecionado by rememberSaveable(servico?.id) { mutableStateOf<String?>(null) }
+    var horaSelecionada by rememberSaveable(servico?.id) { mutableStateOf<String?>(null) }
+    var enderecoSelecionado by rememberSaveable(servico?.id) { mutableStateOf<Long?>(null) }
+
+    // Assim que os endereços chegam, pré-seleciona o principal (ou o primeiro).
+    LaunchedEffect(enderecosUi.enderecos) {
+        if (enderecoSelecionado == null) {
+            enderecoSelecionado = enderecosUi.enderecos.firstOrNull { it.stPrincipal == true }?.id
+                ?: enderecosUi.enderecos.firstOrNull()?.id
+        }
+    }
+
+    val dias = horariosUi.semana?.dias.orEmpty()
+    LaunchedEffect(horariosUi.semana) {
+        if (diaSelecionado != null && dias.none { it.data == diaSelecionado }) {
+            diaSelecionado = null
+            horaSelecionada = null
+        }
+    }
+
+    val podeConfirmar = servicoValido &&
+        descricao.isNotBlank() &&
+        diaSelecionado != null &&
+        horaSelecionada != null &&
+        enderecoSelecionado != null
 
     Column(
         modifier = modifier
@@ -1276,7 +1281,7 @@ private fun DetalhesServicoScreen(
     ) {
         CabecalhoFluxo(
             titulo = "Detalhes do serviço",
-            subtitulo = "Informe data, horário e descrição",
+            subtitulo = "Escolha data, horário e endereço",
             onVoltar = onVoltar,
         )
         LazyColumn(
@@ -1291,21 +1296,476 @@ private fun DetalhesServicoScreen(
                     CampoRotulo(Icons.Outlined.Description, "Descreva o que precisa")
                     OutlinedTextField(
                         value = descricao,
-                        onValueChange = { descricao = it },
+                        onValueChange = { if (it.length <= 100) descricao = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp),
                         placeholder = { Text("Descreva livremente o que você precisa…") },
+                        supportingText = { Text("${descricao.length}/100") },
                         shape = RoundedCornerShape(12.dp),
                     )
                 }
             }
             item { SecaoImagens() }
-            item { SecaoDataHorario() }
+            item {
+                CalendarioHorarios(
+                    servicoValido = servicoValido,
+                    ui = horariosUi,
+                    diaSelecionado = diaSelecionado,
+                    horaSelecionada = horaSelecionada,
+                    onSelecionarDia = { diaSelecionado = it; horaSelecionada = null },
+                    onSelecionarHora = { horaSelecionada = it },
+                    onSemanaAnterior = vm::semanaAnterior,
+                    onProximaSemana = vm::proximaSemana,
+                    onTentarNovamente = vm::tentarNovamenteHorarios,
+                )
+            }
+            item {
+                SecaoEndereco(
+                    ui = enderecosUi,
+                    selecionado = enderecoSelecionado,
+                    onSelecionar = { enderecoSelecionado = it },
+                    onTentarNovamente = vm::carregarEnderecos,
+                    onCadastrarEndereco = onIrParaEnderecos,
+                )
+            }
             item { BannerContratacaoSegura() }
         }
-        BarraConfirmar(habilitado = podeConfirmar, onConfirmar = onConfirmar)
+        BarraConfirmar(
+            habilitado = podeConfirmar,
+            enviando = envioUi.enviando,
+            onConfirmar = {
+                val dia = diaSelecionado
+                val hora = horaSelecionada
+                if (dia != null && hora != null) {
+                    vm.solicitar(
+                        descricao = descricao,
+                        dtPreferidoSolicitado = montarDataHora(dia, hora),
+                        idEndereco = enderecoSelecionado,
+                    )
+                }
+            },
+        )
     }
+}
+
+/* ---------------------------- Calendário semanal de horários ---------------------------- */
+
+@Composable
+private fun CalendarioHorarios(
+    servicoValido: Boolean,
+    ui: HorariosUi,
+    diaSelecionado: String?,
+    horaSelecionada: String?,
+    onSelecionarDia: (String) -> Unit,
+    onSelecionarHora: (String) -> Unit,
+    onSemanaAnterior: () -> Unit,
+    onProximaSemana: () -> Unit,
+    onTentarNovamente: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        CampoRotulo(Icons.Outlined.CalendarToday, "Escolha data e horário")
+
+        if (!servicoValido) {
+            AvisoCalendario("Selecione um serviço específico para ver os horários disponíveis.")
+            return@Column
+        }
+
+        val semana = ui.semana
+        when {
+            semana == null && ui.carregando -> CaixaCarregando()
+            semana == null && ui.erro != null -> ErroCalendario(ui.erro, onTentarNovamente)
+            semana == null -> AvisoCalendario("Nenhum horário disponível no momento.")
+            else -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        NavegacaoSemana(
+                            rotulo = rotuloSemana(semana.inicioSemana, semana.fimSemana),
+                            carregando = ui.carregando,
+                            podeVoltar = ui.podeVoltarSemana && !ui.carregando,
+                            onAnterior = onSemanaAnterior,
+                            onProxima = onProximaSemana,
+                        )
+                        LinhaDias(
+                            dias = semana.dias,
+                            diaSelecionado = diaSelecionado,
+                            onSelecionar = onSelecionarDia,
+                        )
+                        HorariosDoDia(
+                            dia = semana.dias.firstOrNull { it.data == diaSelecionado },
+                            horaSelecionada = horaSelecionada,
+                            onSelecionar = onSelecionarHora,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavegacaoSemana(
+    rotulo: String,
+    carregando: Boolean,
+    podeVoltar: Boolean,
+    onAnterior: () -> Unit,
+    onProxima: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SetaSemana(
+            icone = Icons.Filled.ChevronLeft,
+            descricao = "Semana anterior",
+            habilitado = podeVoltar,
+            onClick = onAnterior,
+        )
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                rotulo,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (carregando) {
+                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+            }
+        }
+        SetaSemana(
+            icone = Icons.Filled.ChevronRight,
+            descricao = "Próxima semana",
+            habilitado = !carregando,
+            onClick = onProxima,
+        )
+    }
+}
+
+@Composable
+private fun SetaSemana(
+    icone: ImageVector,
+    descricao: String,
+    habilitado: Boolean,
+    onClick: () -> Unit,
+) {
+    val cor = if (habilitado) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .then(if (habilitado) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icone, descricao, tint = cor, modifier = Modifier.size(24.dp))
+    }
+}
+
+@Composable
+private fun LinhaDias(
+    dias: List<DiaHorariosRS>,
+    diaSelecionado: String?,
+    onSelecionar: (String) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        dias.forEach { dia ->
+            val data = dia.data ?: return@forEach
+            val disponivel = dia.horariosDisponiveis.isNotEmpty()
+            PilulaDia(
+                abreviatura = abrevDiaSemana(data),
+                diaMes = diaDoMes(data),
+                selecionado = data == diaSelecionado,
+                disponivel = disponivel,
+                onClick = { if (disponivel) onSelecionar(data) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PilulaDia(
+    abreviatura: String,
+    diaMes: String,
+    selecionado: Boolean,
+    disponivel: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val fundo = when {
+        selecionado -> MaterialTheme.colorScheme.primary
+        disponivel -> MaterialTheme.colorScheme.surfaceVariant
+        else -> Color.Transparent
+    }
+    val corTexto = when {
+        selecionado -> MaterialTheme.colorScheme.onPrimary
+        disponivel -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+    }
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fundo)
+            .then(if (disponivel) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(abreviatura, style = MaterialTheme.typography.labelSmall, color = corTexto)
+        Text(diaMes, style = MaterialTheme.typography.titleSmall, color = corTexto)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HorariosDoDia(
+    dia: DiaHorariosRS?,
+    horaSelecionada: String?,
+    onSelecionar: (String) -> Unit,
+) {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+    when {
+        dia == null -> Text(
+            "Selecione um dia para ver os horários.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        dia.horariosDisponiveis.isEmpty() -> Text(
+            "Sem horários disponíveis neste dia.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        else -> FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            dia.horariosDisponiveis.forEach { hora ->
+                ChipHorario(
+                    texto = formatarHora(hora),
+                    selecionado = hora == horaSelecionada,
+                    onClick = { onSelecionar(hora) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChipHorario(texto: String, selecionado: Boolean, onClick: () -> Unit) {
+    val fundo = if (selecionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val corTexto = if (selecionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    Text(
+        text = texto,
+        style = MaterialTheme.typography.labelLarge,
+        color = corTexto,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fundo)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
+}
+
+@Composable
+private fun AvisoCalendario(mensagem: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Schedule,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun CaixaCarregando() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+    }
+}
+
+@Composable
+private fun ErroCalendario(mensagem: String, onTentarNovamente: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            "Tentar novamente",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onTentarNovamente)
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+/* ---------------------------- Endereço (combobox) ---------------------------- */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SecaoEndereco(
+    ui: EnderecosUi,
+    selecionado: Long?,
+    onSelecionar: (Long) -> Unit,
+    onTentarNovamente: () -> Unit,
+    onCadastrarEndereco: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        CampoRotulo(Icons.Outlined.LocationOn, "Onde será o serviço?")
+        when {
+            ui.enderecos.isEmpty() && ui.carregando -> CaixaCarregando()
+            ui.enderecos.isEmpty() && ui.erro != null -> ErroCalendario(ui.erro, onTentarNovamente)
+            ui.enderecos.isEmpty() -> CadastrarEnderecoVazio(onCadastrarEndereco)
+
+            else -> {
+                var expandido by remember { mutableStateOf(false) }
+                val enderecoAtual = ui.enderecos.firstOrNull { it.id == selecionado }
+                ExposedDropdownMenuBox(
+                    expanded = expandido,
+                    onExpandedChange = { expandido = it },
+                ) {
+                    OutlinedTextField(
+                        value = enderecoAtual?.let { rotuloEndereco(it) } ?: "Selecione um endereço",
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandido,
+                        onDismissRequest = { expandido = false },
+                    ) {
+                        ui.enderecos.forEach { endereco ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(
+                                            endereco.nmApelido?.takeIf { it.isNotBlank() }
+                                                ?: "Endereço",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        endereco.linhaEndereco().takeIf { it.isNotBlank() }?.let {
+                                            Text(
+                                                it,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Outlined.LocationOn,
+                                        null,
+                                        tint = if (endereco.id == selecionado) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                onClick = {
+                                    onSelecionar(endereco.id)
+                                    expandido = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CadastrarEnderecoVazio(onCadastrarEndereco: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.LocationOn,
+                null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "Você precisa de um endereço cadastrado para solicitar o serviço.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Button(
+            onClick = onCadastrarEndereco,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Icon(Icons.Outlined.LocationOn, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Cadastrar endereço", style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}
+
+private fun rotuloEndereco(endereco: EnderecoRS): String {
+    val apelido = endereco.nmApelido?.takeIf { it.isNotBlank() }
+    val linha = endereco.linhaEndereco().takeIf { it.isNotBlank() }
+    return listOfNotNull(apelido, linha).joinToString(" • ").ifBlank { "Endereço" }
 }
 
 @Composable
@@ -1325,7 +1785,7 @@ private fun ServicoSelecionadoBanner(servico: ServicoOferecidoRS?, onTrocar: () 
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                servico?.nome ?: "Outro serviço",
+                servico?.nome ?: "Serviço",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -1387,48 +1847,6 @@ private fun SecaoImagens() {
 }
 
 @Composable
-private fun SecaoDataHorario() {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CampoRotulo(Icons.Outlined.CalendarToday, "Data preferida")
-            CampoSelecao(texto = "dd/mm/aaaa", comSeta = false, modifier = Modifier.fillMaxWidth())
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CampoRotulo(Icons.Outlined.Schedule, "Horário")
-            CampoSelecao(texto = "Selecione", comSeta = true, modifier = Modifier.fillMaxWidth())
-        }
-    }
-}
-
-@Composable
-private fun CampoSelecao(texto: String, comSeta: Boolean, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline), RoundedCornerShape(12.dp))
-            .clickable { Toast.makeText(context, "Em breve", Toast.LENGTH_SHORT).show() }
-            .padding(horizontal = 14.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            texto,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        if (comSeta) {
-            Icon(
-                Icons.Filled.KeyboardArrowDown,
-                null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
 private fun BannerContratacaoSegura() {
     Row(
         modifier = Modifier
@@ -1457,7 +1875,7 @@ private fun BannerContratacaoSegura() {
 }
 
 @Composable
-private fun BarraConfirmar(habilitado: Boolean, onConfirmar: () -> Unit) {
+private fun BarraConfirmar(habilitado: Boolean, enviando: Boolean, onConfirmar: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1472,13 +1890,21 @@ private fun BarraConfirmar(habilitado: Boolean, onConfirmar: () -> Unit) {
         ) {
             Button(
                 onClick = onConfirmar,
-                enabled = habilitado,
+                enabled = habilitado && !enviando,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text("Confirmar solicitação", style = MaterialTheme.typography.titleMedium)
+                if (enviando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text("Solicitar orçamento", style = MaterialTheme.typography.titleMedium)
+                }
             }
             Text(
                 "Você não será cobrado agora",
@@ -1863,3 +2289,38 @@ private fun formatarKm(km: Double): String {
 
 private fun formatarNota(nota: Double): String =
     if (nota % 1.0 == 0.0) nota.toInt().toString() else "%.1f".format(nota).replace('.', ',')
+
+/* ---------------------------- Datas e horários ---------------------------- */
+
+private val DIAS_SEMANA_ABREV = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
+private val MESES_ABREV =
+    listOf("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
+
+private fun montarDataHora(dataIso: String, horaIso: String): String =
+    runCatching {
+        LocalDateTime.of(LocalDate.parse(dataIso), LocalTime.parse(horaIso)).toString()
+    }.getOrDefault("${dataIso}T$horaIso")
+
+private fun abrevDiaSemana(dataIso: String): String =
+    runCatching { DIAS_SEMANA_ABREV[LocalDate.parse(dataIso).dayOfWeek.value - 1] }.getOrDefault("")
+
+private fun diaDoMes(dataIso: String): String =
+    runCatching { LocalDate.parse(dataIso).dayOfMonth.toString() }.getOrDefault("")
+
+private fun formatarHora(horaIso: String): String =
+    runCatching {
+        val hora = LocalTime.parse(horaIso)
+        "%02d:%02d".format(hora.hour, hora.minute)
+    }.getOrDefault(horaIso)
+
+private fun rotuloSemana(inicioIso: String?, fimIso: String?): String {
+    val inicio = inicioIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val fim = fimIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    if (inicio == null || fim == null) return "Esta semana"
+    return if (inicio.monthValue == fim.monthValue) {
+        "${inicio.dayOfMonth} – ${fim.dayOfMonth} de ${MESES_ABREV[fim.monthValue - 1]}"
+    } else {
+        "${inicio.dayOfMonth} ${MESES_ABREV[inicio.monthValue - 1]} – " +
+            "${fim.dayOfMonth} ${MESES_ABREV[fim.monthValue - 1]}"
+    }
+}

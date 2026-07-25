@@ -320,8 +320,16 @@ private fun EloApp() {
                         logado = logado,
                         onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
                         onVoltar = { navController.popBackStack() },
-                        onIrParaInicio = { navController.navegarParaAba(EloScreen.Inicio) },
+                        onIrParaInicio = {
+                            if (!navController.popBackStack(EloScreen.Inicio.route, inclusive = false)) {
+                                navController.navegarParaAba(EloScreen.Inicio)
+                            }
+                        },
                         onVerPedidos = { navController.navegarParaAba(EloScreen.Pedidos) },
+                        onIrParaEnderecos = {
+                            abrirEnderecos = true
+                            navController.navegarParaAba(EloScreen.Perfil)
+                        },
                     )
                 }
 

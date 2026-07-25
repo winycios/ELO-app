@@ -84,11 +84,13 @@ import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -261,6 +263,7 @@ private val CategoriaSelecionadaSaver =
         },
     )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeConteudo(
     categorias: List<CategoriaUi>,
@@ -283,13 +286,18 @@ private fun HomeConteudo(
         categorias.map { Area(it.idGeral, it.nomeGeral, obterIcone(it.descricaoIcon), it.servicos) }
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+    PullToRefreshBox(
+        isRefreshing = home.atualizando,
+        onRefresh = onRecarregarHome,
+        modifier = modifier.fillMaxSize(),
     ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
         item { HeaderBusca(perfil = perfil) }
 
         // Só faz sentido mostrar/gerenciar endereço para quem está logado.
@@ -362,6 +370,7 @@ private fun HomeConteudo(
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
+        }
         }
     }
 }
