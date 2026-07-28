@@ -83,7 +83,7 @@ import com.winyc.elo.backend.security.TokenStore
 import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
-import com.winyc.elo.telas.cliente.PedidosScreen
+import com.winyc.elo.telas.cliente.MeusOrcamentosScreen
 import com.winyc.elo.telas.cliente.PerfilProfissionalScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
 import com.winyc.elo.telas.cliente.VitrineScreen
@@ -106,7 +106,7 @@ private enum class EloScreen(val route: String) {
     // Cliente (coral)
     Inicio("cliente/inicio"),
     Vitrine("cliente/vitrine"),
-    Pedidos("cliente/pedidos"),
+    MeusOrcamentos("cliente/orcamentos"),
     Perfil("cliente/perfil"),
     PerfilProfissional("cliente/profissional/{nome}?proId={proId}&servicoId={servicoId}&categoriaId={categoriaId}"),
 
@@ -129,7 +129,7 @@ private data class NavItem(
 private val CLIENTE_ITENS = listOf(
     NavItem(EloScreen.Inicio, R.string.inicio, Icons.Outlined.Home),
     NavItem(EloScreen.Vitrine, R.string.vitrine, Icons.Outlined.Storefront),
-    NavItem(EloScreen.Pedidos, R.string.pedidos, Icons.AutoMirrored.Outlined.ReceiptLong),
+    NavItem(EloScreen.MeusOrcamentos, R.string.orcamentos, Icons.AutoMirrored.Outlined.ReceiptLong),
     NavItem(EloScreen.Perfil, R.string.perfil, Icons.Outlined.Person),
 )
 
@@ -287,7 +287,12 @@ private fun EloApp() {
                         onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
                     )
                 }
-                composable(EloScreen.Pedidos.route) { PedidosScreen() }
+                composable(EloScreen.MeusOrcamentos.route) {
+                    MeusOrcamentosScreen(
+                        logado = logado,
+                        onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
+                    )
+                }
                 composable(EloScreen.Perfil.route) {
                     PerfilScreen(
                         logado = logado,
@@ -325,7 +330,7 @@ private fun EloApp() {
                                 navController.navegarParaAba(EloScreen.Inicio)
                             }
                         },
-                        onVerPedidos = { navController.navegarParaAba(EloScreen.Pedidos) },
+                        onVerOrcamentos = { navController.navegarParaAba(EloScreen.MeusOrcamentos) },
                         onIrParaEnderecos = {
                             abrirEnderecos = true
                             navController.navegarParaAba(EloScreen.Perfil)

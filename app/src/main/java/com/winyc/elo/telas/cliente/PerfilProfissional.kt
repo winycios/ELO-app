@@ -141,7 +141,7 @@ fun PerfilProfissionalScreen(
     servicoId: Long? = null,
     categoriaId: Long? = null,
     onIrParaInicio: () -> Unit = {},
-    onVerPedidos: () -> Unit = {},
+    onVerOrcamentos: () -> Unit = {},
     onIrParaEnderecos: () -> Unit = {},
     modifier: Modifier = Modifier,
     vm: ProfissionalPerfilViewModel = viewModel(),
@@ -188,7 +188,7 @@ fun PerfilProfissionalScreen(
         sucesso -> SolicitacaoEnviadaScreen(
             nome = nomeExibicao,
             onInicio = onIrParaInicio,
-            onPedidos = onVerPedidos,
+            onOrcamentos = onVerOrcamentos,
             modifier = modifier,
         )
 
@@ -2172,7 +2172,7 @@ private fun DialogPrecisaLogin(onEntrar: () -> Unit, onCancelar: () -> Unit) {
 private fun SolicitacaoEnviadaScreen(
     nome: String,
     onInicio: () -> Unit,
-    onPedidos: () -> Unit,
+    onOrcamentos: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -2237,7 +2237,7 @@ private fun SolicitacaoEnviadaScreen(
         }
 
         Button(
-            onClick = onPedidos,
+            onClick = onOrcamentos,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -2245,7 +2245,7 @@ private fun SolicitacaoEnviadaScreen(
         ) {
             Icon(Icons.AutoMirrored.Outlined.ReceiptLong, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Ver meus pedidos", style = MaterialTheme.typography.titleMedium)
+            Text("Ver meus orçamentos", style = MaterialTheme.typography.titleMedium)
         }
         Spacer(Modifier.height(10.dp))
         OutlinedButton(

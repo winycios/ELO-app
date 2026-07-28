@@ -28,9 +28,34 @@
     <string name="vitrine_vazia">Nenhuma publicação por aqui ainda.</string>
     <string name="vitrine_selo_profissional">Profissional</string>
 
+    <!-- Meus orçamentos (cliente) -->
+    <string name="meus_orcamentos">Meus orçamentos</string>
+    <string name="acompanhe_suas_solicitacoes">Acompanhe suas solicitações</string>
+    <string name="orcamentos_vazio">Você ainda não solicitou nenhum orçamento.</string>
+    <string name="orcamentos_deslogado">Entre na sua conta para ver seus orçamentos.</string>
+    <string name="orcamento_final_disponivel">disponível para revisão</string>
+    <string name="detalhes_do_orcamento">Detalhes do orçamento</string>
+    <string name="enviado_pelo_profissional">Enviado pelo profissional</string>
+    <string name="orcamento_final_pendente">O profissional ainda não enviou o orçamento final.</string>
+    <string name="contato_indisponivel">O contato ainda não foi liberado para esta solicitação.</string>
+    <string name="horario_preferido">Horário preferido</string>
+    <string name="tipo_servico">Tipo de serviço</string>
+    <string name="valor_estimado">Valor estimado</string>
+    <string name="endereco">Endereço</string>
+    <string name="imagens_anexadas">Imagens anexadas</string>
+    <string name="observacao_profissional">Observação do profissional</string>
+    <string name="a_combinar">A combinar</string>
+    <string name="nao_informado">Não informado</string>
+
+    <!-- Status do orçamento -->
+    <string name="status_pendente">Pendente</string>
+    <string name="status_em_andamento">Em andamento</string>
+    <string name="status_orcamento_final">Orçamento final</string>
+    <string name="status_aprovado">Aprovado</string>
+    <string name="status_concluido">Concluído</string>
+    <string name="status_cancelado">Cancelado</string>
+
     <!-- Pedidos -->
-    <string name="meus_pedidos">Meus pedidos</string>
-    <string name="acompanhe_seus_servicos">Acompanhe seus serviços</string>
     <string name="conversar">Conversar</string>
     <string name="avaliar">Avaliar</string>
     <string name="ver_detalhes">Ver detalhes</string>
@@ -41,7 +66,6 @@
     <string name="whatsapp">WhatsApp</string>
     <string name="numero_de_telefone">Número de telefone</string>
     <string name="numero_verificado_plataforma">Número verificado pela plataforma</string>
-    <string name="detalhes_do_pedido">Detalhes do pedido</string>
     <string name="informacoes_da_solicitacao">Informações da solicitação</string>
     <string name="descricao">Descrição</string>
     <string name="categoria">Categoria</string>

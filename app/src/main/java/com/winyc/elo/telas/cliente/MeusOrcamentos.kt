@@ -1,5 +1,6 @@
 package com.winyc.elo.telas.cliente
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,21 +21,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Cancel
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.ThumbUpOffAlt
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -44,10 +49,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,112 +62,82 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
+import com.winyc.elo.backend.viewModel.MeusOrcamentosViewModel
+import com.winyc.elo.backend.viewModel.VisaoOrcamento
+import com.winyc.elo.telas.componentes.AvatarPerfil
 
-internal enum class StatusPedido(val rotulo: String) {
-    EmAndamento("Em andamento"),
-    Concluido("Concluído"),
-    Pendente("Pendente"),
-    OrcamentoFinal("Orçamento final"),
-    Cancelado("Cancelado"),
+private const val GATILHO_PROXIMA_PAGINA = 5
+
+private const val ITENS_FIXOS_TOPO = 2
+
+internal enum class StatusOrcamento(val api: String, @StringRes val rotuloRes: Int) {
+    Pendente("pendente", R.string.status_pendente),
+    EmAndamento("em_andamento", R.string.status_em_andamento),
+    OrcamentoFinal("orcamento_final", R.string.status_orcamento_final),
+    Aprovado("aprovado", R.string.status_aprovado),
+    Concluido("concluido", R.string.status_concluido),
+    Cancelado("cancelado", R.string.status_cancelado);
+
+    companion object {
+        fun de(api: String?): StatusOrcamento? =
+            entries.firstOrNull { it.api.equals(api?.trim(), ignoreCase = true) }
+    }
 }
 
 internal data class StatusVisual(val cor: Color, val icone: ImageVector)
 
-internal fun StatusPedido.visual(): StatusVisual = when (this) {
-    StatusPedido.EmAndamento -> StatusVisual(Color(0xFF2F6FED), Icons.Outlined.Autorenew)
-    StatusPedido.Concluido -> StatusVisual(Color(0xFF12A15A), Icons.Outlined.CheckCircle)
-    StatusPedido.Pendente -> StatusVisual(Color(0xFFDD8A15), Icons.Outlined.Schedule)
-    StatusPedido.OrcamentoFinal -> StatusVisual(Color(0xFF8B5CF6), Icons.Outlined.EditNote)
-    StatusPedido.Cancelado -> StatusVisual(Color(0xFFF2603E), Icons.Outlined.Cancel)
+internal fun StatusOrcamento.visual(): StatusVisual = when (this) {
+    StatusOrcamento.Pendente -> StatusVisual(Color(0xFFDD8A15), Icons.Outlined.Schedule)
+    StatusOrcamento.EmAndamento -> StatusVisual(Color(0xFF2F6FED), Icons.Outlined.Autorenew)
+    StatusOrcamento.OrcamentoFinal -> StatusVisual(Color(0xFF8B5CF6), Icons.Outlined.EditNote)
+    StatusOrcamento.Aprovado -> StatusVisual(Color(0xFF12A788), Icons.Outlined.ThumbUpOffAlt)
+    StatusOrcamento.Concluido -> StatusVisual(Color(0xFF12A15A), Icons.Outlined.CheckCircle)
+    StatusOrcamento.Cancelado -> StatusVisual(Color(0xFFF2603E), Icons.Outlined.Cancel)
 }
-
-internal data class Pedido(
-    val profissional: String,
-    val categoria: String,
-    val servico: String,
-    val status: StatusPedido,
-    val telefone: String,
-    val data: String,
-    val horario: String,
-    val endereco: String,
-    val avaliacao: Double,
-    val numAvaliacoes: Int,
-    val maoDeObra: String,
-    val material: String,
-    val deslocamento: String,
-    val total: String?,
-)
-
-private val PEDIDOS = listOf(
-    Pedido(
-        profissional = "Ana Oliveira", categoria = "Diarista",
-        servico = "Limpeza completa do apartamento", status = StatusPedido.EmAndamento,
-        telefone = "(11) 98812-4471", data = "20/04/2026", horario = "09:00",
-        endereco = "Rua das Acácias, 45 - Moema", avaliacao = 4.8, numAvaliacoes = 189,
-        maoDeObra = "R$ 120,00", material = "R$ 0,00", deslocamento = "R$ 15,00", total = null,
-    ),
-    Pedido(
-        profissional = "Carlos Silva", categoria = "Eletricista",
-        servico = "Troca de tomadas e disjuntor", status = StatusPedido.Concluido,
-        telefone = "(11) 97345-8821", data = "18/04/2026", horario = "14:00",
-        endereco = "Rua das Flores, 123 - Pinheiros", avaliacao = 4.9, numAvaliacoes = 247,
-        maoDeObra = "R$ 150,00", material = "R$ 60,00", deslocamento = "R$ 20,00", total = "R$ 230,00",
-    ),
-    Pedido(
-        profissional = "Jose Almeida", categoria = "Jardineiro",
-        servico = "Poda e manutencao do jardim", status = StatusPedido.Concluido,
-        telefone = "(11) 99123-0055", data = "15/04/2026", horario = "08:30",
-        endereco = "Av. dos Ipês, 900 - Jardins", avaliacao = 4.7, numAvaliacoes = 132,
-        maoDeObra = "R$ 200,00", material = "R$ 40,00", deslocamento = "R$ 25,00", total = "R$ 265,00",
-    ),
-    Pedido(
-        profissional = "Roberto Mendes", categoria = "Encanador",
-        servico = "Reparo no encanamento da cozinha", status = StatusPedido.Pendente,
-        telefone = "(11) 98220-7788", data = "22/04/2026", horario = "10:00",
-        endereco = "Rua Turim, 78 - Lapa", avaliacao = 4.6, numAvaliacoes = 98,
-        maoDeObra = "R$ 140,00", material = "R$ 30,00", deslocamento = "R$ 10,00", total = "R$ 180,00",
-    ),
-    Pedido(
-        profissional = "Carlos Silva", categoria = "Eletricista",
-        servico = "Instalacao de 4 tomadas na sala e troca de disjuntor",
-        status = StatusPedido.OrcamentoFinal,
-        telefone = "(11) 97345-8821", data = "24/04/2026", horario = "14:00",
-        endereco = "Rua das Flores, 123 - Pinheiros", avaliacao = 4.9, numAvaliacoes = 247,
-        maoDeObra = "R$ 180,00", material = "R$ 80,00", deslocamento = "R$ 20,00", total = "R$ 280,00",
-    ),
-    Pedido(
-        profissional = "Paulo Ferreira", categoria = "Pintor",
-        servico = "Pintura da sala de estar", status = StatusPedido.Cancelado,
-        telefone = "(11) 98004-1122", data = "10/04/2026", horario = "13:00",
-        endereco = "Rua Aurora, 12 - Centro", avaliacao = 4.5, numAvaliacoes = 76,
-        maoDeObra = "R$ 300,00", material = "R$ 120,00", deslocamento = "R$ 30,00", total = "R$ 450,00",
-    ),
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PedidosScreen(modifier: Modifier = Modifier) {
-    val rotuloTodos = stringResource(R.string.categoria_todos)
-    var statusSelecionado by rememberSaveable { mutableStateOf(rotuloTodos) }
+fun MeusOrcamentosScreen(
+    logado: Boolean,
+    onPrecisaLogin: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    vm: MeusOrcamentosViewModel = viewModel(),
+) {
+    val estado by vm.estado.collectAsStateWithLifecycle()
+    val detalhe by vm.detalhe.collectAsStateWithLifecycle()
 
-    // Modais abertos: cada estado guarda o pedido em foco (null = fechado).
-    var contatoDe by remember { mutableStateOf<Pedido?>(null) }
-    var detalhesDe by remember { mutableStateOf<Pedido?>(null) }
-    var orcamentoDe by remember { mutableStateOf<Pedido?>(null) }
-    var avaliarDe by remember { mutableStateOf<Pedido?>(null) }
 
-    val pedidosVisiveis = remember(statusSelecionado) {
-        if (statusSelecionado == rotuloTodos) PEDIDOS
-        else PEDIDOS.filter { it.status.rotulo == statusSelecionado }
+    LaunchedEffect(logado) { vm.abrirTela(logado) }
+
+    var avaliarDe by remember { mutableStateOf<OrcamentoListagemRS?>(null) }
+
+    val listState = rememberLazyListState()
+    val quantidade = estado.orcamentos.size
+    val precisaCarregarMais by remember(quantidade) {
+        derivedStateOf {
+            if (quantidade == 0) return@derivedStateOf false
+            val ultimoVisivel = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+            // Com a página de 20, dispara ao alcançar o 15º card.
+            ultimoVisivel >= ITENS_FIXOS_TOPO + quantidade - 1 - GATILHO_PROXIMA_PAGINA
+        }
+    }
+    LaunchedEffect(precisaCarregarMais, estado.podeCarregarMais) {
+        if (precisaCarregarMais && estado.podeCarregarMais) vm.carregarMais()
     }
 
     LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
@@ -171,12 +147,12 @@ fun PedidosScreen(modifier: Modifier = Modifier) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.meus_pedidos),
+                    text = stringResource(R.string.meus_orcamentos),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = stringResource(R.string.acompanhe_seus_servicos),
+                    text = stringResource(R.string.acompanhe_suas_solicitacoes),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -185,55 +161,65 @@ fun PedidosScreen(modifier: Modifier = Modifier) {
 
         item {
             StatusChips(
-                todos = rotuloTodos,
-                selecionado = statusSelecionado,
-                onSelecionar = { statusSelecionado = it },
+                selecionado = estado.statusSelecionado,
+                onSelecionar = vm::selecionarStatus,
             )
         }
 
-        items(pedidosVisiveis) { pedido ->
-            PedidoCard(
-                pedido = pedido,
-                onConversar = { contatoDe = pedido },
-                onDetalhes = { detalhesDe = pedido },
-                onRevisar = { orcamentoDe = pedido },
-                onAvaliar = { avaliarDe = pedido },
+        items(estado.orcamentos, key = { it.id }) { orcamento ->
+            OrcamentoCard(
+                orcamento = orcamento,
+                onContato = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Contato) },
+                onDetalhes = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Detalhes) },
+                onRevisar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.OrcamentoFinal) },
+                onAvaliar = { avaliarDe = orcamento },
             )
+        }
+
+        item {
+            when {
+                !logado -> RodapeDeslogado(onEntrar = onPrecisaLogin)
+                estado.carregandoInicial || estado.carregandoMais -> RodapeCarregando()
+                estado.erro != null -> RodapeErro(
+                    mensagem = estado.erro!!,
+                    onTentarNovamente = vm::carregarInicial,
+                )
+
+                estado.orcamentos.isEmpty() -> RodapeVazio()
+            }
         }
     }
 
-    contatoDe?.let { pedido ->
-        ContatoSheet(
-            nome = pedido.profissional,
-            subtitulo = pedido.categoria,
-            telefone = pedido.telefone,
-            onFechar = { contatoDe = null },
+    detalhe?.let { estadoDetalhe ->
+        DetalheOrcamentoSheet(
+            estado = estadoDetalhe,
+            onFechar = vm::fecharDetalhe,
+            onTentarNovamente = vm::tentarNovamenteDetalhe,
         )
     }
-    detalhesDe?.let { pedido ->
-        DetalhesPedidoSheet(pedido = pedido, onFechar = { detalhesDe = null })
-    }
-    orcamentoDe?.let { pedido ->
-        OrcamentoFinalSheet(pedido = pedido, onFechar = { orcamentoDe = null })
-    }
-    avaliarDe?.let { pedido ->
-        AvaliarSheet(nome = pedido.profissional, onFechar = { avaliarDe = null })
+
+    avaliarDe?.let { orcamento ->
+        AvaliarSheet(
+            nome = orcamento.nomeProfissional.orEmpty(),
+            onFechar = { avaliarDe = null },
+        )
     }
 }
 
 @Composable
 private fun StatusChips(
-    todos: String,
-    selecionado: String,
-    onSelecionar: (String) -> Unit,
+    selecionado: String?,
+    onSelecionar: (String?) -> Unit,
 ) {
-    val rotulos = listOf(todos) + StatusPedido.entries.map { it.rotulo }
+    val abas = listOf<Pair<String?, String>>(null to stringResource(R.string.categoria_todos)) +
+            StatusOrcamento.entries.map { it.api to stringResource(it.rotuloRes) }
+
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(rotulos) { rotulo ->
-            val ativo = rotulo == selecionado
+        items(abas, key = { (api, _) -> api ?: "todos" }) { (api, rotulo) ->
+            val ativo = api == selecionado
             FilterChip(
                 selected = ativo,
-                onClick = { onSelecionar(rotulo) },
+                onClick = { onSelecionar(api) },
                 label = {
                     Text(
                         text = rotulo,
@@ -257,14 +243,16 @@ private fun StatusChips(
 }
 
 @Composable
-private fun PedidoCard(
-    pedido: Pedido,
-    onConversar: () -> Unit,
+private fun OrcamentoCard(
+    orcamento: OrcamentoListagemRS,
+    onContato: () -> Unit,
     onDetalhes: () -> Unit,
     onRevisar: () -> Unit,
     onAvaliar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val status = StatusOrcamento.de(orcamento.status)
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -275,43 +263,52 @@ private fun PedidoCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Cabecalho(pedido)
+            Cabecalho(orcamento, status)
             Text(
-                text = pedido.servico,
+                text = orcamento.descricao.orEmpty(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
-            if (pedido.status == StatusPedido.OrcamentoFinal) {
-                BannerOrcamento(pedido.total ?: "Em analise", onRevisar)
+            // O profissional já respondeu com o orçamento final: atalho para revisar.
+            if (orcamento.orcamentoFinalId != null && status != StatusOrcamento.Cancelado) {
+                BannerOrcamentoFinal(onRevisar)
             }
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Acoes(pedido, onConversar, onDetalhes, onAvaliar)
+        Acoes(status, onContato, onDetalhes, onAvaliar)
     }
 }
 
 @Composable
-private fun Cabecalho(pedido: Pedido) {
+private fun Cabecalho(orcamento: OrcamentoListagemRS, status: StatusOrcamento?) {
+    val nome = orcamento.nomeProfissional.orEmpty()
     Row(verticalAlignment = Alignment.Top) {
-        AvatarPedido(pedido.profissional)
+        AvatarPerfil(
+            nome = nome,
+            fotoUrl = orcamento.fotoProfissional,
+            tamanho = 52.dp,
+            fonte = MaterialTheme.typography.titleMedium,
+        )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             LinhaIconeTexto(
                 icone = Icons.Outlined.PersonOutline,
-                texto = pedido.profissional,
+                texto = nome,
                 estilo = MaterialTheme.typography.titleSmall,
                 corTexto = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.size(2.dp))
             LinhaIconeTexto(
                 icone = Icons.Outlined.LocalOffer,
-                texto = pedido.categoria,
+                texto = orcamento.categoria.orEmpty(),
                 estilo = MaterialTheme.typography.bodySmall,
                 corTexto = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        StatusBadge(pedido.status)
+        StatusBadge(status, orcamento.status)
     }
 }
 
@@ -319,7 +316,7 @@ private fun Cabecalho(pedido: Pedido) {
 private fun LinhaIconeTexto(
     icone: ImageVector,
     texto: String,
-    estilo: androidx.compose.ui.text.TextStyle,
+    estilo: TextStyle,
     corTexto: Color,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -330,41 +327,54 @@ private fun LinhaIconeTexto(
             modifier = Modifier.size(15.dp),
         )
         Spacer(Modifier.width(5.dp))
-        Text(text = texto, style = estilo, color = corTexto)
+        Text(
+            text = texto,
+            style = estilo,
+            color = corTexto,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
-/** Selo colorido de status no canto do card. */
 @Composable
-internal fun StatusBadge(status: StatusPedido) {
-    val v = status.visual()
+internal fun StatusBadge(status: StatusOrcamento?, bruto: String? = null) {
+    val visual = status?.visual()
+        ?: StatusVisual(MaterialTheme.colorScheme.onSurfaceVariant, Icons.Outlined.Schedule)
+    val rotulo = status?.let { stringResource(it.rotuloRes) } ?: rotuloDesconhecido(bruto)
+    if (rotulo.isBlank()) return
+
     Row(
         modifier = Modifier
             .clip(CircleShape)
-            .background(v.cor.copy(alpha = 0.14f))
+            .background(visual.cor.copy(alpha = 0.14f))
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = v.icone,
+            imageVector = visual.icone,
             contentDescription = null,
-            tint = v.cor,
+            tint = visual.cor,
             modifier = Modifier.size(13.dp),
         )
         Spacer(Modifier.width(4.dp))
         Text(
-            text = status.rotulo,
+            text = rotulo,
             style = MaterialTheme.typography.labelSmall,
-            color = v.cor,
+            color = visual.cor,
             fontWeight = FontWeight.Medium,
         )
     }
 }
 
-/** Faixa de orçamento aguardando revisão (só no status Orçamento final). */
+private fun rotuloDesconhecido(bruto: String?): String {
+    val texto = bruto?.trim()?.replace('_', ' ') ?: return ""
+    return texto.replaceFirstChar { it.uppercaseChar() }
+}
+
 @Composable
-private fun BannerOrcamento(total: String, onRevisar: () -> Unit) {
-    val roxo = StatusPedido.OrcamentoFinal.visual().cor
+private fun BannerOrcamentoFinal(onRevisar: () -> Unit) {
+    val roxo = StatusOrcamento.OrcamentoFinal.visual().cor
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -383,14 +393,13 @@ private fun BannerOrcamento(total: String, onRevisar: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Text(
             text = buildAnnotatedString {
-                append("Orçamento de ")
                 withStyle(
                     SpanStyle(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium,
                     ),
-                ) { append(total) }
-                append(" aguardando")
+                ) { append(stringResource(R.string.orcamento_final)) }
+                append(" ${stringResource(R.string.orcamento_final_disponivel)}")
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
@@ -404,18 +413,16 @@ private fun BannerOrcamento(total: String, onRevisar: () -> Unit) {
     }
 }
 
-/** Linha de ações do card, dividida em duas metades (ou uma só, se cancelado). */
 @Composable
 private fun Acoes(
-    pedido: Pedido,
-    onConversar: () -> Unit,
+    status: StatusOrcamento?,
+    onContato: () -> Unit,
     onDetalhes: () -> Unit,
     onAvaliar: () -> Unit,
 ) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-        when (pedido.status) {
-            StatusPedido.Cancelado -> {
-                // Só "Ver detalhes", ocupando a largura toda.
+        when (status) {
+            StatusOrcamento.Cancelado -> {
                 AcaoBotao(
                     icone = Icons.Outlined.Description,
                     texto = stringResource(R.string.ver_detalhes),
@@ -424,7 +431,7 @@ private fun Acoes(
                 )
             }
 
-            StatusPedido.Concluido -> {
+            StatusOrcamento.Concluido -> {
                 AcaoBotao(
                     icone = Icons.Outlined.StarBorder,
                     texto = stringResource(R.string.avaliar),
@@ -442,10 +449,10 @@ private fun Acoes(
 
             else -> {
                 AcaoBotao(
-                    icone = Icons.Outlined.ChatBubbleOutline,
-                    texto = stringResource(R.string.conversar),
+                    icone = Icons.Outlined.Phone,
+                    texto = stringResource(R.string.contato),
                     cor = MaterialTheme.colorScheme.primary,
-                    onClick = onConversar,
+                    onClick = onContato,
                 )
                 VerticalDivider(color = MaterialTheme.colorScheme.outline)
                 AcaoBotao(
@@ -486,25 +493,72 @@ private fun RowScope.AcaoBotao(
     }
 }
 
-/** Avatar quadrado arredondado com as iniciais do profissional. */
-@Composable
-internal fun AvatarPedido(nome: String, tamanho: Dp = 52.dp) {
-    val iniciais = nome.split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
+/* ---------------------------- Rodapés da lista ---------------------------- */
 
+@Composable
+private fun RodapeCarregando() {
     Box(
         modifier = Modifier
-            .size(tamanho)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
+    }
+}
+
+@Composable
+private fun RodapeErro(mensagem: String, onTentarNovamente: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onTentarNovamente) {
+            Text(stringResource(R.string.vitrine_tentar_novamente))
+        }
+    }
+}
+
+@Composable
+private fun RodapeVazio() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = iniciais,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            text = stringResource(R.string.orcamentos_vazio),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun RodapeDeslogado(onEntrar: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.orcamentos_deslogado),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onEntrar) {
+            Text(stringResource(R.string.deslogado_entrar))
+        }
     }
 }

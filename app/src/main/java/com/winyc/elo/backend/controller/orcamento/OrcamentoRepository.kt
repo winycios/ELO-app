@@ -2,8 +2,11 @@ package com.winyc.elo.backend.controller.orcamento
 
 import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
+import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.orcamento.HorariosDisponiveisRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoCreateRQ
+import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
+import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoRS
 import com.winyc.elo.backend.retroFit.RetroFitService
 import com.winyc.elo.backend.security.TokenStore
@@ -24,6 +27,19 @@ class OrcamentoRepository(tokenStore: TokenStore, private val api: OrcamentoInte
 
     suspend fun solicitarOrcamento(request: OrcamentoCreateRQ): Result<OrcamentoRS> =
         executar { verificaErro(api.solicitarOrcamento(request).execute()) }
+
+    suspend fun listarOrcamentos(
+        status: String?,
+        cursor: String?,
+        tamanho: Int,
+    ): Result<CursorPageRS<OrcamentoListagemRS>> = executar {
+        val resposta = api.listarOrcamentos(status, cursor, tamanho).execute()
+        if (resposta.code() == 204) CursorPageRS(items = emptyList(), nextCursor = null, hasNext = false)
+        else verificaErro(resposta)
+    }
+
+    suspend fun buscarOrcamentoPorId(orcamentoId: Long): Result<OrcamentoDetalheRS> =
+        executar { verificaErro(api.buscarOrcamentoPorId(orcamentoId).execute()) }
 
     private suspend fun <T> executar(bloco: () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching(bloco) }

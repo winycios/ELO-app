@@ -1,7 +1,10 @@
 package com.winyc.elo.backend.controller.orcamento
 
+import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.orcamento.HorariosDisponiveisRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoCreateRQ
+import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
+import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoRS
 import retrofit2.Call
 import retrofit2.http.Body
@@ -25,4 +28,14 @@ interface OrcamentoInterface {
 
     @POST(PATH)
     fun solicitarOrcamento(@Body dto: OrcamentoCreateRQ): Call<OrcamentoRS>
+
+    @GET("$PATH/listar")
+    fun listarOrcamentos(
+        @Query("status") status: String?,
+        @Query("cursor") cursor: String?,
+        @Query("tamanho") tamanho: Int,
+    ): Call<CursorPageRS<OrcamentoListagemRS>>
+
+    @GET("$PATH/{orcamentoId}")
+    fun buscarOrcamentoPorId(@Path("orcamentoId") orcamentoId: Long): Call<OrcamentoDetalheRS>
 }
