@@ -5,6 +5,7 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.format.TextStyle
 import java.util.Locale
 
 /* ---------------------------- Valores e notas ---------------------------- */
@@ -115,4 +116,23 @@ internal fun formatarTelefone(telefone: String): String {
         10 -> "(${digitos.take(2)}) ${digitos.substring(2, 6)}-${digitos.substring(6)}"
         else -> telefone
     }
+}
+
+private val LOCALE_BR: Locale = Locale.forLanguageTag("pt-BR")
+internal val DIAS_DA_SEMANA = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
+
+
+/** "Agosto 2026". */
+
+internal fun mesEAno(dia: LocalDate): String {
+    val mes = dia.month.getDisplayName(TextStyle.FULL, LOCALE_BR)
+        .replaceFirstChar { it.uppercaseChar() }
+    return "$mes ${dia.year}"
+}
+
+/** "Qui, 6 de agosto". */
+internal fun diaPorExtenso(dia: LocalDate): String {
+    val diaSemana = DIAS_DA_SEMANA[dia.dayOfWeek.value - 1]
+    val mes = dia.month.getDisplayName(TextStyle.FULL, LOCALE_BR).lowercase(LOCALE_BR)
+    return "$diaSemana, ${dia.dayOfMonth} de $mes"
 }

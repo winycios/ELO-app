@@ -88,6 +88,7 @@ import com.winyc.elo.telas.cliente.PerfilProfissionalScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
 import com.winyc.elo.telas.cliente.VitrineScreen
 import com.winyc.elo.telas.onboarding.OnboardingScreen
+import com.winyc.elo.telas.profissional.AgendaScreen
 import com.winyc.elo.telas.profissional.OrcamentosScreen
 import com.winyc.elo.telas.profissional.PainelScreen
 import com.winyc.elo.telas.profissional.PerfilProScreen
@@ -112,6 +113,7 @@ private enum class EloScreen(val route: String) {
 
     // Profissional (teal)
     Painel("${PRO_PREFIX}painel"),
+    Agenda("${PRO_PREFIX}agenda"),
     Orcamentos("${PRO_PREFIX}orcamentos"),
     Publicar("${PRO_PREFIX}publicar"),
     PerfilPro("${PRO_PREFIX}perfil"),
@@ -187,6 +189,8 @@ private fun EloApp() {
     val telaCheia = currentRoute == EloScreen.Auth.route ||
         currentRoute == EloScreen.Onboarding.route ||
         currentRoute == EloScreen.PerfilProfissional.route
+    // A agenda tem cabeçalho colorido de ponta a ponta, então cuida da própria margem.
+    val margemPropria = currentRoute == EloScreen.Agenda.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
     val podePro = logado && perfil?.profissionalAtivo == true
@@ -250,7 +254,13 @@ private fun EloApp() {
                 startDestination = startDestination,
                 modifier = Modifier
                     .padding(contentPadding)
-                    .then(if (telaCheia) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
+                    .then(
+                        if (telaCheia || margemPropria) {
+                            Modifier
+                        } else {
+                            Modifier.padding(start = 10.dp, end = 10.dp)
+                        },
+                    ),
 
                 enterTransition = {
                     slideInHorizontally(animationSpec = tween(300)) { it / 3 } + fadeIn(tween(300))
@@ -340,7 +350,8 @@ private fun EloApp() {
                     )
                 }
 
-                composable(EloScreen.Painel.route) { PainelScreen() }
+                composable(EloScreen.Painel.route) { PainelScreen(onAbrirAgenda = { navController.navigate(EloScreen.Agenda.route) }, onAbrirOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },) }
+                composable(EloScreen.Agenda.route) { AgendaScreen(onIrParaOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },) }
                 composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
                 composable(EloScreen.Publicar.route) { PublicarScreen() }
                 composable(EloScreen.PerfilPro.route) {

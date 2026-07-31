@@ -410,4 +410,34 @@
     <string name="orcar_login_usuario_sendo_prof">Você não pode reservar um serviço oferecido por você mesmo.</string>
     <string name="modo_bloqueado_pro">Modo profissional disponível apenas para contas profissionais.</string>
     <string name="modo_bloqueado_cliente">Modo cliente não está disponível para esta conta.</string>
+
+    <!-- Agenda do profissional -->
+    <string name="agenda_titulo">Sua agenda</string>
+    <string name="agenda_hoje">Hoje</string>
+    <string name="agenda_hoje_marcador">hoje</string>
+    <string name="agenda_semana_anterior_cd">Semana anterior</string>
+    <string name="agenda_proxima_semana_cd">Próxima semana</string>
+    <string name="agenda_previsto_semana">Previsto nesta semana</string>
+    <string name="agenda_aguardando">%1$d aguardando</string>
+    <string name="agenda_preferencia_cliente">preferência do cliente</string>
+    <string name="agenda_status_pendente">pendente</string>
+    <string name="agenda_chip_confirmado">Confirmado</string>
+    <string name="agenda_chip_concluido">Concluído</string>
+    <string name="agenda_chip_aguardando_resposta">Aguardando resposta</string>
+    <string name="agenda_chip_aguardando_cliente">Aguardando cliente</string>
+    <string name="agenda_responder_agora">Responder agora</string>
+    <string name="agenda_vazio_titulo">Nenhum serviço neste dia</string>
+    <string name="agenda_vazio_texto">Dias livres são oportunidades — responda orçamentos pendentes para preencher sua agenda.</string>
+    <string name="agenda_ver_orcamentos">Ver orçamentos</string>
+    <plurals name="agenda_quantidade_servicos">
+        <item quantity="one">%1$d serviço</item>
+        <item quantity="other">%1$d serviços</item>
+    </plurals>
+
+    <!-- Painel do profissional -->
+    <string name="painel_sua_agenda">Sua agenda</string>
+    <plurals name="painel_servicos_hoje">
+        <item quantity="one">%1$d serviço hoje</item>
+        <item quantity="other">%1$d serviços hoje</item>
+    </plurals>
 </resources>

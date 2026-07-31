@@ -97,6 +97,7 @@ import com.winyc.elo.backend.security.PerfilSessao
 import com.winyc.elo.backend.viewModel.UsuarioUi
 import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.formatarTelefone
 
 /* ============================ Cores de apoio ============================ */
 
@@ -530,7 +531,7 @@ private fun CardContato(dados: UsuarioRS?) {
             LinhaContato(
                 Icons.Outlined.Phone,
                 stringResource(R.string.perfil_telefone),
-                dados?.telefone?.takeIf { it.isNotBlank() } ?: "—",
+                dados?.telefone?.takeIf { it.isNotBlank() }?.let(::formatarTelefone) ?: "—",
             )
             dados?.telefoneZap?.takeIf { it.isNotBlank() }?.let { zap ->
                 LinhaContato(

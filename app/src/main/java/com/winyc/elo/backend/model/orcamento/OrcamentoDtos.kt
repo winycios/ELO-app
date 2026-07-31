@@ -136,6 +136,7 @@ data class OrcamentoListagemProfissionalRS(
     val categoria: String? = null,
     val descricao: String? = null,
     val distanciaKm: Double? = null,
+    val bairro: String? = null,
     val dataHoraCriacao: String? = null,
     val horarioPreferido: String? = null,
     val inicioProposto: String? = null,

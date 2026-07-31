@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,8 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winyc.elo.R
 
 private val Verde = Color(0xFF12A15A)
 private val Azul = Color(0xFF2F6FED)
@@ -62,7 +66,7 @@ private val SERVICOS = listOf(
 
 /** Painel Pro: ganhos, avaliações e resumo de desempenho do profissional. */
 @Composable
-fun PainelScreen(modifier: Modifier = Modifier) {
+fun PainelScreen(onAbrirAgenda: () -> Unit, onAbrirOrcamentos: () -> Unit, modifier: Modifier = Modifier, ) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -84,7 +88,9 @@ fun PainelScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        BannerOrcamentos(quantidade = 2)
+        BannerOrcamentos(quantidade = 2, onClick = onAbrirOrcamentos)
+
+        CardAgenda(servicosHoje = 3, onClick = onAbrirAgenda)
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
@@ -128,8 +134,9 @@ fun PainelScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun BannerOrcamentos(quantidade: Int) {
+private fun BannerOrcamentos(quantidade: Int, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -154,6 +161,59 @@ private fun BannerOrcamentos(quantidade: Int) {
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardAgenda(servicosHoje: Int, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.painel_sua_agenda),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.painel_servicos_hoje,
+                        servicosHoje,
+                        servicosHoje,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
