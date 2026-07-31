@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.orcamento.OrcamentoRepository
+import com.winyc.elo.backend.model.orcamento.OrcamentoCancelamentoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
 import com.winyc.elo.backend.security.TokenStore
@@ -27,7 +28,7 @@ data class MeusOrcamentosUi(
         get() = hasNext && !carregandoMais && !carregandoInicial
 }
 
-enum class VisaoOrcamento { Detalhes, OrcamentoFinal, Contato }
+enum class VisaoOrcamento { Detalhes, OrcamentoFinal, Contato, Cancelar }
 
 data class OrcamentoDetalheUi(
     val orcamentoId: Long,
@@ -35,6 +36,8 @@ data class OrcamentoDetalheUi(
     val carregando: Boolean = false,
     val detalhe: OrcamentoDetalheRS? = null,
     val erro: String? = null,
+    val salvando: Boolean = false,
+    val erroAcao: String? = null,
 )
 
 class MeusOrcamentosViewModel(application: Application) : AndroidViewModel(application) {
@@ -47,6 +50,9 @@ class MeusOrcamentosViewModel(application: Application) : AndroidViewModel(appli
 
     private val _detalhe = MutableStateFlow<OrcamentoDetalheUi?>(null)
     val detalhe: StateFlow<OrcamentoDetalheUi?> = _detalhe.asStateFlow()
+
+    private val _mensagem = MutableStateFlow<String?>(null)
+    val mensagem: StateFlow<String?> = _mensagem.asStateFlow()
 
     private var cursor: String? = null
     private var buscaLista: Job? = null
@@ -130,6 +136,58 @@ class MeusOrcamentosViewModel(application: Application) : AndroidViewModel(appli
         _detalhe.value = null
     }
 
+    fun limparMensagem() {
+        _mensagem.value = null
+    }
+
+    fun trocarVisao(visao: VisaoOrcamento) {
+        _detalhe.update { it?.copy(visao = visao, erroAcao = null) }
+    }
+
+    fun aprovarOrcamentoFinal() {
+        val atual = _detalhe.value ?: return
+        if (atual.salvando) return
+        executarAcao(atual.orcamentoId, MSG_APROVADO) {
+            repository.aprovarOrcamentoFinal(atual.orcamentoId)
+        }
+    }
+
+    /** Cancela a solicitação (pendente, com orçamento final ou já aprovada). */
+    fun cancelarOrcamento(motivo: String, descricao: String) {
+        val atual = _detalhe.value ?: return
+        if (atual.salvando) return
+        executarAcao(atual.orcamentoId, MSG_CANCELADO) {
+            repository.cancelarOrcamentoCliente(
+                atual.orcamentoId,
+                OrcamentoCancelamentoRQ(motivo = motivo.trim(), descricao = descricao.trim()),
+            )
+        }
+    }
+
+    /** Executa a ação, fecha a folha no sucesso e recarrega a lista (o status muda). */
+    private fun executarAcao(
+        orcamentoId: Long,
+        mensagemSucesso: String,
+        acao: suspend () -> Result<OrcamentoDetalheRS>,
+    ) {
+        _detalhe.update { it?.copy(salvando = true, erroAcao = null) }
+        viewModelScope.launch {
+            acao()
+                .onSuccess {
+                    _detalhe.value = null
+                    _mensagem.value = mensagemSucesso
+                    carregarInicial()
+                }
+                .onFailure { erro ->
+                    _detalhe.update { atual ->
+                        atual?.takeIf { it.orcamentoId == orcamentoId }
+                            ?.copy(salvando = false, erroAcao = erro.message ?: ERRO_GENERICO)
+                            ?: atual
+                    }
+                }
+        }
+    }
+
     private fun buscarDetalhe(orcamentoId: Long) {
         viewModelScope.launch {
             repository.buscarOrcamentoPorId(orcamentoId)
@@ -153,5 +211,7 @@ class MeusOrcamentosViewModel(application: Application) : AndroidViewModel(appli
     private companion object {
         const val TAMANHO_PAGINA = 20
         const val ERRO_GENERICO = "Algo deu errado. Tente novamente."
+        const val MSG_APROVADO = "Orçamento aceito! O profissional foi avisado."
+        const val MSG_CANCELADO = "Orçamento cancelado."
     }
 }

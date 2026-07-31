@@ -97,6 +97,7 @@
     <!-- Orçamentos (profissional) -->
     <string name="solicitacoes_de_clientes">Solicitações de clientes para você</string>
     <string name="aba_novos">Novos</string>
+    <string name="aba_enviado">Enviado</string>
     <string name="aba_aprovado">Aprovado</string>
     <string name="aba_historico">Histórico</string>
     <string name="recusar_orcamento">Recusar</string>
@@ -107,6 +108,73 @@
     <string name="avaliar_cliente">Avaliar cliente</string>
     <string name="enviar_orcamento">Enviar orçamento</string>
     <string name="adicionar_categoria">ADICIONAR CATEGORIA</string>
+    <string name="orcamentos_pro_vazio_novos">Nenhuma nova solicitação por aqui.</string>
+    <string name="orcamentos_pro_vazio_enviados">Você não tem orçamentos aguardando resposta.</string>
+    <string name="orcamentos_pro_vazio_aprovados">Nenhum orçamento aprovado no momento.</string>
+    <string name="orcamentos_pro_vazio_historico">Seu histórico ainda está vazio.</string>
+    <string name="orcamento_aprovado_pelo_cliente">Orçamento aprovado pelo cliente!</string>
+    <string name="aguardando_resposta_cliente">Aguardando a resposta do cliente</string>
+    <string name="valor_aprovado">Valor aprovado</string>
+    <string name="valor_enviado">Valor enviado</string>
+    <string name="valor_final">Valor final</string>
+    <string name="ver_orcamento_enviado">Ver orçamento enviado</string>
+    <string name="cancelar_servico">Cancelar serviço</string>
+    <string name="distancia">Distância</string>
+    <string name="data_proposta">Data proposta</string>
+    <string name="detalhes_do_servico">Detalhes do serviço</string>
+
+    <!-- Enviar orçamento final -->
+    <string name="enviar_orcamento_final">Enviar orçamento final</string>
+    <string name="detalhe_custos_para_cliente">Proponha data, horário e custos</string>
+    <string name="fotos_do_cliente">Fotos do cliente</string>
+    <string name="detalhamento_de_custos">Detalhamento de custos</string>
+    <string name="observacoes_opcional">Observações (opcional)</string>
+    <string name="observacoes_hint">Garantia, prazo de conclusão, condições de pagamento…</string>
+    <string name="item_personalizado_hint">Item personalizado (ex: Taxa de urgência)</string>
+    <string name="adicionar_item_cd">Adicionar item</string>
+    <string name="remover_item_cd">Remover item</string>
+    <string name="total_do_orcamento">Total do orçamento</string>
+    <string name="orcamento_dica">Orçamentos detalhados por categoria geram mais conversões — o cliente entende exatamente pelo que está pagando.</string>
+    <string name="escolha_data_do_servico">Data e horário do serviço</string>
+    <string name="hora_inicio">Início</string>
+    <string name="hora_fim">Fim</string>
+    <string name="selecione_dia_horarios">Selecione um dia para ver os horários.</string>
+    <string name="sem_horarios_dia">Sem horários disponíveis neste dia.</string>
+    <string name="selecione_inicio_primeiro">Escolha o horário de início para definir o fim.</string>
+    <string name="semana_anterior">Semana anterior</string>
+    <string name="proxima_semana">Próxima semana</string>
+    <string name="esta_semana">Esta semana</string>
+    <string name="sem_agenda_servico">Não foi possível carregar a agenda deste serviço.</string>
+    <string name="itens_contagem">%1$d item(ns)</string>
+
+    <!-- Recusar e cancelar -->
+    <string name="recusar_solicitacao">Recusar solicitação</string>
+    <string name="confirmar_recusa">Confirmar recusa</string>
+    <string name="cancelar_servico_sub">Explique o motivo para o cliente</string>
+    <string name="motivo_cancelamento">Motivo</string>
+    <string name="descricao_cancelamento">Detalhes</string>
+    <string name="descricao_cancelamento_hint">Conte ao cliente o que aconteceu…</string>
+    <string name="confirmar_cancelamento">Confirmar cancelamento</string>
+    <string name="voltar_sem_cancelar">Voltar</string>
+    <string name="motivo_agenda">Conflito de agenda</string>
+    <string name="motivo_imprevisto">Imprevisto pessoal</string>
+    <string name="motivo_fora_area">Fora da minha área</string>
+    <string name="motivo_fora_escopo">Fora do meu escopo</string>
+    <string name="motivo_sem_resposta">Cliente não respondeu</string>
+    <string name="motivo_outro">Outro</string>
+    <string name="motivo_resolvido">Já resolvi o problema</string>
+    <string name="motivo_valor_alto">Valor acima do esperado</string>
+    <string name="motivo_data_nao_serve">Data ou horário não serve</string>
+    <string name="motivo_outro_profissional">Escolhi outro profissional</string>
+
+    <!-- Cancelamento (cliente) -->
+    <string name="cancelar">Cancelar</string>
+    <string name="cancelar_orcamento">Cancelar orçamento</string>
+    <string name="cancelar_orcamento_sub">Conte ao profissional o motivo</string>
+    <string name="recusar_proposta">Recusar proposta</string>
+    <string name="confirmar_recusa_proposta">Confirmar recusa</string>
+
+    <!-- Aprovação do orçamento final (cliente) -->
 
     <!-- Comum -->
     <string name="voltar">Voltar</string>

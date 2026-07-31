@@ -1,5 +1,7 @@
 package com.winyc.elo.backend.model.orcamento
 
+import androidx.compose.ui.graphics.vector.ImageVector
+
 data class HorariosDisponiveisRS(
     val idServico: Long? = null,
     val inicioSemana: String? = null,
@@ -106,6 +108,76 @@ data class OrcamentoDetalheRS(
     )
 }
 
+
+data class OrcamentoListagemProfissionalRS(
+    val id: Long,
+    val idServico: Long? = null,
+    val nomeUsuario: String? = null,
+    val fotoUsuario: String? = null,
+    val avaliacaoUsuario: Double? = null,
+    val categoria: String? = null,
+    val descricao: String? = null,
+    val distanciaKm: Double? = null,
+    val dataHoraCriacao: String? = null,
+    val horarioPreferido: String? = null,
+    val inicioProposto: String? = null,
+    val fimProposto: String? = null,
+    val valorTotal: Double? = null,
+    val status: String? = null,
+)
+
+data class OrcamentoDetalheProfissionalRS(
+    val id: Long,
+    val status: String? = null,
+    val cliente: ClienteOrcamentoRS? = null,
+    val solicitacao: SolicitacaoProfissionalRS? = null,
+    val orcamentoFinal: OrcamentoDetalheRS.OrcamentoFinalRS? = null,
+) {
+    data class ClienteOrcamentoRS(
+        val id: Long? = null,
+        val nome: String? = null,
+        val fotoPerfil: String? = null,
+        val avaliacao: Double? = null,
+        val quantidadeAvaliacoes: Int? = null,
+        val habilitado: Boolean? = null,
+        val contato: ContatoClienteRS? = null,
+    )
+
+    data class ContatoClienteRS(
+        val telefone: String? = null,
+        val whatsapp: String? = null,
+    )
+
+    data class SolicitacaoProfissionalRS(
+        val idServico: Long? = null,
+        val idCategoria: Long? = null,
+        val categoria: String? = null,
+        val descricao: String? = null,
+        val tipoServico: String? = null,
+        val horarioPreferido: String? = null,
+        val distanciaKm: Double? = null,
+        val imagens: List<String> = emptyList(),
+        val endereco: OrcamentoDetalheRS.EnderecoDetalheRS? = null,
+    )
+}
+
+data class OrcamentoFinalCreateRQ(
+    val inicioProposto: String,
+    val fimProposto: String,
+    val observacaoProfissional: String? = null,
+    val custos: List<CustoRQ>,
+) {
+    data class CustoRQ(
+        val descricao: String,
+        val valor: Double,
+    )
+}
+
+data class OrcamentoCancelamentoRQ(
+    val motivo: String,
+    val descricao: String,
+)
+
 data class OrcamentoRS(
     val id: Long,
     val idServico: Long? = null,
@@ -131,3 +203,7 @@ data class OrcamentoRS(
         val longitude: Double? = null,
     )
 }
+
+data class ItemCusto(val nome: String, val icone: ImageVector, val valor: String = "")
+
+data class CategoriaCusto(val nome: String, val icone: ImageVector)

@@ -1,26 +1,23 @@
 package com.winyc.elo.telas.profissional
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -28,7 +25,9 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
@@ -41,10 +40,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,463 +53,479 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
+import com.winyc.elo.backend.model.orcamento.OrcamentoListagemProfissionalRS
+import com.winyc.elo.backend.viewModel.FiltroOrcamentoPro
+import com.winyc.elo.backend.viewModel.OrcamentosProViewModel
+import com.winyc.elo.backend.viewModel.VisaoOrcamentoPro
 import com.winyc.elo.telas.cliente.AvaliarSheet
-import com.winyc.elo.telas.cliente.ContatoSheet
+import com.winyc.elo.telas.cliente.ChipFiltroOrcamento
+import com.winyc.elo.telas.cliente.RodapeOrcamentosCarregando
+import com.winyc.elo.telas.cliente.RodapeOrcamentosErro
+import com.winyc.elo.telas.cliente.RodapeOrcamentosVazio
+import com.winyc.elo.telas.cliente.StatusBadge
+import com.winyc.elo.telas.cliente.StatusOrcamento
+import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.DURACAO_AVISO_MS
+import com.winyc.elo.telas.componentes.TipoAviso
+import com.winyc.elo.telas.componentes.ToastAviso
+import com.winyc.elo.telas.componentes.dataComFaixaDeHorario
+import com.winyc.elo.telas.componentes.formatarBRL
+import com.winyc.elo.telas.componentes.formatarDataHora
+import com.winyc.elo.telas.componentes.formatarDistancia
+import com.winyc.elo.telas.componentes.formatarNota
+import com.winyc.elo.telas.componentes.tempoRelativo
+import kotlinx.coroutines.delay
 
 private val Verde = Color(0xFF12A15A)
 
-internal enum class StatusOrcamento { Novo, Aprovado, Historico }
+private const val GATILHO_PROXIMA_PAGINA = 5
 
-internal data class ItemValor(val descricao: String, val valor: String)
+private const val ITENS_FIXOS_TOPO = 2
 
-/** Uma solicitação de orçamento vinda de um cliente. */
-internal data class Orcamento(
-    val cliente: String,
-    val avaliacao: Double,
-    val tempo: String,
-    val servico: String,
-    val descricao: String,
-    val distancia: String,
-    val data: String,
-    val periodo: String,
-    val telefone: String,
-    val status: StatusOrcamento,
-    val valor: String,
-    val horario: String,
-    val endereco: String,
-    val dataAgendada: String,
-    val itens: List<ItemValor>,
-    val observacoes: String,
+private val ROTULOS_FILTRO: Map<FiltroOrcamentoPro, Pair<Int, Int>> = mapOf(
+    FiltroOrcamentoPro.Novo to (R.string.aba_novos to R.string.orcamentos_pro_vazio_novos),
+    FiltroOrcamentoPro.Enviado to (R.string.aba_enviado to R.string.orcamentos_pro_vazio_enviados),
+    FiltroOrcamentoPro.Aprovado to (R.string.aba_aprovado to R.string.orcamentos_pro_vazio_aprovados),
+    FiltroOrcamentoPro.Historico to (R.string.aba_historico to R.string.orcamentos_pro_vazio_historico),
 )
 
-private val ORCAMENTOS = listOf(
-    Orcamento(
-        cliente = "Mariana Costa", avaliacao = 4.8, tempo = "Há 2h",
-        servico = "Instalação de chuveiro elétrico",
-        descricao = "Preciso instalar um chuveiro novo de 7500W no banheiro principal. Já tenho o chuveiro comprado.",
-        distancia = "2,1 km", data = "22/04/2026", periodo = "Manhã",
-        telefone = "(11) 99182-7744", status = StatusOrcamento.Novo, valor = "",
-        horario = "Manhã (8h-12h)", endereco = "Rua das Palmeiras, 88 - Perdizes",
-        dataAgendada = "22/04/2026 08:00", itens = emptyList(), observacoes = "",
-    ),
-    Orcamento(
-        cliente = "Rafael Souza", avaliacao = 4.5, tempo = "Há 5h",
-        servico = "Troca de quadro de disjuntores",
-        descricao = "Quadro antigo com disjuntor geral queimando. Casa de 3 quartos, fiação já nova.",
-        distancia = "4,8 km", data = "25/04/2026", periodo = "Tarde",
-        telefone = "(11) 98771-2210", status = StatusOrcamento.Novo, valor = "",
-        horario = "Tarde (13h-18h)", endereco = "Rua Cardoso, 210 - Butantã",
-        dataAgendada = "25/04/2026 13:00", itens = emptyList(), observacoes = "",
-    ),
-    Orcamento(
-        cliente = "Bruno Tavares", avaliacao = 4.7, tempo = "Há 1 dia",
-        servico = "Instalação elétrica residencial completa",
-        descricao = "Casa nova em construção, preciso instalar toda a parte elétrica: quadro, tomadas, interruptores e pontos de luz em 4 cômodos.",
-        distancia = "1,7 km", data = "23/04/2026", periodo = "Manhã",
-        telefone = "(11) 99640-3301", status = StatusOrcamento.Aprovado, valor = "R$ 850,00",
-        horario = "Manhã (8h-12h)", endereco = "Rua Harmonia, 340 - Vila Madalena",
-        dataAgendada = "23/04/2026 10:00 - 24/04/2026 12:00",
-        itens = listOf(
-            ItemValor("Mão de obra (2 dias)", "R$ 500,00"),
-            ItemValor("Material elétrico", "R$ 280,00"),
-            ItemValor("Disjuntores e quadro", "R$ 40,00"),
-            ItemValor("Deslocamento", "R$ 30,00"),
-        ),
-        observacoes = "Inclui instalação de quadro de distribuição com 8 disjuntores, pontos de tomada 110V/220V em todos os cômodos e pontos de luz com suporte para luminária. Material de primeira linha. Garantia de 90 dias em todo o serviço.",
-    ),
-    Orcamento(
-        cliente = "Eduardo Pinto", avaliacao = 4.2, tempo = "Há 3 dias",
-        servico = "Manutenção elétrica geral",
-        descricao = "Revisão completa da rede elétrica da casa. Algumas tomadas não funcionam.",
-        distancia = "5,5 km", data = "18/04/2026", periodo = "Tarde",
-        telefone = "(11) 98123-9080", status = StatusOrcamento.Historico, valor = "R$ 380,00",
-        horario = "Tarde (13h-18h)", endereco = "Rua do Sol, 55 - Tatuapé",
-        dataAgendada = "18/04/2026 14:00", itens = emptyList(), observacoes = "",
-    ),
-    Orcamento(
-        cliente = "Patricia Alves", avaliacao = 4.7, tempo = "Há 1 semana",
-        servico = "Troca de ventilador de teto",
-        descricao = "Remover ventilador antigo e instalar um novo, já comprado.",
-        distancia = "3,8 km", data = "12/04/2026", periodo = "Tarde",
-        telefone = "(11) 99055-6612", status = StatusOrcamento.Historico, valor = "R$ 150,00",
-        horario = "Tarde (13h-18h)", endereco = "Rua Azul, 900 - Santana",
-        dataAgendada = "12/04/2026 15:00", itens = emptyList(), observacoes = "",
-    ),
-)
+@StringRes
+private fun rotuloDoFiltro(filtro: FiltroOrcamentoPro): Int =
+    ROTULOS_FILTRO.getValue(filtro).first
 
-/** Tela "Orçamentos": solicitações de clientes, em abas Novos/Aprovado/Histórico. */
+@StringRes
+private fun vazioDoFiltro(filtro: FiltroOrcamentoPro): Int =
+    ROTULOS_FILTRO.getValue(filtro).second
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrcamentosScreen(modifier: Modifier = Modifier) {
-    var aba by rememberSaveable { mutableStateOf(StatusOrcamento.Novo) }
+fun OrcamentosScreen(
+    modifier: Modifier = Modifier,
+    vm: OrcamentosProViewModel = viewModel(),
+) {
+    val estado by vm.estado.collectAsStateWithLifecycle()
+    val detalhe by vm.detalhe.collectAsStateWithLifecycle()
+    val horarios by vm.horarios.collectAsStateWithLifecycle()
+    val mensagem by vm.mensagem.collectAsStateWithLifecycle()
 
-    var contatoDe by remember { mutableStateOf<Orcamento?>(null) }
-    var detalhesDe by remember { mutableStateOf<Orcamento?>(null) }
-    var enviarPara by remember { mutableStateOf<Orcamento?>(null) }
-    var avaliarDe by remember { mutableStateOf<Orcamento?>(null) }
-
-    val visiveis = remember(aba) { ORCAMENTOS.filter { it.status == aba } }
-
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.orcamentos),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = stringResource(R.string.solicitacoes_de_clientes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        item {
-            Abas(
-                atual = aba,
-                onSelecionar = { aba = it },
-            )
-        }
-
-        items(visiveis) { orc ->
-            when (orc.status) {
-                StatusOrcamento.Novo -> CardNovo(
-                    orc = orc,
-                    onAnalisar = { enviarPara = orc },
-                    onConversar = { contatoDe = orc },
-                )
-                StatusOrcamento.Aprovado -> CardAprovado(
-                    orc = orc,
-                    onDetalhes = { detalhesDe = orc },
-                    onChat = { contatoDe = orc },
-                )
-                StatusOrcamento.Historico -> CardHistorico(
-                    orc = orc,
-                    onAvaliar = { avaliarDe = orc },
-                )
-            }
+    LaunchedEffect(Unit) { vm.abrirTela() }
+    LaunchedEffect(mensagem) {
+        if (mensagem != null) {
+            delay(DURACAO_AVISO_MS)
+            vm.limparMensagem()
         }
     }
 
-    contatoDe?.let { orc ->
-        ContatoSheet(
-            nome = orc.cliente,
-            subtitulo = "Cliente",
-            telefone = orc.telefone,
-            onFechar = { contatoDe = null },
+    var avaliarDe by remember { mutableStateOf<OrcamentoListagemProfissionalRS?>(null) }
+
+    val listState = rememberLazyListState()
+    val quantidade = estado.orcamentos.size
+    val precisaCarregarMais by remember(quantidade) {
+        derivedStateOf {
+            if (quantidade == 0) return@derivedStateOf false
+            val ultimoVisivel = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+            ultimoVisivel >= ITENS_FIXOS_TOPO + quantidade - 1 - GATILHO_PROXIMA_PAGINA
+        }
+    }
+    LaunchedEffect(precisaCarregarMais, estado.podeCarregarMais) {
+        if (precisaCarregarMais && estado.podeCarregarMais) vm.carregarMais()
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.orcamentos),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = stringResource(R.string.solicitacoes_de_clientes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            item {
+                FiltroChips(
+                    selecionado = estado.filtro,
+                    onSelecionar = vm::selecionarFiltro,
+                )
+            }
+
+            items(estado.orcamentos, key = { it.id }) { orcamento ->
+                CardOrcamento(
+                    orcamento = orcamento,
+                    onAbrir = { visao -> vm.abrirDetalhe(orcamento.id, visao) },
+                    onAvaliar = { avaliarDe = orcamento },
+                )
+            }
+
+            item {
+                when {
+                    estado.carregandoInicial || estado.carregandoMais -> RodapeOrcamentosCarregando()
+                    estado.erro != null -> RodapeOrcamentosErro(
+                        mensagem = estado.erro!!,
+                        onTentarNovamente = vm::carregarInicial,
+                    )
+
+                    estado.orcamentos.isEmpty() ->
+                        RodapeOrcamentosVazio(stringResource(vazioDoFiltro(estado.filtro)))
+                }
+            }
+        }
+
+        ToastAviso(
+            mensagem = mensagem,
+            tipo = TipoAviso.Sucesso,
+            modifier = Modifier.align(Alignment.TopCenter),
         )
     }
-    detalhesDe?.let { orc ->
-        DetalhesServicoSheet(orc = orc, onFechar = { detalhesDe = null })
+
+    detalhe?.let { estadoDetalhe ->
+        DetalheOrcamentoProSheet(
+            estado = estadoDetalhe,
+            horarios = horarios,
+            onFechar = vm::fecharDetalhe,
+            onTentarNovamente = vm::tentarNovamenteDetalhe,
+            onSemanaAnterior = vm::semanaAnterior,
+            onProximaSemana = vm::proximaSemana,
+            onTentarNovamenteHorarios = vm::tentarNovamenteHorarios,
+            onEnviarOrcamento = vm::enviarOrcamentoFinal,
+            onCancelar = vm::cancelarOrcamento,
+        )
     }
-    enviarPara?.let { orc ->
-        EnviarOrcamentoSheet(orc = orc, onFechar = { enviarPara = null })
-    }
-    avaliarDe?.let { orc ->
+
+    avaliarDe?.let { orcamento ->
         AvaliarSheet(
-            nome = orc.cliente,
+            nome = orcamento.nomeUsuario.orEmpty(),
             titulo = stringResource(R.string.avaliar_cliente),
             onFechar = { avaliarDe = null },
         )
     }
 }
 
-/* ---------------------------- Abas ---------------------------- */
+/* ---------------------------- Filtros ---------------------------- */
 
 @Composable
-private fun Abas(atual: StatusOrcamento, onSelecionar: (StatusOrcamento) -> Unit) {
-    val contagens = remember { ORCAMENTOS.groupingBy { it.status }.eachCount() }
+private fun FiltroChips(
+    selecionado: FiltroOrcamentoPro,
+    onSelecionar: (FiltroOrcamentoPro) -> Unit,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(FiltroOrcamentoPro.entries, key = { it.api }) { filtro ->
+            ChipFiltroOrcamento(
+                rotulo = stringResource(rotuloDoFiltro(filtro)),
+                ativo = filtro == selecionado,
+                onClick = { onSelecionar(filtro) },
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun CardOrcamento(
+    orcamento: OrcamentoListagemProfissionalRS,
+    onAbrir: (VisaoOrcamentoPro) -> Unit,
+    onAvaliar: () -> Unit,
+) {
+    val status = StatusOrcamento.de(orcamento.status)
+    val aprovado = status == StatusOrcamento.Aprovado
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = if (aprovado) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+    ) {
+        if (aprovado) FaixaAprovado(orcamento.dataHoraCriacao)
+
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CabecalhoCliente(orcamento, status, mostrarBadge = !aprovado)
+
+            orcamento.descricao?.takeIf { it.isNotBlank() }?.let { descricao ->
+                Text(
+                    text = descricao,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            MetaLinha(orcamento)
+            CaixaValor(orcamento, status)
+            Acoes(status, onAbrir, onAvaliar)
+        }
+    }
+}
+
+@Composable
+private fun FaixaAprovado(dataHoraCriacao: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Aba(stringResource(R.string.aba_novos), contagens[StatusOrcamento.Novo] ?: 0, atual == StatusOrcamento.Novo) {
-            onSelecionar(StatusOrcamento.Novo)
-        }
-        Aba(stringResource(R.string.aba_aprovado), contagens[StatusOrcamento.Aprovado] ?: 0, atual == StatusOrcamento.Aprovado) {
-            onSelecionar(StatusOrcamento.Aprovado)
-        }
-        Aba(stringResource(R.string.aba_historico), contagens[StatusOrcamento.Historico] ?: 0, atual == StatusOrcamento.Historico) {
-            onSelecionar(StatusOrcamento.Historico)
-        }
-    }
-}
-
-@Composable
-private fun RowScope.Aba(texto: String, contagem: Int, selecionada: Boolean, onClick: () -> Unit) {
-    val corTexto = if (selecionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        modifier = Modifier
-            .weight(1f)
-            .clip(RoundedCornerShape(9.dp))
-            .background(if (selecionada) MaterialTheme.colorScheme.surface else Color.Transparent)
-            .then(
-                if (selecionada) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(9.dp))
-                else Modifier,
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.Center,
+            .background(Verde)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Icon(Icons.Outlined.CheckCircle, null, tint = Color.White, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
-            text = texto,
+            text = stringResource(R.string.orcamento_aprovado_pelo_cliente),
             style = MaterialTheme.typography.labelLarge,
-            color = corTexto,
-            fontWeight = if (selecionada) FontWeight.Medium else FontWeight.Normal,
-        )
-        Spacer(Modifier.width(6.dp))
-        Box(
-            modifier = Modifier
-                .widthIn(min = 18.dp)
-                .clip(CircleShape)
-                .background(if (selecionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f))
-                .padding(horizontal = 6.dp, vertical = 1.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = contagem.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (selecionada) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-            )
-        }
-    }
-}
-
-/* ---------------------------- Cards ---------------------------- */
-
-@Composable
-private fun CardNovo(orc: Orcamento, onAnalisar: () -> Unit, onConversar: () -> Unit) {
-    OrcamentoCardBase {
-        CabecalhoCliente(orc, badge = { BadgePill("Novo", Verde) })
-        Text(orc.servico, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-        Text(
-            orc.descricao,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        MetaLinha(orc)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.recusar_orcamento))
-            }
-            Button(onClick = onAnalisar, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.analisar_orcamento))
-            }
-        }
-        BotaoTonal(
-            texto = stringResource(R.string.conversar_com_cliente),
-            icone = Icons.Outlined.ChatBubbleOutline,
-            onClick = onConversar,
+            color = Color.White,
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
 @Composable
-private fun CardAprovado(orc: Orcamento, onDetalhes: () -> Unit, onChat: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-    ) {
-        // Faixa verde "aprovado".
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Verde)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Outlined.CheckCircle, null, tint = Color.White, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Orçamento aprovado pelo cliente!",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-            )
-            Text(orc.tempo, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.9f))
-        }
-
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AvatarCliente(orc.cliente)
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Rating(orc.cliente, orc.avaliacao)
-                    Text(orc.servico, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            CaixaValor("Valor aprovado", orc.valor, Verde)
-            MetaLinha(orc)
-            BotaoTonal(
-                texto = stringResource(R.string.ver_detalhes_do_servico),
-                icone = Icons.Outlined.Description,
-                onClick = onDetalhes,
-            )
-            OutlinedButton(onClick = onChat, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.ChatBubbleOutline, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.chat))
-            }
-        }
-    }
-}
-
-@Composable
-private fun CardHistorico(orc: Orcamento, onAvaliar: () -> Unit) {
-    OrcamentoCardBase {
-        CabecalhoCliente(orc, badge = { BadgePill("Concluído", Verde) })
-        Text(orc.servico, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-        Text(
-            orc.descricao,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        MetaLinha(orc)
-        CaixaValor("Orçamento final", orc.valor, MaterialTheme.colorScheme.onSurface, neutra = true)
-        Button(
-            onClick = onAvaliar,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Outlined.StarBorder, null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.avaliar_cliente))
-        }
-    }
-}
-
-/* ---------------------------- Peças ---------------------------- */
-
-@Composable
-private fun OrcamentoCardBase(conteudo: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = conteudo,
-        )
-    }
-}
-
-@Composable
-private fun CabecalhoCliente(orc: Orcamento, badge: @Composable () -> Unit) {
+private fun CabecalhoCliente(
+    orcamento: OrcamentoListagemProfissionalRS,
+    status: StatusOrcamento?,
+    mostrarBadge: Boolean,
+) {
+    val nome = orcamento.nomeUsuario.orEmpty()
     Row(verticalAlignment = Alignment.Top) {
-        AvatarCliente(orc.cliente)
+        AvatarPerfil(
+            nome = nome,
+            fotoUrl = orcamento.fotoUsuario,
+            tamanho = 48.dp,
+            fonte = MaterialTheme.typography.titleMedium,
+        )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Rating(orc.cliente, orc.avaliacao)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.Schedule,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(13.dp),
+                Text(
+                    text = nome,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.width(4.dp))
-                Text(orc.tempo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                orcamento.avaliacaoUsuario?.let { nota ->
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.Filled.Star,
+                        null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text = formatarNota(nota),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            orcamento.categoria?.takeIf { it.isNotBlank() }?.let { categoria ->
+                MetaItem(Icons.Outlined.LocalOffer, categoria)
+            }
+            tempoRelativo(orcamento.dataHoraCriacao)?.let { tempo ->
+                MetaItem(Icons.Outlined.Schedule, tempo)
             }
         }
-        badge()
+        if (mostrarBadge) StatusBadge(status, orcamento.status)
     }
 }
 
 @Composable
-private fun Rating(nome: String, nota: Double) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(6.dp))
-        Icon(Icons.Filled.Star, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(2.dp))
-        Text(nota.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
+private fun MetaLinha(orcamento: OrcamentoListagemProfissionalRS) {
+    val distancia = formatarDistancia(orcamento.distanciaKm)
+    val quando = dataComFaixaDeHorario(orcamento.inicioProposto, orcamento.fimProposto) ?: formatarDataHora(orcamento.horarioPreferido)
+    if (distancia == null && quando == null) return
 
-@Composable
-private fun MetaLinha(orc: Orcamento) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MetaItem(Icons.Outlined.LocationOn, orc.distancia)
-        MetaItem(Icons.Outlined.CalendarToday, orc.data)
-        MetaItem(Icons.Outlined.Schedule, orc.periodo)
+        distancia?.let { MetaItem(Icons.Outlined.NearMe, it) }
+        quando?.let { MetaItem(Icons.Outlined.CalendarToday, it) }
     }
 }
 
 @Composable
 private fun MetaItem(icone: ImageVector, texto: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icone, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
+        Icon(
+            icone,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(13.dp)
+        )
         Spacer(Modifier.width(4.dp))
-        Text(texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
-/** Caixa de valor: verde para "aprovado", neutra para "orçamento final". */
 @Composable
-private fun CaixaValor(rotulo: String, valor: String, cor: Color, neutra: Boolean = false) {
-    val fundo = if (neutra) MaterialTheme.colorScheme.surfaceVariant else Verde.copy(alpha = 0.12f)
+private fun CaixaValor(orcamento: OrcamentoListagemProfissionalRS, status: StatusOrcamento?) {
+    val valor = formatarBRL(orcamento.valorTotal) ?: return
+    val destaque = status == StatusOrcamento.Aprovado
+    val rotulo = when (status) {
+        StatusOrcamento.Aprovado -> R.string.valor_aprovado
+        StatusOrcamento.OrcamentoFinal -> R.string.valor_enviado
+        else -> R.string.valor_final
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(fundo)
+            .background(if (destaque) Verde.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            rotulo,
+            text = stringResource(rotulo),
             style = MaterialTheme.typography.bodyMedium,
-            color = if (neutra) MaterialTheme.colorScheme.onSurfaceVariant else cor,
+            color = if (destaque) Verde else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
         Text(
-            valor,
+            text = valor,
             style = MaterialTheme.typography.titleMedium,
-            color = cor,
+            color = if (destaque) Verde else MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
         )
     }
 }
 
 @Composable
-private fun BadgePill(texto: String, cor: Color) {
-    Text(
-        text = texto,
-        style = MaterialTheme.typography.labelSmall,
-        color = cor,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(cor.copy(alpha = 0.14f))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    )
+private fun Acoes(
+    status: StatusOrcamento?,
+    onAbrir: (VisaoOrcamentoPro) -> Unit,
+    onAvaliar: () -> Unit,
+) {
+    when (status) {
+        StatusOrcamento.Pendente -> {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Cancelar) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text(stringResource(R.string.cancelar_servico))
+                }
+                Button(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Orcar) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.analisar_orcamento))
+                }
+            }
+            BotaoTonal(
+                texto = stringResource(R.string.conversar_com_cliente),
+                icone = Icons.Outlined.ChatBubbleOutline,
+                onClick = { onAbrir(VisaoOrcamentoPro.Contato) },
+            )
+        }
+
+        StatusOrcamento.OrcamentoFinal -> {
+            Text(
+                text = stringResource(R.string.aguardando_resposta_cliente),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            BotaoTonal(
+                texto = stringResource(R.string.ver_orcamento_enviado),
+                icone = Icons.Outlined.EditNote,
+                onClick = { onAbrir(VisaoOrcamentoPro.OrcamentoFinal) },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Contato) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.contato))
+                }
+                OutlinedButton(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Cancelar) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text(stringResource(R.string.cancelar_servico))
+                }
+            }
+        }
+
+        StatusOrcamento.Aprovado -> {
+            BotaoTonal(
+                texto = stringResource(R.string.ver_detalhes_do_servico),
+                icone = Icons.Outlined.Description,
+                onClick = { onAbrir(VisaoOrcamentoPro.Detalhes) },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Contato) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Outlined.ChatBubbleOutline, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.contato))
+                }
+                OutlinedButton(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Cancelar) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text(stringResource(R.string.cancelar_servico))
+                }
+            }
+        }
+
+        StatusOrcamento.Concluido -> {
+            BotaoTonal(
+                texto = stringResource(R.string.ver_detalhes_do_servico),
+                icone = Icons.Outlined.Description,
+                onClick = { onAbrir(VisaoOrcamentoPro.Detalhes) },
+            )
+            Button(onClick = onAvaliar, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.StarBorder, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.avaliar_cliente))
+            }
+        }
+
+        else -> BotaoTonal(
+            texto = stringResource(R.string.ver_detalhes),
+            icone = Icons.Outlined.Description,
+            onClick = { onAbrir(VisaoOrcamentoPro.Detalhes) },
+        )
+    }
 }
 
 /** Botão preenchido claro (primaryContainer + texto na cor do contexto). */
@@ -526,27 +542,5 @@ private fun BotaoTonal(texto: String, icone: ImageVector, onClick: () -> Unit) {
         Icon(icone, null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(texto)
-    }
-}
-
-/** Avatar circular com as iniciais do cliente. */
-@Composable
-internal fun AvatarCliente(nome: String, tamanho: androidx.compose.ui.unit.Dp = 48.dp) {
-    val iniciais = nome.split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
-    Box(
-        modifier = Modifier
-            .size(tamanho)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = iniciais,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
     }
 }

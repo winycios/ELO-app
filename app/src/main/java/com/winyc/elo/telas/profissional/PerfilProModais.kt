@@ -104,6 +104,7 @@ import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
 import com.winyc.elo.backend.viewModel.ProfissionalUi
 import com.winyc.elo.backend.viewModel.ProfissionalViewModel
+import com.winyc.elo.telas.componentes.AvatarPerfil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -217,7 +218,12 @@ private fun FormularioEditarPerfil(
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AvatarCliente(nome, tamanho = 56.dp)
+                    AvatarPerfil(
+                        nome = nome,
+                        fotoUrl = null,
+                        tamanho = 56.dp,
+                        fonte = MaterialTheme.typography.titleLarge,
+                    )
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(

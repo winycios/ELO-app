@@ -4,8 +4,12 @@ import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
 import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.orcamento.HorariosDisponiveisRS
+import com.winyc.elo.backend.model.orcamento.OrcamentoCancelamentoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoCreateRQ
+import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheProfissionalRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
+import com.winyc.elo.backend.model.orcamento.OrcamentoFinalCreateRQ
+import com.winyc.elo.backend.model.orcamento.OrcamentoListagemProfissionalRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoRS
 import com.winyc.elo.backend.retroFit.RetroFitService
@@ -40,6 +44,40 @@ class OrcamentoRepository(tokenStore: TokenStore, private val api: OrcamentoInte
 
     suspend fun buscarOrcamentoPorId(orcamentoId: Long): Result<OrcamentoDetalheRS> =
         executar { verificaErro(api.buscarOrcamentoPorId(orcamentoId).execute()) }
+
+    suspend fun aprovarOrcamentoFinal(orcamentoId: Long): Result<OrcamentoDetalheRS> =
+        executar { verificaErro(api.aprovarOrcamentoFinal(orcamentoId).execute()) }
+
+    suspend fun cancelarOrcamentoCliente(
+        orcamentoId: Long,
+        request: OrcamentoCancelamentoRQ,
+    ): Result<OrcamentoDetalheRS> =
+        executar { verificaErro(api.cancelarOrcamentoCliente(orcamentoId, request).execute()) }
+
+    suspend fun listarOrcamentosProfissional(
+        status: String?,
+        cursor: String?,
+        tamanho: Int,
+    ): Result<CursorPageRS<OrcamentoListagemProfissionalRS>> = executar {
+        val resposta = api.listarOrcamentosProfissional(status, cursor, tamanho).execute()
+        if (resposta.code() == 204) CursorPageRS(items = emptyList(), nextCursor = null, hasNext = false)
+        else verificaErro(resposta)
+    }
+
+    suspend fun buscarOrcamentoPorIdProfissional(orcamentoId: Long): Result<OrcamentoDetalheProfissionalRS> =
+        executar { verificaErro(api.buscarOrcamentoPorIdProfissional(orcamentoId).execute()) }
+
+    suspend fun enviarOrcamentoFinal(
+        orcamentoId: Long,
+        request: OrcamentoFinalCreateRQ,
+    ): Result<OrcamentoDetalheProfissionalRS> =
+        executar { verificaErro(api.enviarOrcamentoFinal(orcamentoId, request).execute()) }
+
+    suspend fun cancelarOrcamentoProfissional(
+        orcamentoId: Long,
+        request: OrcamentoCancelamentoRQ,
+    ): Result<OrcamentoDetalheProfissionalRS> =
+        executar { verificaErro(api.cancelarOrcamentoProfissional(orcamentoId, request).execute()) }
 
     private suspend fun <T> executar(bloco: () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching(bloco) }

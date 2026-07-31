@@ -92,6 +92,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.winyc.elo.R
 import com.winyc.elo.backend.viewModel.AuthEstado
 import com.winyc.elo.backend.viewModel.AuthViewModel
+import com.winyc.elo.telas.componentes.ToastAviso
 import com.winyc.elo.ui.theme.EloContext
 import com.winyc.elo.ui.theme.EloTheme
 import com.winyc.elo.ui.theme.EloTintaEscura
@@ -216,9 +217,11 @@ fun AutenticacaoScreen(
                 Spacer(Modifier.height(24.dp))
             }
 
-            ToastErro(
+            ToastAviso(
                 mensagem = erro,
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding(),
             )
         }
     }
@@ -717,44 +720,6 @@ private fun BotaoPrincipal(
     }
 }
 
-
-@Composable
-private fun ToastErro(mensagem: String?, modifier: Modifier = Modifier) {
-    var ultimaMensagem by remember { mutableStateOf("") }
-    if (!mensagem.isNullOrBlank()) ultimaMensagem = mensagem
-
-    AnimatedVisibility(
-        visible = !mensagem.isNullOrBlank(),
-        enter = slideInVertically(tween(260)) { -it } + fadeIn(tween(260)),
-        exit = slideOutVertically(tween(220)) { -it } + fadeOut(tween(220)),
-        modifier = modifier,
-    ) {
-        Row(
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth()
-                .shadow(8.dp, RoundedCornerShape(14.dp))
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.errorContainer)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Outlined.ErrorOutline,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = ultimaMensagem,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-        }
-    }
-}
 
 @Composable
 private fun BotaoGoogle() {

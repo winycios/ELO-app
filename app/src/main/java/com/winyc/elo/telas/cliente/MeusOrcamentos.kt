@@ -75,6 +75,10 @@ import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
 import com.winyc.elo.backend.viewModel.MeusOrcamentosViewModel
 import com.winyc.elo.backend.viewModel.VisaoOrcamento
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.DURACAO_AVISO_MS
+import com.winyc.elo.telas.componentes.TipoAviso
+import com.winyc.elo.telas.componentes.ToastAviso
+import kotlinx.coroutines.delay
 
 private const val GATILHO_PROXIMA_PAGINA = 5
 
@@ -82,7 +86,6 @@ private const val ITENS_FIXOS_TOPO = 2
 
 internal enum class StatusOrcamento(val api: String, @StringRes val rotuloRes: Int) {
     Pendente("pendente", R.string.status_pendente),
-    EmAndamento("em_andamento", R.string.status_em_andamento),
     OrcamentoFinal("orcamento_final", R.string.status_orcamento_final),
     Aprovado("aprovado", R.string.status_aprovado),
     Concluido("concluido", R.string.status_concluido),
@@ -98,7 +101,6 @@ internal data class StatusVisual(val cor: Color, val icone: ImageVector)
 
 internal fun StatusOrcamento.visual(): StatusVisual = when (this) {
     StatusOrcamento.Pendente -> StatusVisual(Color(0xFFDD8A15), Icons.Outlined.Schedule)
-    StatusOrcamento.EmAndamento -> StatusVisual(Color(0xFF2F6FED), Icons.Outlined.Autorenew)
     StatusOrcamento.OrcamentoFinal -> StatusVisual(Color(0xFF8B5CF6), Icons.Outlined.EditNote)
     StatusOrcamento.Aprovado -> StatusVisual(Color(0xFF12A788), Icons.Outlined.ThumbUpOffAlt)
     StatusOrcamento.Concluido -> StatusVisual(Color(0xFF12A15A), Icons.Outlined.CheckCircle)
@@ -115,9 +117,15 @@ fun MeusOrcamentosScreen(
 ) {
     val estado by vm.estado.collectAsStateWithLifecycle()
     val detalhe by vm.detalhe.collectAsStateWithLifecycle()
-
+    val mensagem by vm.mensagem.collectAsStateWithLifecycle()
 
     LaunchedEffect(logado) { vm.abrirTela(logado) }
+    LaunchedEffect(mensagem) {
+        if (mensagem != null) {
+            delay(DURACAO_AVISO_MS)
+            vm.limparMensagem()
+        }
+    }
 
     var avaliarDe by remember { mutableStateOf<OrcamentoListagemRS?>(null) }
 
@@ -136,58 +144,67 @@ fun MeusOrcamentosScreen(
         if (precisaCarregarMais && estado.podeCarregarMais) vm.carregarMais()
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.meus_orcamentos),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.meus_orcamentos),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = stringResource(R.string.acompanhe_suas_solicitacoes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            item {
+                StatusChips(
+                    selecionado = estado.statusSelecionado,
+                    onSelecionar = vm::selecionarStatus,
                 )
-                Text(
-                    text = stringResource(R.string.acompanhe_suas_solicitacoes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            }
+
+            items(estado.orcamentos, key = { it.id }) { orcamento ->
+                OrcamentoCard(
+                    orcamento = orcamento,
+                    onContato = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Contato) },
+                    onDetalhes = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Detalhes) },
+                    onRevisar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.OrcamentoFinal) },
+                    onCancelar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Cancelar) },
+                    onAvaliar = { avaliarDe = orcamento },
                 )
+            }
+
+            item {
+                when {
+                    !logado -> RodapeDeslogado(onEntrar = onPrecisaLogin)
+                    estado.carregandoInicial || estado.carregandoMais -> RodapeOrcamentosCarregando()
+                    estado.erro != null -> RodapeOrcamentosErro(
+                        mensagem = estado.erro!!,
+                        onTentarNovamente = vm::carregarInicial,
+                    )
+
+                    estado.orcamentos.isEmpty() -> RodapeOrcamentosVazio(stringResource(R.string.orcamentos_vazio))
+                }
             }
         }
 
-        item {
-            StatusChips(
-                selecionado = estado.statusSelecionado,
-                onSelecionar = vm::selecionarStatus,
-            )
-        }
-
-        items(estado.orcamentos, key = { it.id }) { orcamento ->
-            OrcamentoCard(
-                orcamento = orcamento,
-                onContato = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Contato) },
-                onDetalhes = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Detalhes) },
-                onRevisar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.OrcamentoFinal) },
-                onAvaliar = { avaliarDe = orcamento },
-            )
-        }
-
-        item {
-            when {
-                !logado -> RodapeDeslogado(onEntrar = onPrecisaLogin)
-                estado.carregandoInicial || estado.carregandoMais -> RodapeCarregando()
-                estado.erro != null -> RodapeErro(
-                    mensagem = estado.erro!!,
-                    onTentarNovamente = vm::carregarInicial,
-                )
-
-                estado.orcamentos.isEmpty() -> RodapeVazio()
-            }
-        }
+        ToastAviso(
+            mensagem = mensagem,
+            tipo = TipoAviso.Sucesso,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 
     detalhe?.let { estadoDetalhe ->
@@ -195,6 +212,9 @@ fun MeusOrcamentosScreen(
             estado = estadoDetalhe,
             onFechar = vm::fecharDetalhe,
             onTentarNovamente = vm::tentarNovamenteDetalhe,
+            onAceitar = vm::aprovarOrcamentoFinal,
+            onRecusar = { vm.trocarVisao(VisaoOrcamento.Cancelar) },
+            onCancelar = vm::cancelarOrcamento,
         )
     }
 
@@ -216,30 +236,39 @@ private fun StatusChips(
 
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(abas, key = { (api, _) -> api ?: "todos" }) { (api, rotulo) ->
-            val ativo = api == selecionado
-            FilterChip(
-                selected = ativo,
+            ChipFiltroOrcamento(
+                rotulo = rotulo,
+                ativo = api == selecionado,
                 onClick = { onSelecionar(api) },
-                label = {
-                    Text(
-                        text = rotulo,
-                        fontWeight = if (ativo) FontWeight.Medium else FontWeight.Normal,
-                    )
-                },
-                shape = CircleShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = ativo,
-                    borderColor = MaterialTheme.colorScheme.outline,
-                    selectedBorderColor = Color.Transparent,
-                ),
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ChipFiltroOrcamento(rotulo: String, ativo: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = ativo,
+        onClick = onClick,
+        label = {
+            Text(
+                text = rotulo,
+                fontWeight = if (ativo) FontWeight.Medium else FontWeight.Normal,
+            )
+        },
+        shape = CircleShape,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = ativo,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = Color.Transparent,
+        ),
+    )
 }
 
 @Composable
@@ -248,6 +277,7 @@ private fun OrcamentoCard(
     onContato: () -> Unit,
     onDetalhes: () -> Unit,
     onRevisar: () -> Unit,
+    onCancelar: () -> Unit,
     onAvaliar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -278,7 +308,7 @@ private fun OrcamentoCard(
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Acoes(status, onContato, onDetalhes, onAvaliar)
+        Acoes(status, onContato, onDetalhes, onCancelar, onAvaliar)
     }
 }
 
@@ -413,11 +443,17 @@ private fun BannerOrcamentoFinal(onRevisar: () -> Unit) {
     }
 }
 
+/** O cliente pode cancelar enquanto o serviço não foi concluído nem cancelado. */
+private fun StatusOrcamento?.podeCancelar(): Boolean = this == StatusOrcamento.Pendente ||
+    this == StatusOrcamento.OrcamentoFinal ||
+    this == StatusOrcamento.Aprovado
+
 @Composable
 private fun Acoes(
     status: StatusOrcamento?,
     onContato: () -> Unit,
     onDetalhes: () -> Unit,
+    onCancelar: () -> Unit,
     onAvaliar: () -> Unit,
 ) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
@@ -461,6 +497,15 @@ private fun Acoes(
                     cor = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = onDetalhes,
                 )
+                if (status.podeCancelar()) {
+                    VerticalDivider(color = MaterialTheme.colorScheme.outline)
+                    AcaoBotao(
+                        icone = Icons.Outlined.Cancel,
+                        texto = stringResource(R.string.cancelar),
+                        cor = MaterialTheme.colorScheme.error,
+                        onClick = onCancelar,
+                    )
+                }
             }
         }
     }
@@ -496,7 +541,7 @@ private fun RowScope.AcaoBotao(
 /* ---------------------------- Rodapés da lista ---------------------------- */
 
 @Composable
-private fun RodapeCarregando() {
+internal fun RodapeOrcamentosCarregando() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -508,7 +553,7 @@ private fun RodapeCarregando() {
 }
 
 @Composable
-private fun RodapeErro(mensagem: String, onTentarNovamente: () -> Unit) {
+internal fun RodapeOrcamentosErro(mensagem: String, onTentarNovamente: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -528,7 +573,7 @@ private fun RodapeErro(mensagem: String, onTentarNovamente: () -> Unit) {
 }
 
 @Composable
-private fun RodapeVazio() {
+internal fun RodapeOrcamentosVazio(mensagem: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -536,7 +581,7 @@ private fun RodapeVazio() {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = stringResource(R.string.orcamentos_vazio),
+            text = mensagem,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -80,10 +81,19 @@ import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
 import com.winyc.elo.backend.viewModel.OrcamentoDetalheUi
 import com.winyc.elo.backend.viewModel.VisaoOrcamento
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.FormularioCancelamento
+import com.winyc.elo.telas.componentes.MOTIVOS_CANCELAMENTO_CLIENTE
+import com.winyc.elo.telas.componentes.enderecoCompleto
+import com.winyc.elo.telas.componentes.faixaDeHorario
+import com.winyc.elo.telas.componentes.formatarBRL
+import com.winyc.elo.telas.componentes.formatarData
+import com.winyc.elo.telas.componentes.formatarDataHora
+import com.winyc.elo.telas.componentes.formatarNota
+import com.winyc.elo.telas.componentes.formatarTelefone
+import com.winyc.elo.telas.componentes.rotuloTipoServico
+import com.winyc.elo.telas.componentes.somenteDigitos
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.util.Locale
 
 private val Verde = Color(0xFF12A15A)
 
@@ -105,6 +115,9 @@ internal fun DetalheOrcamentoSheet(
     estado: OrcamentoDetalheUi,
     onFechar: () -> Unit,
     onTentarNovamente: () -> Unit,
+    onAceitar: () -> Unit,
+    onRecusar: () -> Unit,
+    onCancelar: (motivo: String, descricao: String) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
@@ -128,7 +141,7 @@ internal fun DetalheOrcamentoSheet(
                     if (estado.erro != null && !estado.carregando) {
                         ConteudoErro(mensagem = estado.erro, onTentarNovamente = onTentarNovamente)
                     } else {
-                        CaixaCarregando()
+                        CaixaCarregandoOrcamento()
                     }
                 }
 
@@ -142,8 +155,20 @@ internal fun DetalheOrcamentoSheet(
                     onFechar = fechar,
                 )
 
-                estado.visao == VisaoOrcamento.OrcamentoFinal ->
-                    ConteudoOrcamentoFinal(detalhe = detalhe, onFechar = fechar)
+                estado.visao == VisaoOrcamento.OrcamentoFinal -> ConteudoOrcamentoFinal(
+                    estado = estado,
+                    detalhe = detalhe,
+                    onFechar = fechar,
+                    onAceitar = onAceitar,
+                    onRecusar = onRecusar,
+                )
+
+                estado.visao == VisaoOrcamento.Cancelar -> ConteudoCancelar(
+                    estado = estado,
+                    detalhe = detalhe,
+                    onFechar = fechar,
+                    onCancelar = onCancelar,
+                )
 
                 else -> ConteudoDetalhes(detalhe = detalhe, onFechar = fechar)
             }
@@ -156,6 +181,7 @@ private fun tituloDaVisao(visao: VisaoOrcamento): String = stringResource(
     when (visao) {
         VisaoOrcamento.Contato -> R.string.contato
         VisaoOrcamento.OrcamentoFinal -> R.string.orcamento_final
+        VisaoOrcamento.Cancelar -> R.string.cancelar_orcamento
         VisaoOrcamento.Detalhes -> R.string.detalhes_do_orcamento
     },
 )
@@ -265,7 +291,13 @@ private fun ConteudoDetalhes(detalhe: OrcamentoDetalheRS, onFechar: () -> Unit) 
 /* ------------------------------------------------------------------ */
 
 @Composable
-private fun ConteudoOrcamentoFinal(detalhe: OrcamentoDetalheRS, onFechar: () -> Unit) {
+private fun ConteudoOrcamentoFinal(
+    estado: OrcamentoDetalheUi,
+    detalhe: OrcamentoDetalheRS,
+    onFechar: () -> Unit,
+    onAceitar: () -> Unit,
+    onRecusar: () -> Unit,
+) {
     val final = detalhe.orcamentoFinal
     val solicitacao = detalhe.solicitacao
 
@@ -369,10 +401,111 @@ private fun ConteudoOrcamentoFinal(detalhe: OrcamentoDetalheRS, onFechar: () -> 
         )
     }
 
-    Spacer(Modifier.size(20.dp))
-    Button(onClick = onFechar, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.fechar))
+    estado.erroAcao?.let { erro ->
+        Spacer(Modifier.size(12.dp))
+        Text(
+            text = erro,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
     }
+
+    Spacer(Modifier.size(20.dp))
+    // A proposta só pode ser aceita ou recusada enquanto aguarda decisão do cliente.
+    if (StatusOrcamento.de(detalhe.status) == StatusOrcamento.OrcamentoFinal) {
+        Button(
+            onClick = onAceitar,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !estado.salvando,
+        ) {
+            if (estado.salvando) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+            } else {
+                Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.aceitar_orcamento))
+            }
+        }
+        Spacer(Modifier.size(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(
+                onClick = onFechar,
+                modifier = Modifier.weight(1f),
+                enabled = !estado.salvando,
+            ) {
+                Text(stringResource(R.string.fechar))
+            }
+            OutlinedButton(
+                onClick = onRecusar,
+                modifier = Modifier.weight(1f),
+                enabled = !estado.salvando,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(stringResource(R.string.recusar))
+            }
+        }
+    } else {
+        Button(onClick = onFechar, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.fechar))
+        }
+    }
+}
+
+@Composable
+private fun ConteudoCancelar(
+    estado: OrcamentoDetalheUi,
+    detalhe: OrcamentoDetalheRS,
+    onFechar: () -> Unit,
+    onCancelar: (String, String) -> Unit,
+) {
+    val recusaDeProposta = StatusOrcamento.de(detalhe.status) == StatusOrcamento.OrcamentoFinal
+    CabecalhoSheet(
+        titulo = stringResource(if (recusaDeProposta) R.string.recusar_proposta else R.string.cancelar_orcamento,),
+        subtitulo = stringResource(R.string.cancelar_orcamento_sub),
+        onFechar = onFechar,
+    )
+
+    Spacer(Modifier.size(16.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AvatarPerfil(
+            nome = detalhe.profissional?.nome.orEmpty(),
+            fotoUrl = detalhe.profissional?.fotoPerfil,
+            tamanho = 44.dp,
+            fonte = MaterialTheme.typography.titleSmall,
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = detalhe.profissional?.nome.orEmpty(),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = detalhe.solicitacao?.descricao.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+            )
+        }
+    }
+
+    Spacer(Modifier.size(16.dp))
+    FormularioCancelamento(
+        motivos = MOTIVOS_CANCELAMENTO_CLIENTE,
+        rotuloConfirmar = stringResource(
+            if (recusaDeProposta) R.string.confirmar_recusa_proposta else R.string.confirmar_cancelamento,
+        ),
+        salvando = estado.salvando,
+        erro = estado.erroAcao,
+        onVoltar = onFechar,
+        onConfirmar = onCancelar,
+    )
 }
 
 /** Bloco com foto, nome, selo de verificado, categoria e avaliação do profissional. */
@@ -436,7 +569,7 @@ private fun CabecalhoProfissional(detalhe: OrcamentoDetalheRS) {
 /* ------------------------------------------------------------------ */
 
 @Composable
-private fun ConteudoContato(
+internal fun ConteudoContato(
     nome: String,
     fotoUrl: String?,
     subtitulo: String?,
@@ -577,45 +710,6 @@ private fun ConteudoContato(
 }
 
 /* ------------------------------------------------------------------ */
-/* Modal: Contato (usado pela tela de orçamentos do profissional)     */
-/* ------------------------------------------------------------------ */
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun ContatoSheet(
-    nome: String,
-    subtitulo: String,
-    telefone: String,
-    onFechar: () -> Unit,
-    sheetState: SheetState = rememberModalBottomSheetState(),
-) {
-    val scope = rememberCoroutineScope()
-
-    ModalBottomSheet(
-        onDismissRequest = onFechar,
-        sheetState = sheetState,
-        modifier = Modifier.padding(bottom = 120.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp)
-                .navigationBarsPadding(),
-        ) {
-            ConteudoContato(
-                nome = nome,
-                fotoUrl = null,
-                subtitulo = subtitulo,
-                telefone = telefone,
-                whatsapp = telefone,
-                verificado = true,
-                onFechar = { recolherBottomModal(scope, sheetState, onFechar) },
-            )
-        }
-    }
-}
-
-/* ------------------------------------------------------------------ */
 /* Modal: Avaliar                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -705,7 +799,7 @@ internal fun AvaliarSheet(
 
 /** Cabeçalho padrão: título (com ícone/subtítulo opcionais) + botão de fechar. */
 @Composable
-private fun CabecalhoSheet(
+internal fun CabecalhoSheet(
     titulo: String,
     onFechar: () -> Unit,
     icone: ImageVector? = null,
@@ -755,7 +849,7 @@ private fun CabecalhoSheet(
 }
 
 @Composable
-private fun CaixaCarregando() {
+internal fun CaixaCarregandoOrcamento() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -767,7 +861,7 @@ private fun CaixaCarregando() {
 }
 
 @Composable
-private fun ConteudoErro(mensagem: String, onTentarNovamente: () -> Unit) {
+internal fun ConteudoErro(mensagem: String, onTentarNovamente: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -824,7 +918,7 @@ private fun CategoriaChip(categoria: String) {
 }
 
 @Composable
-private fun SecaoLabel(texto: String) {
+internal fun SecaoLabel(texto: String) {
     Text(
         text = texto.uppercase(),
         style = MaterialTheme.typography.labelMedium,
@@ -835,7 +929,7 @@ private fun SecaoLabel(texto: String) {
 
 /** Linha "ícone + rótulo + valor" usada nos detalhes do orçamento. */
 @Composable
-private fun InfoLinha(icone: ImageVector, rotulo: String, valor: String) {
+internal fun InfoLinha(icone: ImageVector, rotulo: String, valor: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -874,7 +968,7 @@ private fun InfoLinha(icone: ImageVector, rotulo: String, valor: String) {
 
 /** Caixa destacada (fundo do contexto) para data/horário/endereço. */
 @Composable
-private fun CaixaInfo(
+internal fun CaixaInfo(
     icone: ImageVector,
     rotulo: String?,
     valor: String,
@@ -913,7 +1007,7 @@ private fun CaixaInfo(
 
 /** Linha de valor (rótulo à esquerda, valor à direita); total fica em destaque. */
 @Composable
-private fun LinhaValor(rotulo: String, valor: String, destaque: Boolean = false) {
+internal fun LinhaValor(rotulo: String, valor: String, destaque: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -943,68 +1037,3 @@ private fun android.content.Context.abrir(intent: Intent) {
     }
 }
 
-/* ---------------------------- Formatação ---------------------------- */
-
-private fun formatarBRL(valor: Double?): String? =
-    valor?.let { "R$ %,.2f".format(Locale.forLanguageTag("pt-BR"), it) }
-
-private fun formatarNota(nota: Double): String =
-    if (nota % 1.0 == 0.0) nota.toInt().toString() else "%.1f".format(nota).replace('.', ',')
-
-private fun dataHora(iso: String?): LocalDateTime? =
-    iso?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
-
-private fun formatarData(iso: String?): String? = dataHora(iso)?.let {
-    "%02d/%02d/%d".format(it.dayOfMonth, it.monthValue, it.year)
-}
-
-private fun formatarHora(iso: String?): String? = dataHora(iso)?.let {
-    "%02d:%02d".format(it.hour, it.minute)
-}
-
-private fun formatarDataHora(iso: String?): String? {
-    val data = formatarData(iso) ?: return null
-    return "$data às ${formatarHora(iso)}"
-}
-
-private fun faixaDeHorario(inicioIso: String?, fimIso: String?): String? {
-    val inicio = formatarHora(inicioIso) ?: return null
-    val fim = formatarHora(fimIso) ?: return inicio
-    return "$inicio – $fim"
-}
-
-private fun rotuloTipoServico(tipo: String?): String? = when (tipo?.trim()?.lowercase()) {
-    null, "" -> null
-    "presencial" -> "Presencial"
-    "remoto" -> "Remoto"
-    else -> tipo.replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
-}
-
-/** "Rua X, 10 - compl. · Bairro, Cidade - UF" com as partes que vieram preenchidas. */
-private fun enderecoCompleto(endereco: OrcamentoDetalheRS.EnderecoDetalheRS?): String? {
-    if (endereco == null) return null
-    val logradouro = listOfNotNull(
-        endereco.rua?.takeIf { it.isNotBlank() },
-        endereco.numero?.toString(),
-        endereco.complemento?.takeIf { it.isNotBlank() },
-    ).joinToString(", ")
-    val cidade = listOfNotNull(
-        endereco.bairro?.takeIf { it.isNotBlank() },
-        endereco.cidade?.takeIf { it.isNotBlank() },
-    ).joinToString(", ")
-    val estado = endereco.estado?.takeIf { it.isNotBlank() }?.let { " - $it" }.orEmpty()
-    val texto = listOf(logradouro, cidade + estado).filter { it.isNotBlank() }.joinToString(" · ")
-    return texto.takeIf { it.isNotBlank() }
-}
-
-private fun somenteDigitos(telefone: String?): String = telefone?.filter { it.isDigit() }.orEmpty()
-
-/** (11) 98467-5735 quando vier só com dígitos; caso contrário devolve como está. */
-private fun formatarTelefone(telefone: String): String {
-    val digitos = somenteDigitos(telefone)
-    return when (digitos.length) {
-        11 -> "(${digitos.take(2)}) ${digitos.substring(2, 7)}-${digitos.substring(7)}"
-        10 -> "(${digitos.take(2)}) ${digitos.substring(2, 6)}-${digitos.substring(6)}"
-        else -> telefone
-    }
-}
