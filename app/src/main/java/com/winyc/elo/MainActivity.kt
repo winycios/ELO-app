@@ -189,8 +189,6 @@ private fun EloApp() {
     val telaCheia = currentRoute == EloScreen.Auth.route ||
         currentRoute == EloScreen.Onboarding.route ||
         currentRoute == EloScreen.PerfilProfissional.route
-    // A agenda tem cabeçalho colorido de ponta a ponta, então cuida da própria margem.
-    val margemPropria = currentRoute == EloScreen.Agenda.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
     val podePro = logado && perfil?.profissionalAtivo == true
@@ -254,14 +252,7 @@ private fun EloApp() {
                 startDestination = startDestination,
                 modifier = Modifier
                     .padding(contentPadding)
-                    .then(
-                        if (telaCheia || margemPropria) {
-                            Modifier
-                        } else {
-                            Modifier.padding(start = 10.dp, end = 10.dp)
-                        },
-                    ),
-
+                    .then(if (telaCheia) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
                 enterTransition = {
                     slideInHorizontally(animationSpec = tween(300)) { it / 3 } + fadeIn(tween(300))
                 },
