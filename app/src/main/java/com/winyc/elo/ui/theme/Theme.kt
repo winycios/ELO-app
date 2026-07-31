@@ -105,6 +105,7 @@ fun EloTheme(
             contextColor = if (darkTheme) EloTealDark else EloTeal
             contextContainer = if (darkTheme) EloTealClaroDark else EloTealClaro
         }
+
         EloContext.Cliente, EloContext.Neutro -> {
             contextColor = if (darkTheme) EloCoralDark else EloCoral
             contextContainer = if (darkTheme) EloCoralClaroDark else EloCoralClaro

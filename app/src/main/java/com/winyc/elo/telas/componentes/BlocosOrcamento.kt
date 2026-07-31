@@ -40,7 +40,12 @@ fun BlocoCancelamento(cancelamento: OrcamentoDetalheRS.CancelamentoRS) {
         cor = VermelhoCancelamento,
         icone = Icons.Outlined.Cancel,
         titulo = stringResource(R.string.cancelamento),
-        rodape = rotuloAutor(cancelamento.autor)?.let { stringResource(R.string.cancelado_por, it) },
+        rodape = rotuloAutor(cancelamento.autor)?.let {
+            stringResource(
+                R.string.cancelado_por,
+                it
+            )
+        },
         data = cancelamento.data,
     ) {
         cancelamento.motivo?.takeIf { it.isNotBlank() }?.let { motivo ->

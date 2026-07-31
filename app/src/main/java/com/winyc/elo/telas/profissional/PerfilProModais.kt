@@ -201,115 +201,115 @@ private fun FormularioEditarPerfil(
         }
 
         Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState(), enabled = !mapaEmUso)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Spacer(Modifier.size(2.dp))
+
+            // Foto: preview (iniciais) + URL.
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState(), enabled = !mapaEmUso)
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Spacer(Modifier.size(2.dp))
-
-                // Foto: preview (iniciais) + URL.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AvatarPerfil(
-                        nome = nome,
-                        fotoUrl = null,
-                        tamanho = 56.dp,
-                        fonte = MaterialTheme.typography.titleLarge,
+                AvatarPerfil(
+                    nome = nome,
+                    fotoUrl = null,
+                    tamanho = 56.dp,
+                    fonte = MaterialTheme.typography.titleLarge,
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.pro_url_foto),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.pro_url_foto),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.size(4.dp))
-                        OutlinedTextField(
-                            value = fotoUrl,
-                            onValueChange = { fotoUrl = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text(stringResource(R.string.pro_url_foto_hint)) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                            colors = coresCampo(),
-                        )
-                    }
+                    Spacer(Modifier.size(4.dp))
+                    OutlinedTextField(
+                        value = fotoUrl,
+                        onValueChange = { fotoUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.pro_url_foto_hint)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        colors = coresCampo(),
+                    )
                 }
-
-                CampoPro(
-                    label = stringResource(R.string.perfil_campo_nome),
-                    valor = nome,
-                    onValor = { nome = it },
-                    placeholder = stringResource(R.string.perfil_campo_nome_hint),
-                    habilitado = false,
-                    apoio = stringResource(R.string.pro_nome_apoio),
-                )
-                CampoPro(
-                    stringResource(R.string.pro_bio), bio, { bio = it },
-                    stringResource(R.string.pro_bio_hint), linhas = 4,
-                )
-                SeletorAreaAtendimento(
-                    area = area,
-                    onArea = { area = it },
-                    onMapaEmUso = { mapaEmUso = it },
-                )
-
-                ChipsEditaveis(
-                    titulo = stringResource(R.string.pro_tags_especialidade),
-                    itens = tags,
-                    hint = stringResource(R.string.pro_tags_hint),
-                )
-                Spacer(Modifier.size(2.dp))
             }
 
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 8.dp, bottom = 16.dp)
-                    .navigationBarsPadding(),
-            ) {
-                Button(
-                    onClick = {
-                        val atualizado = perfil.copy(
-                            nome = nome.trim(),
-                            fotoUrl = fotoUrl.trim(),
-                            bio = bio.trim(),
-                            area = area,
-                            tags = tags.toList(),
-                        )
-                        vm.salvarPerfil(atualizado.paraUpdateDTO()) { ok ->
-                            if (ok) {
-                                onSalvar(atualizado)
-                                fecharSheet(scope, sheetState, onFechar)
-                            }
+            CampoPro(
+                label = stringResource(R.string.perfil_campo_nome),
+                valor = nome,
+                onValor = { nome = it },
+                placeholder = stringResource(R.string.perfil_campo_nome_hint),
+                habilitado = false,
+                apoio = stringResource(R.string.pro_nome_apoio),
+            )
+            CampoPro(
+                stringResource(R.string.pro_bio), bio, { bio = it },
+                stringResource(R.string.pro_bio_hint), linhas = 4,
+            )
+            SeletorAreaAtendimento(
+                area = area,
+                onArea = { area = it },
+                onMapaEmUso = { mapaEmUso = it },
+            )
+
+            ChipsEditaveis(
+                titulo = stringResource(R.string.pro_tags_especialidade),
+                itens = tags,
+                hint = stringResource(R.string.pro_tags_hint),
+            )
+            Spacer(Modifier.size(2.dp))
+        }
+
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 16.dp)
+                .navigationBarsPadding(),
+        ) {
+            Button(
+                onClick = {
+                    val atualizado = perfil.copy(
+                        nome = nome.trim(),
+                        fotoUrl = fotoUrl.trim(),
+                        bio = bio.trim(),
+                        area = area,
+                        tags = tags.toList(),
+                    )
+                    vm.salvarPerfil(atualizado.paraUpdateDTO()) { ok ->
+                        if (ok) {
+                            onSalvar(atualizado)
+                            fecharSheet(scope, sheetState, onFechar)
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = nome.isNotBlank() && !estado.salvandoPerfil,
-                ) {
-                    if (estado.salvandoPerfil) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.pro_salvar_perfil))
                     }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = nome.isNotBlank() && !estado.salvandoPerfil,
+            ) {
+                if (estado.salvandoPerfil) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.pro_salvar_perfil))
                 }
             }
         }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -332,7 +332,9 @@ internal fun MeusServicosSheet(
         sheetGesturesEnabled = false,
         dragHandle = null,
     ) {
-        Box(modifier = Modifier.fillMaxHeight(0.92f).padding(vertical = 20.dp)) {
+        Box(modifier = Modifier
+            .fillMaxHeight(0.92f)
+            .padding(vertical = 20.dp)) {
             when {
                 criando -> FormServico(
                     detalhe = null,
@@ -487,7 +489,12 @@ private fun FiltroAreas(
             FilterChip(
                 selected = sel,
                 onClick = { onSelecionar(id) },
-                label = { Text(nome, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal) },
+                label = {
+                    Text(
+                        nome,
+                        fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal
+                    )
+                },
                 shape = CircleShape,
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -537,9 +544,19 @@ private fun CardServico(
             if (carregando) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
-                BotaoIcone(Icons.Outlined.Edit, stringResource(R.string.pro_editar_servico_cd), MaterialTheme.colorScheme.primary, onEditar)
+                BotaoIcone(
+                    Icons.Outlined.Edit,
+                    stringResource(R.string.pro_editar_servico_cd),
+                    MaterialTheme.colorScheme.primary,
+                    onEditar
+                )
                 Spacer(Modifier.width(6.dp))
-                BotaoIcone(Icons.Outlined.DeleteOutline, stringResource(R.string.pro_excluir_servico_cd), MaterialTheme.colorScheme.error, onExcluir)
+                BotaoIcone(
+                    Icons.Outlined.DeleteOutline,
+                    stringResource(R.string.pro_excluir_servico_cd),
+                    MaterialTheme.colorScheme.error,
+                    onExcluir
+                )
             }
         }
 
@@ -563,7 +580,8 @@ private fun CardServico(
             )
         }
 
-        val pontos = servico.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
+        val pontos =
+            servico.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
         if (pontos.isNotEmpty()) {
             FlowRowChips(pontos)
         }
@@ -698,13 +716,20 @@ private fun FormServico(
 
     var idGeral by rememberSaveable { mutableStateOf(detalhe?.servicoCategoriaRS?.idCategoriaGeral) }
     var idEspecifica by rememberSaveable { mutableStateOf(detalhe?.servicoCategoriaRS?.idCategoriaEspecifica) }
-    var tempoExpe by rememberSaveable { mutableStateOf(detalhe?.tempoExperiencia?.toString() ?: "") }
+    var tempoExpe by rememberSaveable {
+        mutableStateOf(
+            detalhe?.tempoExperiencia?.toString() ?: ""
+        )
+    }
     var descricao by rememberSaveable { mutableStateOf(detalhe?.dsDescricao ?: "") }
-    var faixaPreco by rememberSaveable { mutableStateOf(detalhe?.vlServico?.let { formatarPreco(it) } ?: "") }
+    var faixaPreco by rememberSaveable {
+        mutableStateOf(detalhe?.vlServico?.let { formatarPreco(it) } ?: "")
+    }
     var tipoExec by rememberSaveable { mutableStateOf(TipoExecucao.fromApi(detalhe?.tpExecucao)) }
     val pontos = remember {
         mutableStateListOf<String>().apply {
-            detalhe?.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }?.let { addAll(it) }
+            detalhe?.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }
+                ?.let { addAll(it) }
         }
     }
     val dias = remember(detalhe) {
@@ -712,7 +737,12 @@ private fun FormServico(
             detalhe?.servicoDisponibilidadeRSList?.forEach { disp ->
                 val estado = disp.diaSemana?.let { lista.getOrNull(it) } ?: return@forEach
                 estado.ativo = true
-                estado.intervalos.add(IntervaloEstado(horaDigitos(disp.hrInicio), horaDigitos(disp.hrFim)))
+                estado.intervalos.add(
+                    IntervaloEstado(
+                        horaDigitos(disp.hrInicio),
+                        horaDigitos(disp.hrFim)
+                    )
+                )
             }
         }
     }
@@ -726,13 +756,13 @@ private fun FormServico(
     val disponibilidadeValida = diasAtivos.isNotEmpty() && diasAtivos.all { dia ->
         dia.intervalos.isNotEmpty() && dia.intervalos.all { intervalo ->
             horaCompleta(intervalo.inicio) && horaCompleta(intervalo.fim) &&
-                minutosDoDia(intervalo.inicio) < minutosDoDia(intervalo.fim)
+                    minutosDoDia(intervalo.inicio) < minutosDoDia(intervalo.fim)
         }
     }
 
     val podeSalvar = idGeral != null && idEspecifica != null && descricao.isNotBlank() &&
-        precoValido && (tempoExpe.toIntOrNull() ?: -1) >= 0 && tipoExec != null &&
-        disponibilidadeValida && !salvando
+            precoValido && (tempoExpe.toIntOrNull() ?: -1) >= 0 && tipoExec != null &&
+            disponibilidadeValida && !salvando
 
     Column(modifier = Modifier.fillMaxHeight()) {
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -779,7 +809,13 @@ private fun FormServico(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 // Tempo de experiência
-                CampoPro(stringResource(R.string.tempo_experiencia, geral), tempoExpe, { tempoExpe = it }, "", tipoCampo = KeyboardType.Number)
+                CampoPro(
+                    stringResource(R.string.tempo_experiencia, geral),
+                    tempoExpe,
+                    { tempoExpe = it },
+                    "",
+                    tipoCampo = KeyboardType.Number
+                )
             }
 
             // 2. Serviço específico (pré-definidos filtrados pela área)
@@ -808,7 +844,13 @@ private fun FormServico(
             }
 
             // Descrição
-            CampoPro(stringResource(R.string.descricao), descricao, { descricao = it }, stringResource(R.string.pro_descricao_hint), linhas = 3)
+            CampoPro(
+                stringResource(R.string.descricao),
+                descricao,
+                { descricao = it },
+                stringResource(R.string.pro_descricao_hint),
+                linhas = 3
+            )
 
             // Tipo de execução
             SecaoTitulo(stringResource(R.string.pro_tipo_execucao))
@@ -819,19 +861,35 @@ private fun FormServico(
             )
 
             // Imagens
-            Text(stringResource(R.string.pro_imagens), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.pro_imagens),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 repeat(3) {
                     SlotImagem(
-                        onClick = { Toast.makeText(context, adicionarLabel, Toast.LENGTH_SHORT).show() },
+                        onClick = {
+                            Toast.makeText(context, adicionarLabel, Toast.LENGTH_SHORT).show()
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
-            Text(stringResource(R.string.pro_imagens_dica), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.pro_imagens_dica),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             // Faixa de preço
-            CampoPro(stringResource(R.string.a_partir) + " R$", faixaPreco, { faixaPreco = it }, "300", tipoCampo = KeyboardType.Number)
+            CampoPro(
+                stringResource(R.string.a_partir) + " R$",
+                faixaPreco,
+                { faixaPreco = it },
+                "300",
+                tipoCampo = KeyboardType.Number
+            )
 
             // Principais pontos
             ChipsEditaveis(
@@ -863,18 +921,20 @@ private fun FormServico(
                             idCategoriaEspecifica = idEsp,
                             dsDescricao = descricao.trim(),
                             vlServico = faixaPreco.replace(',', '.').toDoubleOrNull() ?: 0.0,
-                            dsTag = pontos.joinToString("; ").ifBlank { nomeEspecifica ?: "Serviço" },
+                            dsTag = pontos.joinToString("; ")
+                                .ifBlank { nomeEspecifica ?: "Serviço" },
                             tempoExperiencia = tempoExpe.toIntOrNull() ?: 0,
                             tpExecucao = exec.valorApi,
-                            servicoDisponibilidadeCreateRQList = dias.filter { it.ativo }.flatMap { d ->
-                                d.intervalos.map {
-                                    ServicoDisponibilidadeCreateRQ(
-                                        diaSemana = d.dia.ordinal,
-                                        hrInicio = normalizarHora(it.inicio),
-                                        hrFim = normalizarHora(it.fim),
-                                    )
-                                }
-                            },
+                            servicoDisponibilidadeCreateRQList = dias.filter { it.ativo }
+                                .flatMap { d ->
+                                    d.intervalos.map {
+                                        ServicoDisponibilidadeCreateRQ(
+                                            diaSemana = d.dia.ordinal,
+                                            hrInicio = normalizarHora(it.inicio),
+                                            hrFim = normalizarHora(it.fim),
+                                        )
+                                    }
+                                },
                             servicoImagemCreateRQList = emptyList(),
                         )
                     )
@@ -946,7 +1006,8 @@ private fun <T> ChipsSelecaoTexto(
 
 @Composable
 private fun ChipEscolha(texto: String, selecionado: Boolean, onClick: () -> Unit) {
-    val cor = if (selecionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    val cor =
+        if (selecionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     Text(
         texto,
         style = MaterialTheme.typography.labelLarge,
@@ -974,9 +1035,18 @@ private fun SlotImagem(onClick: () -> Unit, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Outlined.AddPhotoAlternate, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Icon(
+            Icons.Outlined.AddPhotoAlternate,
+            null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp)
+        )
         Spacer(Modifier.size(4.dp))
-        Text(stringResource(R.string.pro_adicionar), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        Text(
+            stringResource(R.string.pro_adicionar),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -986,7 +1056,12 @@ private fun DisponibilidadeSemanal(dias: List<DiaEstado>) {
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Schedule, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            Icon(
+                Icons.Outlined.Schedule,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
             Spacer(Modifier.width(6.dp))
             Text(
                 stringResource(R.string.pro_disponibilidade).uppercase(),
@@ -1010,7 +1085,10 @@ private fun DisponibilidadeSemanal(dias: List<DiaEstado>) {
         }
 
         // Círculos dos dias.
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             dias.forEach { estado ->
                 CirculoDia(estado = estado, modifier = Modifier.weight(1f))
             }
@@ -1092,22 +1170,40 @@ private fun CardDiaIntervalos(estado: DiaEstado) {
                     .clickable { estado.intervalos.add(IntervaloEstado("0800", "1800")) }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
-                Icon(Icons.Outlined.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                Icon(
+                    Icons.Outlined.Add,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
                 Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.pro_horario), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    stringResource(R.string.pro_horario),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
 
         estado.intervalos.forEachIndexed { i, intervalo ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CampoHora(intervalo.inicio, { intervalo.inicio = it }, Modifier.weight(1f))
-                Text(" – ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    " – ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 CampoHora(intervalo.fim, { intervalo.fim = it }, Modifier.weight(1f))
                 IconButton(onClick = {
                     estado.intervalos.removeAt(i)
                     if (estado.intervalos.isEmpty()) estado.ativo = false
                 }) {
-                    Icon(Icons.Outlined.Close, stringResource(R.string.pro_remover), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Outlined.Close,
+                        stringResource(R.string.pro_remover),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -1134,10 +1230,14 @@ private fun CampoHora(valor: String, onValor: (String) -> Unit, modifier: Modifi
 /** Máscara HH:mm exibida sobre os 4 dígitos digitados (ex.: "0830" → "08:30"). */
 private val MascaraHora = VisualTransformation { text ->
     val digitos = text.text.filter { it.isDigit() }.take(4)
-    val formatado = if (digitos.length <= 2) digitos else digitos.substring(0, 2) + ":" + digitos.substring(2)
+    val formatado =
+        if (digitos.length <= 2) digitos else digitos.substring(0, 2) + ":" + digitos.substring(2)
     val mapping = object : OffsetMapping {
-        override fun originalToTransformed(offset: Int): Int = if (offset <= 2) offset else offset + 1
-        override fun transformedToOriginal(offset: Int): Int = if (offset <= 2) offset else offset - 1
+        override fun originalToTransformed(offset: Int): Int =
+            if (offset <= 2) offset else offset + 1
+
+        override fun transformedToOriginal(offset: Int): Int =
+            if (offset <= 2) offset else offset - 1
     }
     TransformedText(AnnotatedString(formatado), mapping)
 }
@@ -1174,8 +1274,16 @@ private fun CabecalhoSheetPro(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(titulo, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                titulo,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                subtitulo,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         IconButton(
             onClick = onFechar,
@@ -1183,7 +1291,12 @@ private fun CabecalhoSheetPro(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            Icon(iconeFechar, stringResource(R.string.fechar), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Icon(
+                iconeFechar,
+                stringResource(R.string.fechar),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
@@ -1211,7 +1324,11 @@ private fun CampoPro(
     apoio: String? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         OutlinedTextField(
             value = valor,
             onValueChange = onValor,
@@ -1227,7 +1344,11 @@ private fun CampoPro(
             colors = coresCampo(),
         )
         apoio?.let {
-            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -1246,7 +1367,11 @@ private fun ChipsEditaveis(titulo: String, itens: SnapshotStateList<String>, hin
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(titulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            titulo,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = texto,
@@ -1276,9 +1401,18 @@ private fun ChipsEditaveis(titulo: String, itens: SnapshotStateList<String>, hin
                             .clickable { itens.remove(item) }
                             .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
                     ) {
-                        Text(item, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            item,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Outlined.Close, stringResource(R.string.pro_remover), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        Icon(
+                            Icons.Outlined.Close,
+                            stringResource(R.string.pro_remover),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }
@@ -1444,7 +1578,11 @@ private fun SeletorAreaAtendimento(
             )
             Spacer(Modifier.width(6.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(area.local, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    area.local,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     formatarCoord(area.latitude, area.longitude),
                     style = MaterialTheme.typography.labelSmall,
@@ -1489,13 +1627,20 @@ private fun geocodificar(context: Context, consulta: String, onResultado: (Addre
         termo,
         1,
         object : Geocoder.GeocodeListener {
-            override fun onGeocode(addresses: MutableList<Address>) = onResultado(addresses.firstOrNull())
+            override fun onGeocode(addresses: MutableList<Address>) =
+                onResultado(addresses.firstOrNull())
+
             override fun onError(errorMessage: String?) = onResultado(null)
         },
     )
 }
 
-private fun reverseGeocodificar(context: Context, lat: Double, lng: Double, onResultado: (Address?) -> Unit) {
+private fun reverseGeocodificar(
+    context: Context,
+    lat: Double,
+    lng: Double,
+    onResultado: (Address?) -> Unit
+) {
     if (!Geocoder.isPresent()) {
         onResultado(null)
         return
@@ -1505,7 +1650,9 @@ private fun reverseGeocodificar(context: Context, lat: Double, lng: Double, onRe
         lng,
         1,
         object : Geocoder.GeocodeListener {
-            override fun onGeocode(addresses: MutableList<Address>) = onResultado(addresses.firstOrNull())
+            override fun onGeocode(addresses: MutableList<Address>) =
+                onResultado(addresses.firstOrNull())
+
             override fun onError(errorMessage: String?) = onResultado(null)
         },
     )

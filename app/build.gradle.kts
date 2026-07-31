@@ -5,10 +5,27 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val mapsApiKey: String = Properties().apply {
+private val propriedadesLocais: Properties = Properties().apply {
     val arquivo = rootProject.file("local.properties")
     if (arquivo.exists()) arquivo.inputStream().use { load(it) }
-}.getProperty("MAPS_API_KEY", "")
+}
+
+fun propriedadeLocal(nome: String, padrao: String = ""): String =
+    propriedadesLocais.getProperty(nome)?.trim()?.takeIf { it.isNotBlank() } ?: padrao
+
+val mapsApiKey = propriedadeLocal("MAPS_API_KEY")
+val baseUrlDebug = propriedadeLocal("BASE_URL_DEBUG", "http://192.168.15.57:8090/api/")
+val baseUrlRelease = propriedadeLocal("BASE_URL_RELEASE")
+
+val compilandoRelease = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+if (compilandoRelease) {
+    require(baseUrlRelease.isNotBlank()) {
+        "Defina BASE_URL_RELEASE em local.properties (ex.: https://api.seudominio.com/api/)."
+    }
+    require(mapsApiKey.isNotBlank()) { "Defina MAPS_API_KEY em local.properties." }
+} else if (mapsApiKey.isBlank()) {
+    logger.warn("MAPS_API_KEY ausente em local.properties: o mapa não vai carregar.")
+}
 
 android {
     namespace = "com.winyc.elo"
@@ -28,12 +45,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"$baseUrlDebug\"")
+            // O backend de desenvolvimento roda em HTTP na rede local.
+            manifestPlaceholders["cleartextTraffic"] = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "BASE_URL", "\"$baseUrlRelease\"")
+            manifestPlaceholders["cleartextTraffic"] = false
         }
     }
     compileOptions {
@@ -42,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -1,5 +1,6 @@
 package com.winyc.elo.backend.retroFit
 
+import com.winyc.elo.BuildConfig
 import com.winyc.elo.backend.controller.auth.AuthInterface
 import com.winyc.elo.backend.controller.busca.BuscaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaInterface
@@ -18,14 +19,11 @@ import java.util.concurrent.TimeUnit
 
 object RetroFitService {
 
-    private const val BASE_URL = "http://192.168.15.57:8090/api/"
+    /** Vem do `buildConfigField` por buildType (veja `local.properties`). */
+    private val BASE_URL = BuildConfig.BASE_URL
     private const val VIA_CEP_URL = "https://viacep.com.br/ws/"
 
     val authApi: AuthInterface by lazy { authRetrofit.create(AuthInterface::class.java) }
-
-    private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
 
     private fun OkHttpClient.Builder.timeoutsPadrao() = apply {
         connectTimeout(30, TimeUnit.SECONDS)
@@ -33,11 +31,23 @@ object RetroFitService {
         writeTimeout(30, TimeUnit.SECONDS)
     }
 
+    /**
+     * O log de corpo imprime os headers, incluindo `Authorization`, e o payload
+     * do login/refresh — por isso o interceptor só entra no build de debug.
+     */
+    private fun OkHttpClient.Builder.logSomenteEmDebug() = apply {
+        if (BuildConfig.DEBUG) {
+            addInterceptor(
+                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY },
+            )
+        }
+    }
+
     // Endpoints sem auth
 
     private val authClient: OkHttpClient = OkHttpClient.Builder()
         .timeoutsPadrao()
-        .addInterceptor(logging)
+        .logSomenteEmDebug()
         .build()
     private val authRetrofit: Retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
@@ -51,7 +61,7 @@ object RetroFitService {
             .timeoutsPadrao()
             .addInterceptor(AuthInterceptor(tokenStore))
             .authenticator(TokenAuthenticator(tokenStore, authApi))
-            .addInterceptor(logging)
+            .logSomenteEmDebug()
             .build()
 
         return Retrofit.Builder()
@@ -87,7 +97,7 @@ object RetroFitService {
     private val viaCepRetrofit: Retrofit by lazy {
         val client = OkHttpClient.Builder()
             .timeoutsPadrao()
-            .addInterceptor(logging)
+            .logSomenteEmDebug()
             .build()
         Retrofit.Builder()
             .baseUrl(VIA_CEP_URL)

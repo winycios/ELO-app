@@ -140,10 +140,12 @@ private fun ProfissionalRS.paraPerfilPublico(
     }
     return base.copy(
         nome = sessao?.nome?.takeIf { it.isNotBlank() } ?: base.nome,
-        fotoUrl = uriPerfil?.takeIf { it.isNotBlank() } ?: sessao?.urlPerfilPro?.takeIf { it.isNotBlank() } ?: base.fotoUrl,
+        fotoUrl = uriPerfil?.takeIf { it.isNotBlank() }
+            ?: sessao?.urlPerfilPro?.takeIf { it.isNotBlank() } ?: base.fotoUrl,
         bio = apresentacao.orEmpty(),
         area = area,
-        tags = dsEspecialidades?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty(),
+        tags = dsEspecialidades?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }
+            .orEmpty(),
         qtdAvalicao = qtRespostaGeral ?: 0,
         qtdServicos = qtServicos ?: 0,
         avaliacaoGeralPorcento = 0.0
@@ -168,7 +170,8 @@ fun PerfilProScreen(
         mutableStateOf(
             PERFIL_INICIAL.copy(
                 nome = sessao?.nome?.takeIf { it.isNotBlank() } ?: PERFIL_INICIAL.nome,
-                fotoUrl = sessao?.urlPerfilPro?.takeIf { it.isNotBlank() } ?: PERFIL_INICIAL.fotoUrl,
+                fotoUrl = sessao?.urlPerfilPro?.takeIf { it.isNotBlank() }
+                    ?: PERFIL_INICIAL.fotoUrl,
             ),
         )
     }
@@ -361,7 +364,11 @@ private fun CabecalhoPro(perfil: PerfilPublico, areas: String, onEditar: () -> U
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "${perfil.avaliacaoGeralPorcento} (${perfil.qtdAvalicao} ${stringResource(R.string.avaliacoes)})",
+                            "${perfil.avaliacaoGeralPorcento} (${perfil.qtdAvalicao} ${
+                                stringResource(
+                                    R.string.avaliacoes
+                                )
+                            })",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                         )

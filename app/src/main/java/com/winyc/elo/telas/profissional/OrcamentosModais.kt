@@ -210,11 +210,21 @@ internal fun DetalheOrcamentoProSheet(
             }
 
             VisaoOrcamentoPro.Concluir -> FolhaSimples {
-                ConteudoConcluir(estado = estado, detalhe = detalhe, onFechar = fechar, onConcluir = onConcluir)
+                ConteudoConcluir(
+                    estado = estado,
+                    detalhe = detalhe,
+                    onFechar = fechar,
+                    onConcluir = onConcluir
+                )
             }
 
             VisaoOrcamentoPro.Avaliar -> FolhaSimples {
-                ConteudoAvaliar(estado = estado, detalhe = detalhe, onFechar = fechar, onAvaliar = onAvaliar)
+                ConteudoAvaliar(
+                    estado = estado,
+                    detalhe = detalhe,
+                    onFechar = fechar,
+                    onAvaliar = onAvaliar
+                )
             }
 
             VisaoOrcamentoPro.Detalhes -> FolhaSimples {

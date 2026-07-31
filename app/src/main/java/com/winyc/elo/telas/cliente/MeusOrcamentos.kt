@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Description
@@ -52,9 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -438,8 +435,8 @@ private fun BannerOrcamentoFinal(onRevisar: () -> Unit) {
 
 /** O cliente pode cancelar enquanto o serviço não foi concluído nem cancelado. */
 private fun StatusOrcamento?.podeCancelar(): Boolean = this == StatusOrcamento.Pendente ||
-    this == StatusOrcamento.OrcamentoFinal ||
-    this == StatusOrcamento.Aprovado
+        this == StatusOrcamento.OrcamentoFinal ||
+        this == StatusOrcamento.Aprovado
 
 @Composable
 private fun Acoes(

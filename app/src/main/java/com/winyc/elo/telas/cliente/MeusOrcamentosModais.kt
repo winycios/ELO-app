@@ -4,14 +4,12 @@ import android.content.ClipData
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -51,17 +49,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -487,7 +479,7 @@ private fun ConteudoCancelar(
 ) {
     val recusaDeProposta = StatusOrcamento.de(detalhe.status) == StatusOrcamento.OrcamentoFinal
     CabecalhoSheet(
-        titulo = stringResource(if (recusaDeProposta) R.string.recusar_proposta else R.string.cancelar_orcamento,),
+        titulo = stringResource(if (recusaDeProposta) R.string.recusar_proposta else R.string.cancelar_orcamento),
         subtitulo = stringResource(R.string.cancelar_orcamento_sub),
         onFechar = onFechar,
     )
@@ -604,7 +596,7 @@ private fun CabecalhoProfissional(detalhe: OrcamentoDetalheRS) {
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = "${formatarNota(avaliacao)} · ${profissional.quantidadeAvaliacoes ?: 0} " +
-                            stringResource(R.string.avaliacoes),
+                                stringResource(R.string.avaliacoes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -700,7 +692,8 @@ internal fun ConteudoContato(
                 onClick = {
                     escopo.launch {
                         clipboard.setClipEntry(
-                            ClipData.newPlainText("Telefone", formatarTelefone(telefone)).toClipEntry(),
+                            ClipData.newPlainText("Telefone", formatarTelefone(telefone))
+                                .toClipEntry(),
                         )
                     }
                     Toast.makeText(context, "Número copiado", Toast.LENGTH_SHORT).show()
@@ -721,7 +714,14 @@ internal fun ConteudoContato(
         Spacer(Modifier.size(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
-                onClick = { context.abrir(Intent(Intent.ACTION_DIAL, "tel:${somenteDigitos(telefone)}".toUri())) },
+                onClick = {
+                    context.abrir(
+                        Intent(
+                            Intent.ACTION_DIAL,
+                            "tel:${somenteDigitos(telefone)}".toUri()
+                        )
+                    )
+                },
                 modifier = Modifier.weight(1f),
             ) {
                 Icon(Icons.Outlined.Phone, null, modifier = Modifier.size(18.dp))

@@ -298,79 +298,90 @@ private fun HomeConteudo(
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-        item { HeaderBusca(perfil = perfil) }
+            item { HeaderBusca(perfil = perfil) }
 
-        // Só faz sentido mostrar/gerenciar endereço para quem está logado.
-        if (perfil != null) {
-            item {
-                SecaoEnderecoPrincipal(
-                    endereco = enderecoPrincipal,
-                    onIrParaEnderecos = onIrParaEnderecos,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-        }
-
-        item {
-            SecaoCategorias(
-                categorias = if (tiles.isEmpty()) tiles else tiles.subList(0, minOf(8, tiles.size)),
-                carregando = carregandoCategorias,
-                erro = erroCategorias,
-                onTentarNovamente = onTentarNovamente,
-                onAbrirCategoria = { onAbrirCategoria(CategoriaSelecionada(it.id, it.nome, null)) },
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-        }
-
-        item {
-            SecaoCarrossel(
-                icone = Icons.Outlined.AutoAwesome,
-                titulo = "Recomendados para você",
-                subtitulo = "Profissionais top avaliados perto de você",
-                profissionais = home.recomendados,
-                carregando = home.carregando,
-                erro = home.erro,
-                onTentarNovamente = onRecarregarHome,
-                emAlta = false,
-                onAbrirPerfil = onAbrirPerfil,
-            )
-        }
-
-        item {
-            SecaoCarrossel(
-                icone = Icons.Outlined.LocalFireDepartment,
-                titulo = "Em alta na sua região",
-                subtitulo = "Populares entre clientes próximos de você",
-                profissionais = home.emAlta,
-                carregando = home.carregando,
-                erro = null, // o erro já é sinalizado no carrossel acima
-                onTentarNovamente = onRecarregarHome,
-                emAlta = true,
-                onAbrirPerfil = onAbrirPerfil,
-            )
-        }
-
-        if (areas.isNotEmpty()) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 4.dp)) {
-                    SecaoHeader(
-                        icone = Icons.Outlined.GridView,
-                        titulo = "Serviços por área",
-                        subtitulo = "Explore profissionais por especialidade",
+            // Só faz sentido mostrar/gerenciar endereço para quem está logado.
+            if (perfil != null) {
+                item {
+                    SecaoEnderecoPrincipal(
+                        endereco = enderecoPrincipal,
+                        onIrParaEnderecos = onIrParaEnderecos,
+                        modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
             }
 
-            items(areas) { area ->
-                AreaAccordion(
-                    area = area,
-                    onAbrirServico = { servico ->
-                        onAbrirCategoria(CategoriaSelecionada(area.id, servico, servico))
+            item {
+                SecaoCategorias(
+                    categorias = if (tiles.isEmpty()) tiles else tiles.subList(
+                        0,
+                        minOf(8, tiles.size)
+                    ),
+                    carregando = carregandoCategorias,
+                    erro = erroCategorias,
+                    onTentarNovamente = onTentarNovamente,
+                    onAbrirCategoria = {
+                        onAbrirCategoria(
+                            CategoriaSelecionada(
+                                it.id,
+                                it.nome,
+                                null
+                            )
+                        )
                     },
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
-        }
+
+            item {
+                SecaoCarrossel(
+                    icone = Icons.Outlined.AutoAwesome,
+                    titulo = "Recomendados para você",
+                    subtitulo = "Profissionais top avaliados perto de você",
+                    profissionais = home.recomendados,
+                    carregando = home.carregando,
+                    erro = home.erro,
+                    onTentarNovamente = onRecarregarHome,
+                    emAlta = false,
+                    onAbrirPerfil = onAbrirPerfil,
+                )
+            }
+
+            item {
+                SecaoCarrossel(
+                    icone = Icons.Outlined.LocalFireDepartment,
+                    titulo = "Em alta na sua região",
+                    subtitulo = "Populares entre clientes próximos de você",
+                    profissionais = home.emAlta,
+                    carregando = home.carregando,
+                    erro = null, // o erro já é sinalizado no carrossel acima
+                    onTentarNovamente = onRecarregarHome,
+                    emAlta = true,
+                    onAbrirPerfil = onAbrirPerfil,
+                )
+            }
+
+            if (areas.isNotEmpty()) {
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 4.dp)) {
+                        SecaoHeader(
+                            icone = Icons.Outlined.GridView,
+                            titulo = "Serviços por área",
+                            subtitulo = "Explore profissionais por especialidade",
+                        )
+                    }
+                }
+
+                items(areas) { area ->
+                    AreaAccordion(
+                        area = area,
+                        onAbrirServico = { servico ->
+                            onAbrirCategoria(CategoriaSelecionada(area.id, servico, servico))
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                }
+            }
         }
     }
 }

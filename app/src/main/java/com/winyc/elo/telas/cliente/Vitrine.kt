@@ -439,9 +439,11 @@ private fun Contador(icone: ImageVector, valor: String, tint: Color, onClick: ()
 
 @Composable
 private fun RodapeCarregando() {
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp), contentAlignment = Alignment.Center
+    ) {
         CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
     }
 }
@@ -466,9 +468,11 @@ private fun RodapeErro(mensagem: String, onTentarNovamente: () -> Unit) {
 
 @Composable
 private fun RodapeVazio() {
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(24.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp), contentAlignment = Alignment.Center
+    ) {
         Text(
             text = stringResource(R.string.vitrine_vazia),
             style = MaterialTheme.typography.bodyMedium,
@@ -491,7 +495,8 @@ private fun ComentariosSheet(
 ) {
     val listState = rememberLazyListState()
 
-    val raizes = remember(estado.comentarios) { estado.comentarios.filter { it.comentarioPaiId == null } }
+    val raizes =
+        remember(estado.comentarios) { estado.comentarios.filter { it.comentarioPaiId == null } }
     val respostasPorPai = remember(estado.comentarios) {
         estado.comentarios.filter { it.comentarioPaiId != null }.groupBy { it.comentarioPaiId }
     }
@@ -570,9 +575,11 @@ private fun ComentariosSheet(
 
 @Composable
 private fun MensagemCentral(texto: String) {
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .padding(24.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp), contentAlignment = Alignment.Center
+    ) {
         Text(
             text = texto,
             style = MaterialTheme.typography.bodyMedium,
@@ -602,9 +609,12 @@ private fun ComentarioComRespostas(
     }
 }
 
-private fun ehComentarioDoProfissional(comentario: ComentarioRS, profissionalNome: String?): Boolean =
+private fun ehComentarioDoProfissional(
+    comentario: ComentarioRS,
+    profissionalNome: String?
+): Boolean =
     !profissionalNome.isNullOrBlank() &&
-        comentario.usuarioNome?.trim().equals(profissionalNome.trim(), ignoreCase = true)
+            comentario.usuarioNome?.trim().equals(profissionalNome.trim(), ignoreCase = true)
 
 @Composable
 private fun ComentarioItem(

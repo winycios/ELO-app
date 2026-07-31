@@ -112,7 +112,8 @@ fun PublicarScreen(
 
     // Nomes dos serviços cadastrados pelo profissional (resolvidos via categorias).
     val nomeEspecifica = remember(categoriaEstado.categoriasRaw) {
-        categoriaEstado.categoriasRaw.flatMap { it.categoriaEspecificaList }.associate { it.id to it.nmCategoria }
+        categoriaEstado.categoriasRaw.flatMap { it.categoriaEspecificaList }
+            .associate { it.id to it.nmCategoria }
     }
     val servicos = remember(servicoEstado.servicos, nomeEspecifica) {
         servicoEstado.servicos
@@ -171,7 +172,11 @@ fun PublicarScreen(
                     servicos = servicos,
                     publicando = estado.publicando,
                     onPublicar = { idCategoria, descricao, imagens, onSucesso ->
-                        publicacaoVm.publicar(idCategoria, descricao, imagens) { ok -> if (ok) onSucesso() }
+                        publicacaoVm.publicar(
+                            idCategoria,
+                            descricao,
+                            imagens
+                        ) { ok -> if (ok) onSucesso() }
                     },
                 )
             }
@@ -196,7 +201,11 @@ fun PublicarScreen(
         item {
             when {
                 estado.carregandoInicial || estado.carregandoMais -> RodapeCarregando()
-                estado.erro != null -> RodapeErro(mensagem = estado.erro!!, onTentarNovamente = publicacaoVm::carregarInicial)
+                estado.erro != null -> RodapeErro(
+                    mensagem = estado.erro!!,
+                    onTentarNovamente = publicacaoVm::carregarInicial
+                )
+
                 estado.publicacoes.isEmpty() -> RodapeVazio()
             }
         }
@@ -253,7 +262,12 @@ private fun SemServicosPublicar() {
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.LocalOffer, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Icon(
+                    Icons.Outlined.LocalOffer,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
             Text(
                 text = "Nenhum serviço cadastrado",
@@ -282,7 +296,8 @@ private fun ComporPublicacao(
     var descricao by rememberSaveable { mutableStateOf("") }
     val imagensUrl = remember { mutableStateListOf("") }
 
-    val selecionado = servicos.firstOrNull { it.idCategoriaEspecifica == servico } ?: servicos.first()
+    val selecionado =
+        servicos.firstOrNull { it.idCategoriaEspecifica == servico } ?: servicos.first()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -295,9 +310,18 @@ private fun ComporPublicacao(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.LocalOffer, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
+                Icon(
+                    Icons.Outlined.LocalOffer,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(15.dp)
+                )
                 Spacer(Modifier.width(6.dp))
-                Text("Sobre qual serviço?", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Sobre qual serviço?",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -306,7 +330,12 @@ private fun ComporPublicacao(
                     FilterChip(
                         selected = sel,
                         onClick = { servico = s.idCategoriaEspecifica },
-                        label = { Text(s.nome, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal) },
+                        label = {
+                            Text(
+                                s.nome,
+                                fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal
+                            )
+                        },
                         shape = CircleShape,
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -322,7 +351,11 @@ private fun ComporPublicacao(
                 }
             }
 
-            Text("Imagens (URL)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Imagens (URL)",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             imagensUrl.forEachIndexed { i, url ->
                 ImagemUrlCampo(
                     url = url,
@@ -339,9 +372,18 @@ private fun ComporPublicacao(
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Outlined.Add,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(Modifier.width(4.dp))
-                Text("Adicionar imagem", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Adicionar imagem",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
             TextField(
@@ -370,12 +412,22 @@ private fun ComporPublicacao(
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.LocalOffer, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                Icon(
+                    Icons.Outlined.LocalOffer,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(15.dp)
+                )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     buildAnnotatedString {
                         append("Será publicado em ")
-                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)) {
+                        withStyle(
+                            SpanStyle(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        ) {
                             append(selecionado.nome)
                         }
                     },
@@ -400,7 +452,11 @@ private fun ComporPublicacao(
                 enabled = descricao.isNotBlank() && !publicando,
             ) {
                 if (publicando) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
                 } else {
                     Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -413,7 +469,10 @@ private fun ComporPublicacao(
 
 @Composable
 private fun ImagemUrlCampo(url: String, onUrlChange: (String) -> Unit, onRemover: (() -> Unit)?) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -422,9 +481,19 @@ private fun ImagemUrlCampo(url: String, onUrlChange: (String) -> Unit, onRemover
             contentAlignment = Alignment.Center,
         ) {
             if (url.isBlank()) {
-                Icon(Icons.Outlined.Image, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Outlined.Image,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
             } else {
-                AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
         TextField(
@@ -443,7 +512,12 @@ private fun ImagemUrlCampo(url: String, onUrlChange: (String) -> Unit, onRemover
         )
         if (onRemover != null) {
             IconButton(onClick = onRemover) {
-                Icon(Icons.Outlined.Close, "Remover imagem", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Outlined.Close,
+                    "Remover imagem",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -451,7 +525,11 @@ private fun ImagemUrlCampo(url: String, onUrlChange: (String) -> Unit, onRemover
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PublicacaoCard(pub: PublicacaoFeedRS, onComentarios: () -> Unit, onExcluir: () -> Unit) {
+private fun PublicacaoCard(
+    pub: PublicacaoFeedRS,
+    onComentarios: () -> Unit,
+    onExcluir: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -464,16 +542,37 @@ private fun PublicacaoCard(pub: PublicacaoFeedRS, onComentarios: () -> Unit, onE
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(pub.descricao, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                pub.descricao,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MetricaIcone(Icons.Outlined.FavoriteBorder, pub.quantidadeCurtidas.toString(), onClick = null)
+                MetricaIcone(
+                    Icons.Outlined.FavoriteBorder,
+                    pub.quantidadeCurtidas.toString(),
+                    onClick = null
+                )
                 Spacer(Modifier.width(16.dp))
-                MetricaIcone(Icons.Outlined.ChatBubbleOutline, pub.quantidadeComentarios.toString(), onClick = onComentarios)
+                MetricaIcone(
+                    Icons.Outlined.ChatBubbleOutline,
+                    pub.quantidadeComentarios.toString(),
+                    onClick = onComentarios
+                )
                 Spacer(Modifier.width(10.dp))
-                Text(tempoRelativo(pub.publicadoEm), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    tempoRelativo(pub.publicadoEm),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onExcluir) {
-                    Icon(Icons.Outlined.DeleteOutline, "Excluir publicação", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        "Excluir publicação",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
@@ -493,7 +592,12 @@ private fun FotoPublicacao(imagens: List<PublicacaoImagemRS>, categoria: String?
         contentAlignment = Alignment.Center,
     ) {
         if (ordenadas.isEmpty()) {
-            Icon(Icons.Outlined.Image, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), modifier = Modifier.size(40.dp))
+            Icon(
+                Icons.Outlined.Image,
+                null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(40.dp)
+            )
         } else {
             val pagerState = rememberPagerState(pageCount = { ordenadas.size })
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pagina ->
@@ -513,7 +617,11 @@ private fun FotoPublicacao(imagens: List<PublicacaoImagemRS>, categoria: String?
                         .background(Color.Black.copy(alpha = 0.55f))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
-                    Text("${pagerState.currentPage + 1}/${ordenadas.size}", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                    Text(
+                        "${pagerState.currentPage + 1}/${ordenadas.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
                 }
             }
         }
@@ -535,23 +643,38 @@ private fun FotoPublicacao(imagens: List<PublicacaoImagemRS>, categoria: String?
 }
 
 @Composable
-private fun MetricaIcone(icone: androidx.compose.ui.graphics.vector.ImageVector, valor: String, onClick: (() -> Unit)?) {
+private fun MetricaIcone(
+    icone: androidx.compose.ui.graphics.vector.ImageVector,
+    valor: String,
+    onClick: (() -> Unit)?
+) {
     val base = Modifier
         .clip(RoundedCornerShape(8.dp))
         .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
         .padding(4.dp)
     Row(modifier = base, verticalAlignment = Alignment.CenterVertically) {
-        Icon(icone, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        Icon(
+            icone,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(Modifier.width(6.dp))
-        Text(valor, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            valor,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
 private fun RodapeCarregando() {
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp), contentAlignment = Alignment.Center
+    ) {
         CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
     }
 }
@@ -565,16 +688,22 @@ private fun RodapeErro(mensagem: String, onTentarNovamente: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(mensagem, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Button(onClick = onTentarNovamente) { Text("Tentar novamente") }
     }
 }
 
 @Composable
 private fun RodapeVazio() {
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(24.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp), contentAlignment = Alignment.Center
+    ) {
         Text(
             text = "Você ainda não publicou nada. Compartilhe seu primeiro trabalho!",
             style = MaterialTheme.typography.bodyMedium,
@@ -597,7 +726,8 @@ private fun ComentariosPublicacaoSheet(
     onCarregarMais: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
-    val raizes = remember(estado.comentarios) { estado.comentarios.filter { it.comentarioPaiId == null } }
+    val raizes =
+        remember(estado.comentarios) { estado.comentarios.filter { it.comentarioPaiId == null } }
     val respostasPorPai = remember(estado.comentarios) {
         estado.comentarios.filter { it.comentarioPaiId != null }.groupBy { it.comentarioPaiId }
     }
@@ -636,9 +766,16 @@ private fun ComentariosPublicacaoSheet(
                 )
                 IconButton(
                     onClick = onFechar,
-                    modifier = Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
-                    Icon(Icons.Outlined.Close, "Fechar", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Outlined.Close,
+                        "Fechar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
 
@@ -647,7 +784,11 @@ private fun ComentariosPublicacaoSheet(
 
             Box(modifier = Modifier.weight(1f)) {
                 when {
-                    estado.carregando -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    estado.carregando -> Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator() }
+
                     estado.comentarios.isEmpty() && estado.erro != null -> MensagemCentral(estado.erro)
                     estado.comentarios.isEmpty() -> MensagemCentral("Nenhum comentário ainda.")
                     else -> LazyColumn(
@@ -681,10 +822,16 @@ private fun ComentariosPublicacaoSheet(
 
 @Composable
 private fun MensagemCentral(texto: String) {
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(texto, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp), contentAlignment = Alignment.Center
+    ) {
+        Text(
+            texto,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -715,7 +862,12 @@ private fun ComentarioRaiz(
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.AutoMirrored.Outlined.Reply, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                Icon(
+                    Icons.AutoMirrored.Outlined.Reply,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     if (respondendo) "Cancelar" else "Responder",
@@ -771,7 +923,11 @@ private fun BalaoComentario(comentario: ComentarioRS) {
             )
         }
         Spacer(Modifier.size(2.dp))
-        Text(comentario.texto, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            comentario.texto,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -800,7 +956,11 @@ private fun CampoResposta(autor: String, enviando: Boolean, onEnviar: (String) -
         )
         Spacer(Modifier.width(8.dp))
         FilledIconButton(
-            onClick = { if (texto.isNotBlank()) { onEnviar(texto.trim()); texto = "" } },
+            onClick = {
+                if (texto.isNotBlank()) {
+                    onEnviar(texto.trim()); texto = ""
+                }
+            },
             enabled = texto.isNotBlank() && !enviando,
         ) {
             Icon(Icons.AutoMirrored.Filled.Send, "Enviar resposta", modifier = Modifier.size(18.dp))
@@ -833,13 +993,21 @@ private fun InputComentario(enviando: Boolean, onEnviar: (String) -> Unit) {
         )
         Spacer(Modifier.width(8.dp))
         FilledIconButton(
-            onClick = { if (texto.isNotBlank()) { onEnviar(texto.trim()); texto = "" } },
+            onClick = {
+                if (texto.isNotBlank()) {
+                    onEnviar(texto.trim()); texto = ""
+                }
+            },
             enabled = texto.isNotBlank() && !enviando,
         ) {
             if (enviando) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
-                Icon(Icons.AutoMirrored.Filled.Send, "Enviar comentário", modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    "Enviar comentário",
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

@@ -1,32 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Foreground do ícone adaptável: os dois anéis entrelaçados do Elo.
   Coral = cliente, teal = profissional. Ordem de desenho cria o efeito de
   entrelaçamento: coral por cima do teal no cruzamento de cima; teal por cima
   do coral no de baixo. Fica dentro da zona de segurança (centro ~66dp).
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-        android:width="108dp"
-        android:height="108dp"
-        android:viewportWidth="108"
-        android:viewportHeight="108">
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
     <!-- Anel coral (cliente) -->
     <path
-            android:pathData="M26,54 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0 Z"
-            android:fillColor="#00000000"
-            android:strokeColor="#F2603E"
-            android:strokeWidth="9" />
+        android:pathData="M26,54 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#F2603E"
+        android:strokeWidth="9" />
     <!-- Anel teal (profissional) — por cima do coral nos dois cruzamentos -->
     <path
-            android:pathData="M46,54 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0 Z"
-            android:fillColor="#00000000"
-            android:strokeColor="#12A788"
-            android:strokeWidth="9" />
+        android:pathData="M46,54 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#12A788"
+        android:strokeWidth="9" />
     <!-- Trecho de coral por cima do teal no cruzamento de cima (entrelaçado) -->
     <path
-            android:pathData="M47.13,36.27 A18,18 0 0,1 59.26,44.46"
-            android:fillColor="#00000000"
-            android:strokeColor="#F2603E"
-            android:strokeWidth="9"
-            android:strokeLineCap="round" />
+        android:pathData="M47.13,36.27 A18,18 0 0,1 59.26,44.46"
+        android:fillColor="#00000000"
+        android:strokeColor="#F2603E"
+        android:strokeWidth="9"
+        android:strokeLineCap="round" />
 </vector>

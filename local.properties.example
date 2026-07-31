@@ -1,0 +1,16 @@
+## Copie para `local.properties` e preencha com os seus valores.
+## `local.properties` NÃO vai para o versionamento.
+
+# Caminho do Android SDK na sua máquina.
+sdk.dir=/caminho/para/Android/Sdk
+
+# Chave do Google Maps (Maps SDK for Android), restrita ao package
+# com.winyc.elo e ao SHA-1 do seu certificado de assinatura.
+MAPS_API_KEY=
+
+# Backend usado pelo build de debug. HTTP na rede local é aceito aqui.
+BASE_URL_DEBUG=http://192.168.15.57:8090/api/
+
+# Backend de produção, usado pelo build de release. Precisa ser HTTPS e
+# estar preenchido — o build de release falha se estiver vazio.
+BASE_URL_RELEASE=

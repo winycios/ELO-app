@@ -77,10 +77,13 @@ private val PAGINAS = listOf(
         titulo = "ELO",
         tituloComAcento = false,
         descricao = "O elo entre quem precisa de um serviço e quem sabe fazer. " +
-            "Um só app, dois modos que trabalham juntos.",
+                "Um só app, dois modos que trabalham juntos.",
         itens = listOf(
             ItemDestaque(Icons.Outlined.PersonOutline, "Modo Cliente — contrate com confiança"),
-            ItemDestaque(Icons.Outlined.WorkOutline, "Modo Profissional — receba e feche trabalhos"),
+            ItemDestaque(
+                Icons.Outlined.WorkOutline,
+                "Modo Profissional — receba e feche trabalhos"
+            ),
         ),
         textoBotao = "Continuar",
     ),
@@ -90,7 +93,7 @@ private val PAGINAS = listOf(
         titulo = "Contrate em minutos",
         tituloComAcento = true,
         descricao = "Encontre profissionais verificados perto de você, compare " +
-            "avaliações e peça orçamentos sem sair do app.",
+                "avaliações e peça orçamentos sem sair do app.",
         itens = listOf(
             ItemDestaque(Icons.Outlined.Search, "Busque por serviço ou categoria"),
             ItemDestaque(Icons.Outlined.Shield, "Profissionais verificados e bem avaliados"),
@@ -104,7 +107,7 @@ private val PAGINAS = listOf(
         titulo = "Transforme em renda",
         tituloComAcento = true,
         descricao = "Publique seus serviços, responda pedidos e acompanhe seus " +
-            "ganhos — tudo pelo modo profissional.",
+                "ganhos — tudo pelo modo profissional.",
         itens = listOf(
             ItemDestaque(Icons.Outlined.Description, "Receba e responda orçamentos"),
             ItemDestaque(Icons.AutoMirrored.Filled.TrendingUp, "Acompanhe seus KPIs e ganhos"),
@@ -183,7 +186,11 @@ fun OnboardingScreen(onConcluir: () -> Unit, modifier: Modifier = Modifier) {
                             .height(6.dp)
                             .width(if (ativo) 24.dp else 6.dp)
                             .clip(CircleShape)
-                            .background(if (ativo) acento else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)),
+                            .background(
+                                if (ativo) acento else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                    alpha = 0.35f
+                                )
+                            ),
                     )
                 }
             }

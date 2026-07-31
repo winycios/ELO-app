@@ -342,7 +342,10 @@ private fun CabecalhoCliente(
 @Composable
 private fun MetaLinha(orcamento: OrcamentoListagemProfissionalRS) {
     val distancia = formatarDistancia(orcamento.distanciaKm)
-    val quando = dataComFaixaDeHorario(orcamento.inicioProposto, orcamento.fimProposto) ?: formatarDataHora(orcamento.horarioPreferido)
+    val quando =
+        dataComFaixaDeHorario(orcamento.inicioProposto, orcamento.fimProposto) ?: formatarDataHora(
+            orcamento.horarioPreferido
+        )
     if (distancia == null && quando == null) return
 
     Row(
