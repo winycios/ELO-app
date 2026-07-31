@@ -127,8 +127,6 @@ fun MeusOrcamentosScreen(
         }
     }
 
-    var avaliarDe by remember { mutableStateOf<OrcamentoListagemRS?>(null) }
-
     val listState = rememberLazyListState()
     val quantidade = estado.orcamentos.size
     val precisaCarregarMais by remember(quantidade) {
@@ -182,7 +180,7 @@ fun MeusOrcamentosScreen(
                     onDetalhes = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Detalhes) },
                     onRevisar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.OrcamentoFinal) },
                     onCancelar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Cancelar) },
-                    onAvaliar = { avaliarDe = orcamento },
+                    onAvaliar = { vm.abrirDetalhe(orcamento.id, VisaoOrcamento.Avaliar) },
                 )
             }
 
@@ -215,15 +213,10 @@ fun MeusOrcamentosScreen(
             onAceitar = vm::aprovarOrcamentoFinal,
             onRecusar = { vm.trocarVisao(VisaoOrcamento.Cancelar) },
             onCancelar = vm::cancelarOrcamento,
+            onAvaliar = vm::avaliarProfissional,
         )
     }
 
-    avaliarDe?.let { orcamento ->
-        AvaliarSheet(
-            nome = orcamento.nomeProfissional.orEmpty(),
-            onFechar = { avaliarDe = null },
-        )
-    }
 }
 
 @Composable
@@ -308,7 +301,7 @@ private fun OrcamentoCard(
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Acoes(status, onContato, onDetalhes, onCancelar, onAvaliar)
+        Acoes(status, orcamento.avaliado == true, onContato, onDetalhes, onCancelar, onAvaliar)
     }
 }
 
@@ -451,6 +444,7 @@ private fun StatusOrcamento?.podeCancelar(): Boolean = this == StatusOrcamento.P
 @Composable
 private fun Acoes(
     status: StatusOrcamento?,
+    avaliado: Boolean,
     onContato: () -> Unit,
     onDetalhes: () -> Unit,
     onCancelar: () -> Unit,
@@ -468,13 +462,16 @@ private fun Acoes(
             }
 
             StatusOrcamento.Concluido -> {
-                AcaoBotao(
-                    icone = Icons.Outlined.StarBorder,
-                    texto = stringResource(R.string.avaliar),
-                    cor = MaterialTheme.colorScheme.tertiary,
-                    onClick = onAvaliar,
-                )
-                VerticalDivider(color = MaterialTheme.colorScheme.outline)
+                // A avaliação é única: some do card depois de publicada.
+                if (!avaliado) {
+                    AcaoBotao(
+                        icone = Icons.Outlined.StarBorder,
+                        texto = stringResource(R.string.avaliar),
+                        cor = MaterialTheme.colorScheme.tertiary,
+                        onClick = onAvaliar,
+                    )
+                    VerticalDivider(color = MaterialTheme.colorScheme.outline)
+                }
                 AcaoBotao(
                     icone = Icons.Outlined.Description,
                     texto = stringResource(R.string.ver_detalhes),

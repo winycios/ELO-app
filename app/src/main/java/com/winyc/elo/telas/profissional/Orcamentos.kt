@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,9 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,7 +61,6 @@ import com.winyc.elo.backend.model.orcamento.OrcamentoListagemProfissionalRS
 import com.winyc.elo.backend.viewModel.FiltroOrcamentoPro
 import com.winyc.elo.backend.viewModel.OrcamentosProViewModel
 import com.winyc.elo.backend.viewModel.VisaoOrcamentoPro
-import com.winyc.elo.telas.cliente.AvaliarSheet
 import com.winyc.elo.telas.cliente.ChipFiltroOrcamento
 import com.winyc.elo.telas.cliente.RodapeOrcamentosCarregando
 import com.winyc.elo.telas.cliente.RodapeOrcamentosErro
@@ -121,8 +119,6 @@ fun OrcamentosScreen(
         }
     }
 
-    var avaliarDe by remember { mutableStateOf<OrcamentoListagemProfissionalRS?>(null) }
-
     val listState = rememberLazyListState()
     val quantidade = estado.orcamentos.size
     val precisaCarregarMais by remember(quantidade) {
@@ -172,7 +168,6 @@ fun OrcamentosScreen(
                 CardOrcamento(
                     orcamento = orcamento,
                     onAbrir = { visao -> vm.abrirDetalhe(orcamento.id, visao) },
-                    onAvaliar = { avaliarDe = orcamento },
                 )
             }
 
@@ -208,14 +203,8 @@ fun OrcamentosScreen(
             onTentarNovamenteHorarios = vm::tentarNovamenteHorarios,
             onEnviarOrcamento = vm::enviarOrcamentoFinal,
             onCancelar = vm::cancelarOrcamento,
-        )
-    }
-
-    avaliarDe?.let { orcamento ->
-        AvaliarSheet(
-            nome = orcamento.nomeUsuario.orEmpty(),
-            titulo = stringResource(R.string.avaliar_cliente),
-            onFechar = { avaliarDe = null },
+            onConcluir = vm::concluirOrcamento,
+            onAvaliar = vm::avaliarCliente,
         )
     }
 }
@@ -243,7 +232,6 @@ private fun FiltroChips(
 private fun CardOrcamento(
     orcamento: OrcamentoListagemProfissionalRS,
     onAbrir: (VisaoOrcamentoPro) -> Unit,
-    onAvaliar: () -> Unit,
 ) {
     val status = StatusOrcamento.de(orcamento.status)
     val aprovado = status == StatusOrcamento.Aprovado
@@ -255,7 +243,7 @@ private fun CardOrcamento(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         border = if (aprovado) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
-        if (aprovado) FaixaAprovado(orcamento.dataHoraCriacao)
+        if (aprovado) FaixaAprovado()
 
         Column(
             modifier = Modifier.padding(16.dp),
@@ -275,13 +263,13 @@ private fun CardOrcamento(
 
             MetaLinha(orcamento)
             CaixaValor(orcamento, status)
-            Acoes(status, onAbrir, onAvaliar)
+            Acoes(status, orcamento.avaliado == true, onAbrir)
         }
     }
 }
 
 @Composable
-private fun FaixaAprovado(dataHoraCriacao: String?) {
+private fun FaixaAprovado() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -421,8 +409,8 @@ private fun CaixaValor(orcamento: OrcamentoListagemProfissionalRS, status: Statu
 @Composable
 private fun Acoes(
     status: StatusOrcamento?,
+    avaliado: Boolean,
     onAbrir: (VisaoOrcamentoPro) -> Unit,
-    onAvaliar: () -> Unit,
 ) {
     when (status) {
         StatusOrcamento.Pendente -> {
@@ -481,6 +469,14 @@ private fun Acoes(
         }
 
         StatusOrcamento.Aprovado -> {
+            Button(
+                onClick = { onAbrir(VisaoOrcamentoPro.Concluir) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.TaskAlt, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.concluir_servico))
+            }
             BotaoTonal(
                 texto = stringResource(R.string.ver_detalhes_do_servico),
                 icone = Icons.Outlined.Description,
@@ -513,10 +509,21 @@ private fun Acoes(
                 icone = Icons.Outlined.Description,
                 onClick = { onAbrir(VisaoOrcamentoPro.Detalhes) },
             )
-            Button(onClick = onAvaliar, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.StarBorder, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.avaliar_cliente))
+            if (avaliado) {
+                Text(
+                    text = stringResource(R.string.ja_avaliado),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Button(
+                    onClick = { onAbrir(VisaoOrcamentoPro.Avaliar) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Outlined.StarBorder, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.avaliar_cliente))
+                }
             }
         }
 

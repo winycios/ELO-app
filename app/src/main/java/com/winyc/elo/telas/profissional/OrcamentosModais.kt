@@ -45,6 +45,8 @@ import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Sell
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -102,6 +104,9 @@ import com.winyc.elo.telas.cliente.StatusBadge
 import com.winyc.elo.telas.cliente.StatusOrcamento
 import com.winyc.elo.telas.cliente.recolherBottomModal
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.BlocoCancelamento
+import com.winyc.elo.telas.componentes.BlocoConclusao
+import com.winyc.elo.telas.componentes.FormularioAvaliacao
 import com.winyc.elo.telas.componentes.FormularioCancelamento
 import com.winyc.elo.telas.componentes.MOTIVOS_CANCELAMENTO_PROFISSIONAL
 import com.winyc.elo.telas.componentes.enderecoCompleto
@@ -143,6 +148,8 @@ internal fun DetalheOrcamentoProSheet(
         custos: List<OrcamentoFinalCreateRQ.CustoRQ>,
     ) -> Unit,
     onCancelar: (motivo: String, descricao: String) -> Unit,
+    onConcluir: (observacao: String) -> Unit,
+    onAvaliar: (nota: Int, comentario: String) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
@@ -202,6 +209,14 @@ internal fun DetalheOrcamentoProSheet(
                 ConteudoCancelar(estado = estado, onFechar = fechar, onCancelar = onCancelar)
             }
 
+            VisaoOrcamentoPro.Concluir -> FolhaSimples {
+                ConteudoConcluir(estado = estado, detalhe = detalhe, onFechar = fechar, onConcluir = onConcluir)
+            }
+
+            VisaoOrcamentoPro.Avaliar -> FolhaSimples {
+                ConteudoAvaliar(estado = estado, detalhe = detalhe, onFechar = fechar, onAvaliar = onAvaliar)
+            }
+
             VisaoOrcamentoPro.Detalhes -> FolhaSimples {
                 ConteudoDetalhes(detalhe = detalhe, onFechar = fechar)
             }
@@ -214,6 +229,8 @@ private fun tituloDaVisao(visao: VisaoOrcamentoPro): Int = when (visao) {
     VisaoOrcamentoPro.Orcar -> R.string.enviar_orcamento_final
     VisaoOrcamentoPro.OrcamentoFinal -> R.string.orcamento_final
     VisaoOrcamentoPro.Cancelar -> R.string.cancelar_servico
+    VisaoOrcamentoPro.Concluir -> R.string.concluir_servico
+    VisaoOrcamentoPro.Avaliar -> R.string.avaliar_cliente
     VisaoOrcamentoPro.Detalhes -> R.string.detalhes_do_servico
 }
 
@@ -284,6 +301,15 @@ private fun ConteudoDetalhes(detalhe: OrcamentoDetalheProfissionalRS, onFechar: 
             valor = endereco,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+
+    detalhe.conclusao?.let {
+        Spacer(Modifier.size(16.dp))
+        BlocoConclusao(it)
+    }
+    detalhe.cancelamento?.let {
+        Spacer(Modifier.size(16.dp))
+        BlocoCancelamento(it)
     }
 
     GaleriaFotos(solicitacao?.imagens.orEmpty())
@@ -1017,6 +1043,108 @@ private fun ConteudoCancelar(
         erro = estado.erroAcao,
         onVoltar = onFechar,
         onConfirmar = onCancelar,
+    )
+}
+
+/* ------------------------------------------------------------------ */
+/* Conteúdo: concluir serviço                                         */
+/* ------------------------------------------------------------------ */
+
+@Composable
+private fun ConteudoConcluir(
+    estado: OrcamentoProDetalheUi,
+    detalhe: OrcamentoDetalheProfissionalRS,
+    onFechar: () -> Unit,
+    onConcluir: (String) -> Unit,
+) {
+    var observacao by rememberSaveable { mutableStateOf("") }
+
+    CabecalhoSheet(
+        icone = Icons.Outlined.TaskAlt,
+        titulo = stringResource(R.string.concluir_servico),
+        subtitulo = stringResource(R.string.concluir_servico_sub),
+        onFechar = onFechar,
+    )
+
+    Spacer(Modifier.size(16.dp))
+    CartaoCliente(detalhe, comStatus = false)
+
+    detalhe.orcamentoFinal?.valorTotal?.let { valor ->
+        Spacer(Modifier.size(12.dp))
+        CaixaInfo(
+            icone = Icons.Outlined.Paid,
+            rotulo = stringResource(R.string.valor_aprovado),
+            valor = formatarBRL(valor).orEmpty(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    Spacer(Modifier.size(16.dp))
+    SecaoLabel(stringResource(R.string.observacao_conclusao))
+    Spacer(Modifier.size(8.dp))
+    OutlinedTextField(
+        value = observacao,
+        onValueChange = { if (it.length <= LIMITE_OBSERVACAO) observacao = it },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(110.dp),
+        placeholder = { Text(stringResource(R.string.observacao_conclusao_hint)) },
+        supportingText = { Text("${observacao.length}/$LIMITE_OBSERVACAO") },
+        shape = RoundedCornerShape(12.dp),
+        enabled = !estado.salvando,
+    )
+
+    estado.erroAcao?.let {
+        Spacer(Modifier.size(8.dp))
+        TextoErroAcao(it)
+    }
+
+    Spacer(Modifier.size(16.dp))
+    Button(
+        onClick = { onConcluir(observacao) },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !estado.salvando,
+    ) {
+        if (estado.salvando) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        } else {
+            Icon(Icons.Outlined.TaskAlt, null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.concluir_servico))
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Conteúdo: avaliar cliente                                          */
+/* ------------------------------------------------------------------ */
+
+@Composable
+private fun ConteudoAvaliar(
+    estado: OrcamentoProDetalheUi,
+    detalhe: OrcamentoDetalheProfissionalRS,
+    onFechar: () -> Unit,
+    onAvaliar: (Int, String) -> Unit,
+) {
+    CabecalhoSheet(
+        icone = Icons.Outlined.StarBorder,
+        titulo = stringResource(R.string.avaliar_cliente),
+        onFechar = onFechar,
+    )
+
+    Spacer(Modifier.size(16.dp))
+    CartaoCliente(detalhe, comStatus = false)
+
+    Spacer(Modifier.size(16.dp))
+    FormularioAvaliacao(
+        nome = detalhe.cliente?.nome.orEmpty(),
+        salvando = estado.salvando,
+        erro = estado.erroAcao,
+        onPublicar = onAvaliar,
     )
 }
 

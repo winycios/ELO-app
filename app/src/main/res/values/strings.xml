@@ -167,6 +167,19 @@
     <string name="motivo_data_nao_serve">Data ou horário não serve</string>
     <string name="motivo_outro_profissional">Escolhi outro profissional</string>
 
+    <!-- Conclusão e avaliação -->
+    <string name="concluir_servico">Concluir serviço</string>
+    <string name="concluir_servico_sub">Confirme a finalização para o cliente</string>
+    <string name="observacao_conclusao">Observação (opcional)</string>
+    <string name="observacao_conclusao_hint">Conte como foi o serviço, o que foi feito…</string>
+    <string name="estrelas_cd">%1$d estrela(s)</string>
+    <string name="ja_avaliado">Você já avaliou este serviço.</string>
+    <string name="conclusao_do_servico">Conclusão do serviço</string>
+    <string name="cancelamento">Cancelamento</string>
+    <string name="cancelado_por">Cancelado por %1$s</string>
+    <string name="autor_cliente">cliente</string>
+    <string name="autor_profissional">profissional</string>
+
     <!-- Cancelamento (cliente) -->
     <string name="cancelar">Cancelar</string>
     <string name="cancelar_orcamento">Cancelar orçamento</string>
@@ -393,7 +406,8 @@
     <string name="orcar_login_texto">Você precisa estar logado para enviar uma solicitação a este profissional.</string>
     <string name="orcar_login_entrar">Entrar</string>
     <string name="orcar_login_agora_nao">Agora não</string>
-
+    <string name="orcar_login_acao_bloqueada">Ação bloqueada</string>
+    <string name="orcar_login_usuario_sendo_prof">Você não pode reservar um serviço oferecido por você mesmo.</string>
     <string name="modo_bloqueado_pro">Modo profissional disponível apenas para contas profissionais.</string>
     <string name="modo_bloqueado_cliente">Modo cliente não está disponível para esta conta.</string>
 </resources>

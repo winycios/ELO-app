@@ -317,6 +317,7 @@ private fun EloApp() {
                     val proId = entry.arguments?.getLong("proId") ?: -1L
                     val servicoId = entry.arguments?.getLong("servicoId") ?: -1L
                     val categoriaId = entry.arguments?.getLong("categoriaId") ?: -1L
+                    val userId = perfil?.id ?: -1L
                     PerfilProfissionalScreen(
                         nome = nome,
                         proId = proId,
@@ -335,6 +336,7 @@ private fun EloApp() {
                             abrirEnderecos = true
                             navController.navegarParaAba(EloScreen.Perfil)
                         },
+                        userId = userId
                     )
                 }
 

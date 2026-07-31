@@ -4,7 +4,10 @@ import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
 import com.winyc.elo.backend.model.CursorPageRS
 import com.winyc.elo.backend.model.orcamento.HorariosDisponiveisRS
+import com.winyc.elo.backend.model.orcamento.AvaliacaoOrcamentoRQ
+import com.winyc.elo.backend.model.orcamento.AvaliacaoOrcamentoRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoCancelamentoRQ
+import com.winyc.elo.backend.model.orcamento.OrcamentoConclusaoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoCreateRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheProfissionalRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
@@ -78,6 +81,24 @@ class OrcamentoRepository(tokenStore: TokenStore, private val api: OrcamentoInte
         request: OrcamentoCancelamentoRQ,
     ): Result<OrcamentoDetalheProfissionalRS> =
         executar { verificaErro(api.cancelarOrcamentoProfissional(orcamentoId, request).execute()) }
+
+    suspend fun avaliarProfissional(
+        orcamentoId: Long,
+        request: AvaliacaoOrcamentoRQ,
+    ): Result<AvaliacaoOrcamentoRS> =
+        executar { verificaErro(api.avaliarProfissional(orcamentoId, request).execute()) }
+
+    suspend fun concluirOrcamento(
+        orcamentoId: Long,
+        request: OrcamentoConclusaoRQ,
+    ): Result<OrcamentoDetalheProfissionalRS> =
+        executar { verificaErro(api.concluirOrcamento(orcamentoId, request).execute()) }
+
+    suspend fun avaliarCliente(
+        orcamentoId: Long,
+        request: AvaliacaoOrcamentoRQ,
+    ): Result<AvaliacaoOrcamentoRS> =
+        executar { verificaErro(api.avaliarCliente(orcamentoId, request).execute()) }
 
     private suspend fun <T> executar(bloco: () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching(bloco) }

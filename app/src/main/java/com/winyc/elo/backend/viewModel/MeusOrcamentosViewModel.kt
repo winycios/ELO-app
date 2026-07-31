@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.orcamento.OrcamentoRepository
+import com.winyc.elo.backend.model.orcamento.AvaliacaoOrcamentoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoCancelamentoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoListagemRS
@@ -28,7 +29,7 @@ data class MeusOrcamentosUi(
         get() = hasNext && !carregandoMais && !carregandoInicial
 }
 
-enum class VisaoOrcamento { Detalhes, OrcamentoFinal, Contato, Cancelar }
+enum class VisaoOrcamento { Detalhes, OrcamentoFinal, Contato, Cancelar, Avaliar }
 
 data class OrcamentoDetalheUi(
     val orcamentoId: Long,
@@ -164,11 +165,23 @@ class MeusOrcamentosViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
+    /** Avalia o profissional depois do serviço concluído. */
+    fun avaliarProfissional(nota: Int, comentario: String) {
+        val atual = _detalhe.value ?: return
+        if (atual.salvando) return
+        executarAcao(atual.orcamentoId, MSG_AVALIADO) {
+            repository.avaliarProfissional(
+                atual.orcamentoId,
+                AvaliacaoOrcamentoRQ(nota = nota, comentario = comentario.trim().takeIf { it.isNotBlank() }),
+            )
+        }
+    }
+
     /** Executa a ação, fecha a folha no sucesso e recarrega a lista (o status muda). */
-    private fun executarAcao(
+    private fun <T> executarAcao(
         orcamentoId: Long,
         mensagemSucesso: String,
-        acao: suspend () -> Result<OrcamentoDetalheRS>,
+        acao: suspend () -> Result<T>,
     ) {
         _detalhe.update { it?.copy(salvando = true, erroAcao = null) }
         viewModelScope.launch {
@@ -213,5 +226,6 @@ class MeusOrcamentosViewModel(application: Application) : AndroidViewModel(appli
         const val ERRO_GENERICO = "Algo deu errado. Tente novamente."
         const val MSG_APROVADO = "Orçamento aceito! O profissional foi avisado."
         const val MSG_CANCELADO = "Orçamento cancelado."
+        const val MSG_AVALIADO = "Avaliação publicada. Obrigado!"
     }
 }

@@ -145,6 +145,7 @@ fun PerfilProfissionalScreen(
     onIrParaEnderecos: () -> Unit = {},
     modifier: Modifier = Modifier,
     vm: ProfissionalPerfilViewModel = viewModel(),
+    userId: Long
 ) {
     val estadoVm by vm.estado.collectAsStateWithLifecycle()
     val dados = estadoVm.perfil
@@ -163,6 +164,7 @@ fun PerfilProfissionalScreen(
     var servicoInfo by rememberSaveable(proId) { mutableStateOf<Long?>(null) }
     var sucesso by rememberSaveable(proId) { mutableStateOf(false) }
     var pedindoLogin by rememberSaveable(proId) { mutableStateOf(false) }
+    var orcamentoBloqueado by rememberSaveable(proId) { mutableStateOf(false) }
 
     val servicos = dados?.servicosOferecidos.orEmpty()
     val nomeExibicao = dados?.profissional?.nome?.takeIf { it.isNotBlank() } ?: nome
@@ -171,6 +173,8 @@ fun PerfilProfissionalScreen(
     val iniciarOrcamento = {
         if (!logado) {
             pedindoLogin = true
+        } else if ((dados?.profissional?.id.takeIf { it != null } ?: -1L) == userId) {
+            orcamentoBloqueado = true
         } else {
             val selecionado = dados?.servicoSelecionado?.id
             if (selecionado != null) servicoDetalhe = selecionado else escolhendoServico = true
@@ -179,7 +183,9 @@ fun PerfilProfissionalScreen(
 
     BackHandler(enabled = sucesso) { onIrParaInicio() }
     BackHandler(enabled = !sucesso && servicoDetalhe != null) { servicoDetalhe = null }
-    BackHandler(enabled = !sucesso && servicoDetalhe == null && escolhendoServico) { escolhendoServico = false }
+    BackHandler(enabled = !sucesso && servicoDetalhe == null && escolhendoServico) {
+        escolhendoServico = false
+    }
     BackHandler(
         enabled = !sucesso && servicoDetalhe == null && !escolhendoServico && verTodasAvaliacoes,
     ) { verTodasAvaliacoes = false }
@@ -320,6 +326,12 @@ fun PerfilProfissionalScreen(
                 },
             )
         }
+    }
+
+    if (orcamentoBloqueado) {
+        DialogNaoPodeReservar(
+            onFechar = { orcamentoBloqueado = false },
+        )
     }
 
     if (pedindoLogin) {
@@ -606,7 +618,9 @@ private fun CardEstatisticas(profissional: ProfissionalDetalhesRS?, modifier: Mo
             Estatistica(
                 Icons.Filled.Star,
                 EloTheme.colors.avaliacao,
-                if (avaliacao != null && (profissional.quantidadeAvaliacoes ?: 0) > 0) formatarNota(avaliacao) else "—",
+                if (avaliacao != null && (profissional.quantidadeAvaliacoes ?: 0) > 0) formatarNota(
+                    avaliacao
+                ) else "—",
                 "Avaliação",
             )
             Estatistica(
@@ -618,7 +632,8 @@ private fun CardEstatisticas(profissional: ProfissionalDetalhesRS?, modifier: Mo
             Estatistica(
                 Icons.Outlined.Schedule,
                 Roxo,
-                profissional?.tempoExperiencia?.let { "$it ${if (it == 1) "ano" else "anos"}" } ?: "—",
+                profissional?.tempoExperiencia?.let { "$it ${if (it == 1) "ano" else "anos"}" }
+                    ?: "—",
                 "Experiência",
             )
         }
@@ -640,8 +655,16 @@ private fun Estatistica(icone: ImageVector, cor: Color, valor: String, rotulo: S
         ) {
             Icon(icone, null, tint = cor, modifier = Modifier.size(22.dp))
         }
-        Text(valor, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-        Text(rotulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            valor,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            rotulo,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -649,14 +672,22 @@ private fun Estatistica(icone: ImageVector, cor: Color, valor: String, rotulo: S
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SecaoSobre(apresentacao: String?, especialidades: String?, modifier: Modifier = Modifier) {
+private fun SecaoSobre(
+    apresentacao: String?,
+    especialidades: String?,
+    modifier: Modifier = Modifier
+) {
     val tags = remember(especialidades) {
         especialidades?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }.orEmpty()
     }
     if (apresentacao.isNullOrBlank() && tags.isEmpty()) return
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Sobre", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+        Text(
+            "Sobre",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
         if (!apresentacao.isNullOrBlank()) {
             Text(
                 apresentacao,
@@ -734,7 +765,10 @@ private fun SecaoServicos(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         servicos.take(3).forEachIndexed { indice, servico ->
-            CardServico(numero = indice + 1, servico = servico, onClick = { onAbrirServico(servico.id) })
+            CardServico(
+                numero = indice + 1,
+                servico = servico,
+                onClick = { onAbrirServico(servico.id) })
         }
         if (servicos.size > 3) {
             OutlinedButton(
@@ -780,7 +814,10 @@ private fun CardServico(numero: Int, servico: ServicoOferecidoRS, onClick: () ->
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     servico.nome.orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
@@ -994,7 +1031,10 @@ private fun CardAvaliacao(avaliacao: AvaliacaoRS) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AvatarPerfil(
                     nome = avaliacao.avaliador.orEmpty(),
@@ -1075,7 +1115,10 @@ private fun BarraContratar(
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text("Contratar ${primeiroNome(nome)}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Contratar ${primeiroNome(nome)}",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
@@ -1269,10 +1312,10 @@ private fun DetalhesServicoScreen(
     }
 
     val podeConfirmar = servicoValido &&
-        descricao.isNotBlank() &&
-        diaSelecionado != null &&
-        horaSelecionada != null &&
-        enderecoSelecionado != null
+            descricao.isNotBlank() &&
+            diaSelecionado != null &&
+            horaSelecionada != null &&
+            enderecoSelecionado != null
 
     Column(
         modifier = modifier
@@ -1563,8 +1606,10 @@ private fun HorariosDoDia(
 
 @Composable
 private fun ChipHorario(texto: String, selecionado: Boolean, onClick: () -> Unit) {
-    val fundo = if (selecionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val corTexto = if (selecionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val fundo =
+        if (selecionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val corTexto =
+        if (selecionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
     Text(
         text = texto,
         style = MaterialTheme.typography.labelLarge,
@@ -1670,7 +1715,8 @@ private fun SecaoEndereco(
                     onExpandedChange = { expandido = it },
                 ) {
                     OutlinedTextField(
-                        value = enderecoAtual?.let { rotuloEndereco(it) } ?: "Selecione um endereço",
+                        value = enderecoAtual?.let { rotuloEndereco(it) }
+                            ?: "Selecione um endereço",
                         onValueChange = {},
                         readOnly = true,
                         singleLine = true,
@@ -1865,8 +1911,8 @@ private fun BannerContratacaoSegura() {
             )
             Text(
                 "Seus dados estão protegidos. O pagamento deve ser tratado exclusivamente " +
-                    "entre cliente e profissional e só poderá ser realizado após a conclusão " +
-                    "do serviço acordado.",
+                        "entre cliente e profissional e só poderá ser realizado após a conclusão " +
+                        "do serviço acordado.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1938,7 +1984,11 @@ private fun CabecalhoFluxo(titulo: String, subtitulo: String, onVoltar: () -> Un
         )
         Spacer(Modifier.width(4.dp))
         Column {
-            Text(titulo, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                titulo,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 subtitulo,
                 style = MaterialTheme.typography.bodySmall,
@@ -1996,9 +2046,18 @@ private fun ProHeaderCard(nome: String) {
 @Composable
 private fun CampoRotulo(icone: ImageVector, texto: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icone, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        Icon(
+            icone,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
         Spacer(Modifier.width(6.dp))
-        Text(texto, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            texto,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -2059,7 +2118,10 @@ private fun ServicoSheet(
                     )
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         servico.nome.orEmpty(),
                         style = MaterialTheme.typography.titleMedium,
@@ -2142,6 +2204,27 @@ private fun ServicoSheet(
     }
 }
 
+
+@Composable
+private fun DialogNaoPodeReservar(onFechar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onFechar,
+        icon = {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        title = { Text(stringResource(R.string.orcar_login_acao_bloqueada)) },
+        text = { Text(stringResource(R.string.orcar_login_usuario_sendo_prof)) },
+        confirmButton = {
+            Button(onClick = onFechar) { Text(stringResource(R.string.fechar)) }
+        }
+    )
+}
+
+
 /* ---------------------------- Convite login ---------------------------- */
 
 @Composable
@@ -2213,7 +2296,7 @@ private fun SolicitacaoEnviadaScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 "${primeiroNome(nome)} vai analisar seu pedido e responder com um orçamento. " +
-                    "Você será avisado assim que houver retorno.",
+                        "Você será avisado assim que houver retorno.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -2321,6 +2404,6 @@ private fun rotuloSemana(inicioIso: String?, fimIso: String?): String {
         "${inicio.dayOfMonth} – ${fim.dayOfMonth} de ${MESES_ABREV[fim.monthValue - 1]}"
     } else {
         "${inicio.dayOfMonth} ${MESES_ABREV[inicio.monthValue - 1]} – " +
-            "${fim.dayOfMonth} ${MESES_ABREV[fim.monthValue - 1]}"
+                "${fim.dayOfMonth} ${MESES_ABREV[fim.monthValue - 1]}"
     }
 }

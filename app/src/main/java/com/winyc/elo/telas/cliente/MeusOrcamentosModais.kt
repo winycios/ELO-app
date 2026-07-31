@@ -81,6 +81,9 @@ import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheRS
 import com.winyc.elo.backend.viewModel.OrcamentoDetalheUi
 import com.winyc.elo.backend.viewModel.VisaoOrcamento
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.BlocoCancelamento
+import com.winyc.elo.telas.componentes.BlocoConclusao
+import com.winyc.elo.telas.componentes.FormularioAvaliacao
 import com.winyc.elo.telas.componentes.FormularioCancelamento
 import com.winyc.elo.telas.componentes.MOTIVOS_CANCELAMENTO_CLIENTE
 import com.winyc.elo.telas.componentes.enderecoCompleto
@@ -118,6 +121,7 @@ internal fun DetalheOrcamentoSheet(
     onAceitar: () -> Unit,
     onRecusar: () -> Unit,
     onCancelar: (motivo: String, descricao: String) -> Unit,
+    onAvaliar: (nota: Int, comentario: String) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     val scope = rememberCoroutineScope()
@@ -163,6 +167,13 @@ internal fun DetalheOrcamentoSheet(
                     onRecusar = onRecusar,
                 )
 
+                estado.visao == VisaoOrcamento.Avaliar -> ConteudoAvaliar(
+                    estado = estado,
+                    detalhe = detalhe,
+                    onFechar = fechar,
+                    onAvaliar = onAvaliar,
+                )
+
                 estado.visao == VisaoOrcamento.Cancelar -> ConteudoCancelar(
                     estado = estado,
                     detalhe = detalhe,
@@ -182,6 +193,7 @@ private fun tituloDaVisao(visao: VisaoOrcamento): String = stringResource(
         VisaoOrcamento.Contato -> R.string.contato
         VisaoOrcamento.OrcamentoFinal -> R.string.orcamento_final
         VisaoOrcamento.Cancelar -> R.string.cancelar_orcamento
+        VisaoOrcamento.Avaliar -> R.string.avaliar_profissional
         VisaoOrcamento.Detalhes -> R.string.detalhes_do_orcamento
     },
 )
@@ -258,6 +270,15 @@ private fun ConteudoDetalhes(detalhe: OrcamentoDetalheRS, onFechar: () -> Unit) 
             valor = endereco,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+
+    detalhe.conclusao?.let {
+        Spacer(Modifier.size(16.dp))
+        BlocoConclusao(it)
+    }
+    detalhe.cancelamento?.let {
+        Spacer(Modifier.size(16.dp))
+        BlocoCancelamento(it)
     }
 
     val imagens = solicitacao?.imagens.orEmpty()
@@ -508,6 +529,35 @@ private fun ConteudoCancelar(
     )
 }
 
+/* ------------------------------------------------------------------ */
+/* Conteúdo: avaliar o profissional                                   */
+/* ------------------------------------------------------------------ */
+
+@Composable
+private fun ConteudoAvaliar(
+    estado: OrcamentoDetalheUi,
+    detalhe: OrcamentoDetalheRS,
+    onFechar: () -> Unit,
+    onAvaliar: (Int, String) -> Unit,
+) {
+    CabecalhoSheet(
+        icone = Icons.Outlined.StarBorder,
+        titulo = stringResource(R.string.avaliar_profissional),
+        onFechar = onFechar,
+    )
+
+    Spacer(Modifier.size(16.dp))
+    CabecalhoProfissional(detalhe)
+
+    Spacer(Modifier.size(16.dp))
+    FormularioAvaliacao(
+        nome = detalhe.profissional?.nome.orEmpty(),
+        salvando = estado.salvando,
+        erro = estado.erroAcao,
+        onPublicar = onAvaliar,
+    )
+}
+
 /** Bloco com foto, nome, selo de verificado, categoria e avaliação do profissional. */
 @Composable
 private fun CabecalhoProfissional(detalhe: OrcamentoDetalheRS) {
@@ -709,89 +759,6 @@ internal fun ConteudoContato(
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* Modal: Avaliar                                                     */
-/* ------------------------------------------------------------------ */
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun AvaliarSheet(
-    nome: String,
-    onFechar: () -> Unit,
-    titulo: String = "Avaliar profissional",
-    onPublicar: (nota: Int, comentario: String) -> Unit = { _, _ -> },
-    sheetState: SheetState = rememberModalBottomSheetState(),
-) {
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    var nota by rememberSaveable { mutableIntStateOf(5) }
-    var comentario by rememberSaveable { mutableStateOf("") }
-
-    ModalBottomSheet(onDismissRequest = onFechar, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp)
-                .navigationBarsPadding(),
-        ) {
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.experiencia_com, nome),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Spacer(Modifier.size(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            ) {
-                (1..5).forEach { indice ->
-                    val ativa = indice <= nota
-                    Icon(
-                        imageVector = if (ativa) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = "$indice estrela(s)",
-                        tint = if (ativa) MaterialTheme.colorScheme.tertiary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable { nota = indice },
-                    )
-                }
-            }
-
-            Spacer(Modifier.size(16.dp))
-            OutlinedTextField(
-                value = comentario,
-                onValueChange = { comentario = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(110.dp),
-                placeholder = { Text(stringResource(R.string.avaliacao_placeholder)) },
-                shape = RoundedCornerShape(12.dp),
-            )
-
-            Spacer(Modifier.size(20.dp))
-            Button(
-                onClick = {
-                    onPublicar(nota, comentario.trim())
-                    Toast.makeText(context, "Avaliação publicada!", Toast.LENGTH_SHORT).show()
-                    recolherBottomModal(scope, sheetState, onFechar)
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.publicar_avaliacao))
-            }
-        }
-    }
-}
 
 /* ------------------------------------------------------------------ */
 /* Peças reutilizadas pelos modais                                    */

@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.orcamento.OrcamentoRepository
+import com.winyc.elo.backend.model.orcamento.AvaliacaoOrcamentoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoCancelamentoRQ
+import com.winyc.elo.backend.model.orcamento.OrcamentoConclusaoRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoDetalheProfissionalRS
 import com.winyc.elo.backend.model.orcamento.OrcamentoFinalCreateRQ
 import com.winyc.elo.backend.model.orcamento.OrcamentoListagemProfissionalRS
@@ -38,7 +40,7 @@ data class OrcamentosProUi(
         get() = hasNext && !carregandoMais && !carregandoInicial
 }
 
-enum class VisaoOrcamentoPro { Detalhes, Orcar, OrcamentoFinal, Contato, Cancelar }
+enum class VisaoOrcamentoPro { Detalhes, Orcar, OrcamentoFinal, Contato, Cancelar, Concluir, Avaliar }
 
 data class OrcamentoProDetalheUi(
     val orcamentoId: Long,
@@ -277,10 +279,34 @@ class OrcamentosProViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    private fun executarAcao(
+    /** Marca o serviço como concluído, com uma observação opcional para o cliente. */
+    fun concluirOrcamento(observacao: String) {
+        val atual = _detalhe.value ?: return
+        if (atual.salvando) return
+        executarAcao(atual.orcamentoId, MSG_CONCLUIDO) {
+            repository.concluirOrcamento(
+                atual.orcamentoId,
+                OrcamentoConclusaoRQ(observacao = observacao.trim().takeIf { it.isNotBlank() }),
+            )
+        }
+    }
+
+    /** Avalia o cliente depois do serviço concluído. */
+    fun avaliarCliente(nota: Int, comentario: String) {
+        val atual = _detalhe.value ?: return
+        if (atual.salvando) return
+        executarAcao(atual.orcamentoId, MSG_AVALIADO) {
+            repository.avaliarCliente(
+                atual.orcamentoId,
+                AvaliacaoOrcamentoRQ(nota = nota, comentario = comentario.trim().takeIf { it.isNotBlank() }),
+            )
+        }
+    }
+
+    private fun <T> executarAcao(
         orcamentoId: Long,
         mensagemSucesso: String,
-        acao: suspend () -> Result<OrcamentoDetalheProfissionalRS>,
+        acao: suspend () -> Result<T>,
     ) {
         _detalhe.update { it?.copy(salvando = true, erroAcao = null) }
         viewModelScope.launch {
@@ -306,5 +332,7 @@ class OrcamentosProViewModel(application: Application) : AndroidViewModel(applic
         const val MSG_ENVIADO = "Orçamento enviado ao cliente!"
         const val MSG_RECUSADO = "Solicitação recusada."
         const val MSG_CANCELADO = "Serviço cancelado."
+        const val MSG_CONCLUIDO = "Serviço concluído!"
+        const val MSG_AVALIADO = "Avaliação publicada. Obrigado!"
     }
 }

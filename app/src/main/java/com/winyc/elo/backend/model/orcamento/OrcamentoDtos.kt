@@ -43,6 +43,8 @@ data class OrcamentoListagemRS(
     val categoria: String? = null,
     val descricao: String? = null,
     val status: String? = null,
+    /** Já concluído e avaliado por este usuário. */
+    val avaliado: Boolean? = null,
 )
 
 data class OrcamentoDetalheRS(
@@ -51,6 +53,8 @@ data class OrcamentoDetalheRS(
     val profissional: ProfissionalOrcamentoRS? = null,
     val solicitacao: SolicitacaoOrcamentoRS? = null,
     val orcamentoFinal: OrcamentoFinalRS? = null,
+    val cancelamento: CancelamentoRS? = null,
+    val conclusao: ConclusaoRS? = null,
 ) {
     data class ProfissionalOrcamentoRS(
         val id: Long? = null,
@@ -95,6 +99,20 @@ data class OrcamentoDetalheRS(
         val valor: Double? = null,
     )
 
+    data class CancelamentoRS(
+        val autor: String? = null,
+        val idUsuario: Long? = null,
+        val motivo: String? = null,
+        val descricao: String? = null,
+        val data: String? = null,
+    )
+
+    data class ConclusaoRS(
+        val idProfissional: Long? = null,
+        val observacao: String? = null,
+        val data: String? = null,
+    )
+
     data class EnderecoDetalheRS(
         val rua: String? = null,
         val numero: Int? = null,
@@ -124,6 +142,8 @@ data class OrcamentoListagemProfissionalRS(
     val fimProposto: String? = null,
     val valorTotal: Double? = null,
     val status: String? = null,
+    /** Já concluído e avaliado por este profissional. */
+    val avaliado: Boolean? = null,
 )
 
 data class OrcamentoDetalheProfissionalRS(
@@ -132,6 +152,8 @@ data class OrcamentoDetalheProfissionalRS(
     val cliente: ClienteOrcamentoRS? = null,
     val solicitacao: SolicitacaoProfissionalRS? = null,
     val orcamentoFinal: OrcamentoDetalheRS.OrcamentoFinalRS? = null,
+    val cancelamento: OrcamentoDetalheRS.CancelamentoRS? = null,
+    val conclusao: OrcamentoDetalheRS.ConclusaoRS? = null,
 ) {
     data class ClienteOrcamentoRS(
         val id: Long? = null,
@@ -207,3 +229,18 @@ data class OrcamentoRS(
 data class ItemCusto(val nome: String, val icone: ImageVector, val valor: String = "")
 
 data class CategoriaCusto(val nome: String, val icone: ImageVector)
+data class OrcamentoConclusaoRQ(
+    val observacao: String? = null,
+)
+
+data class AvaliacaoOrcamentoRQ(
+    val nota: Int,
+    val comentario: String? = null,
+)
+
+data class AvaliacaoOrcamentoRS(
+    val id: Long? = null,
+    val nota: Int? = null,
+    val comentario: String? = null,
+    val data: String? = null,
+)
