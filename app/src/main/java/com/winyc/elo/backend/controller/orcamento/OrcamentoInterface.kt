@@ -63,6 +63,11 @@ interface OrcamentoInterface {
         @Query("tamanho") tamanho: Int,
     ): Call<CursorPageRS<OrcamentoListagemProfissionalRS>>
 
+    @GET("$PATH/agenda/listar")
+    fun listarAgenda(
+        @Query("dataInicio") dataInicio: String?,
+    ): Call<Map<String, List<OrcamentoListagemProfissionalRS>>>
+
     @GET("$PATH/profissional/{orcamentoId}")
     fun buscarOrcamentoPorIdProfissional(
         @Path("orcamentoId") orcamentoId: Long,

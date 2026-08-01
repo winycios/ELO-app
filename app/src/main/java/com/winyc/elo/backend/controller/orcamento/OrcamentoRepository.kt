@@ -67,6 +67,13 @@ class OrcamentoRepository(tokenStore: TokenStore, private val api: OrcamentoInte
         else verificaErro(resposta)
     }
 
+    suspend fun listarAgenda(
+        dataInicio: String?,
+    ): Result<Map<String, List<OrcamentoListagemProfissionalRS>>> = executar {
+        val resposta = api.listarAgenda(dataInicio).execute()
+        if (resposta.code() == 204) emptyMap() else verificaErro(resposta)
+    }
+
     suspend fun buscarOrcamentoPorIdProfissional(orcamentoId: Long): Result<OrcamentoDetalheProfissionalRS> =
         executar { verificaErro(api.buscarOrcamentoPorIdProfissional(orcamentoId).execute()) }
 

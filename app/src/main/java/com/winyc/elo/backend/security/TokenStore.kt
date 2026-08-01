@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import java.io.IOException
 import java.security.GeneralSecurityException
+import java.security.KeyStore
 
 private val Context.sessaoDataStore: DataStore<Preferences> by preferencesDataStore(name = "elo_sessao")
 
@@ -45,20 +47,28 @@ class TokenStore private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val dataStore = appContext.sessaoDataStore
     private val aead: Aead = criarAead(appContext)
+
     @Volatile
     private var accessCache: String? = null
+
     @Volatile
     private var refreshCache: String? = null
+
     @Volatile
     private var usuarioIdCache: Long = SEM_USUARIO
+
     @Volatile
     private var nomeCache: String = ""
+
     @Volatile
     private var urlPerfilCache: String = ""
+
     @Volatile
     private var urlPerfilProCache: String = ""
+
     @Volatile
     private var clienteAtivoCache: Boolean = false
+
     @Volatile
     private var profAtivoCache: Boolean = false
 
@@ -178,15 +188,44 @@ class TokenStore private constructor(context: Context) {
         private val KEY_CLIENTE_ATIVO = booleanPreferencesKey("cliente_ativo")
         private val KEY_PROF_ATIVO = booleanPreferencesKey("prof_ativo")
 
+        private const val TINK_KEYSET = "elo_tink_keyset"
+        private const val TINK_PREFS = "elo_tink_prefs"
+        private const val CHAVE_MESTRA = "elo_token_master_key"
+
         private fun criarAead(context: Context): Aead {
             AeadConfig.register()
-            val keysetHandle = AndroidKeysetManager.Builder()
-                .withSharedPref(context, "elo_tink_keyset", "elo_tink_prefs")
+            return try {
+                construirAead(context)
+            } catch (_: GeneralSecurityException) {
+                recriarChaveMestra(context)
+                construirAead(context)
+            } catch (_: IOException) {
+                recriarChaveMestra(context)
+                construirAead(context)
+            }
+        }
+
+        private fun construirAead(context: Context): Aead =
+            AndroidKeysetManager.Builder()
+                .withSharedPref(context, TINK_KEYSET, TINK_PREFS)
                 .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
-                .withMasterKeyUri("android-keystore://elo_token_master_key")
+                .withMasterKeyUri("android-keystore://$CHAVE_MESTRA")
                 .build()
                 .keysetHandle
-            return keysetHandle.getPrimitive(Aead::class.java)
+                .getPrimitive(Aead::class.java)
+
+        private fun recriarChaveMestra(context: Context) {
+            runCatching {
+                context.getSharedPreferences(TINK_PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .clear()
+                    .commit()
+            }
+            runCatching {
+                KeyStore.getInstance("AndroidKeyStore")
+                    .apply { load(null) }
+                    .deleteEntry(CHAVE_MESTRA)
+            }
         }
     }
 }

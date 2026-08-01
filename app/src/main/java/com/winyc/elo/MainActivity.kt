@@ -189,6 +189,8 @@ private fun EloApp() {
     val telaCheia = currentRoute == EloScreen.Auth.route ||
         currentRoute == EloScreen.Onboarding.route ||
         currentRoute == EloScreen.PerfilProfissional.route
+    // A agenda não é uma aba: abre a partir do painel e volta pela seta do próprio cabeçalho.
+    val semAbas = telaCheia || currentRoute == EloScreen.Agenda.route
     val context = if (emModoPro) EloContext.Profissional else EloContext.Cliente
 
     val podePro = logado && perfil?.profissionalAtivo == true
@@ -219,7 +221,7 @@ private fun EloApp() {
                 if (emModoPro && !telaCheia) ModoProBanner()
             },
             bottomBar = {
-                if (!telaCheia) {
+                if (!semAbas) {
                     Column {
                         if (!logado && !balaoDispensado) {
                             BalaoDeslogado(
@@ -342,7 +344,16 @@ private fun EloApp() {
                 }
 
                 composable(EloScreen.Painel.route) { PainelScreen(onAbrirAgenda = { navController.navigate(EloScreen.Agenda.route) }, onAbrirOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },) }
-                composable(EloScreen.Agenda.route) { AgendaScreen(onIrParaOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },) }
+                composable(EloScreen.Agenda.route) {
+                    AgendaScreen(
+                        onIrParaOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },
+                        onVoltar = {
+                            if (!navController.popBackStack()) {
+                                navController.navegarParaAba(EloScreen.Painel)
+                            }
+                        },
+                    )
+                }
                 composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
                 composable(EloScreen.Publicar.route) { PublicarScreen() }
                 composable(EloScreen.PerfilPro.route) {

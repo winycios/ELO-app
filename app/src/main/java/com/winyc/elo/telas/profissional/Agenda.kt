@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Star
@@ -39,10 +40,12 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,16 +83,24 @@ import java.time.LocalDate
 private val Ambar = Color(0xFFF5A524)
 private val SobreAmbar = Color(0xFF16181F)
 private const val MAX_MARCADORES = 3
-
-private data class DiaEmExibicao(val dia: LocalDate, val servicos: List<ServicoAgendaUi>)
+private const val SEM_VALOR = "—"
+private data class DiaEmExibicao(
+    val dia: LocalDate,
+    val servicos: List<ServicoAgendaUi>,
+    val carregando: Boolean,
+    val erro: String?,
+)
 
 @Composable
 fun AgendaScreen(
     onIrParaOrcamentos: () -> Unit,
+    onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     vm: AgendaViewModel = viewModel(),
 ) {
     val estado by vm.estado.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { vm.abrirTela() }
 
     Column(
         modifier = modifier
@@ -99,6 +110,7 @@ fun AgendaScreen(
     ) {
         CabecalhoAgenda(
             estado = estado,
+            onVoltar = onVoltar,
             onSelecionarDia = vm::selecionarDia,
             onSemanaAnterior = vm::semanaAnterior,
             onProximaSemana = vm::proximaSemana,
@@ -112,7 +124,12 @@ fun AgendaScreen(
             ResumoSemana(estado)
 
             AnimatedContent(
-                targetState = DiaEmExibicao(estado.diaSelecionado, estado.servicosDoDia),
+                targetState = DiaEmExibicao(
+                    dia = estado.diaSelecionado,
+                    servicos = estado.servicosDoDia,
+                    carregando = estado.carregando && !estado.semanaCarregada,
+                    erro = estado.erro.takeIf { !estado.semanaCarregada },
+                ),
                 transitionSpec = {
                     val avancando = targetState.dia > initialState.dia
                     val sentido = if (avancando) 1 else -1
@@ -126,10 +143,11 @@ fun AgendaScreen(
             ) { emExibicao ->
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     CabecalhoDia(dia = emExibicao.dia, hoje = estado.hoje)
-                    if (emExibicao.servicos.isEmpty()) {
-                        DiaSemServicos(onIrParaOrcamentos)
-                    } else {
-                        emExibicao.servicos.forEach { servico ->
+                    when {
+                        emExibicao.carregando -> AgendaCarregando()
+                        emExibicao.erro != null -> AgendaErro(emExibicao.erro, vm::recarregar)
+                        emExibicao.servicos.isEmpty() -> DiaSemServicos(onIrParaOrcamentos)
+                        else -> emExibicao.servicos.forEach { servico ->
                             CardServico(servico = servico, onResponder = onIrParaOrcamentos)
                         }
                     }
@@ -144,6 +162,7 @@ fun AgendaScreen(
 @Composable
 private fun CabecalhoAgenda(
     estado: AgendaUi,
+    onVoltar: () -> Unit,
     onSelecionarDia: (LocalDate) -> Unit,
     onSemanaAnterior: () -> Unit,
     onProximaSemana: () -> Unit,
@@ -158,6 +177,12 @@ private fun CabecalhoAgenda(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            BotaoCircular(
+                icone = Icons.AutoMirrored.Outlined.ArrowBack,
+                descricao = stringResource(R.string.voltar),
+                onClick = onVoltar,
+            )
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.agenda_titulo),
@@ -174,7 +199,7 @@ private fun CabecalhoAgenda(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SetaSemana(
+            BotaoCircular(
                 icone = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
                 descricao = stringResource(R.string.agenda_semana_anterior_cd),
                 onClick = onSemanaAnterior,
@@ -197,7 +222,7 @@ private fun CabecalhoAgenda(
                     )
                 }
             }
-            SetaSemana(
+            BotaoCircular(
                 icone = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 descricao = stringResource(R.string.agenda_proxima_semana_cd),
                 onClick = onProximaSemana,
@@ -220,8 +245,9 @@ private fun BotaoHoje(onClick: () -> Unit) {
     )
 }
 
+/** Botão redondo sobre o teal do cabeçalho: voltar e as setas de semana. */
 @Composable
-private fun SetaSemana(icone: ImageVector, descricao: String, onClick: () -> Unit) {
+private fun BotaoCircular(icone: ImageVector, descricao: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(32.dp)
@@ -354,18 +380,27 @@ private fun ResumoSemana(estado: AgendaUi) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = formatarBRL(estado.totalPrevistoSemana).orEmpty(),
+                    // Sem a semana em mãos ainda, mostrar R$ 0,00 passaria uma informação errada.
+                    text = if (estado.semanaCarregada) {
+                        formatarBRL(estado.totalPrevistoSemana).orEmpty()
+                    } else {
+                        SEM_VALOR
+                    },
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = pluralStringResource(
-                        R.plurals.agenda_quantidade_servicos,
-                        estado.quantidadeSemana,
-                        estado.quantidadeSemana,
-                    ),
+                    text = if (estado.semanaCarregada) {
+                        pluralStringResource(
+                            R.plurals.agenda_quantidade_servicos,
+                            estado.quantidadeSemana,
+                            estado.quantidadeSemana,
+                        )
+                    } else {
+                        SEM_VALOR
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -582,6 +617,39 @@ private fun ChipStatus(visual: VisualStatus) {
             .background(visual.corFundo)
             .padding(horizontal = 10.dp, vertical = 5.dp),
     )
+}
+
+@Composable
+private fun AgendaCarregando() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 40.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
+    }
+}
+
+@Composable
+private fun AgendaErro(mensagem: String, onTentarNovamente: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = mensagem,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Button(onClick = onTentarNovamente) {
+            Text(stringResource(R.string.vitrine_tentar_novamente))
+        }
+    }
 }
 
 @Composable

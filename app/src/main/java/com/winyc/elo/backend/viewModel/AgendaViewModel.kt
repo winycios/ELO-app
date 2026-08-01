@@ -1,14 +1,19 @@
 package com.winyc.elo.backend.viewModel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.winyc.elo.backend.controller.orcamento.OrcamentoRepository
 import com.winyc.elo.backend.model.orcamento.OrcamentoListagemProfissionalRS
+import com.winyc.elo.backend.security.TokenStore
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.temporal.TemporalAdjusters
 
 enum class StatusAgenda {
@@ -53,10 +58,9 @@ data class ServicoAgendaUi(
     val temProposta: Boolean get() = inicioIso != null
 }
 
-fun OrcamentoListagemProfissionalRS.paraAgenda(): ServicoAgendaUi? {
+/** O dia vem da chave do mapa da API, que já agrupou o serviço na data certa. */
+fun OrcamentoListagemProfissionalRS.paraAgenda(dia: LocalDate): ServicoAgendaUi? {
     val statusAgenda = StatusAgenda.de(status) ?: return null
-    val referencia = inicioProposto ?: horarioPreferido ?: return null
-    val dia = runCatching { LocalDateTime.parse(referencia).toLocalDate() }.getOrNull() ?: return null
     return ServicoAgendaUi(
         id = id,
         dia = dia,
@@ -78,33 +82,42 @@ data class AgendaUi(
     val hoje: LocalDate,
     val diaSelecionado: LocalDate,
     val inicioSemana: LocalDate,
-    val servicos: List<ServicoAgendaUi> = emptyList(),
+    /** Cada semana carregada fica em cache pela sua segunda-feira. */
+    val semanas: Map<LocalDate, List<ServicoAgendaUi>> = emptyMap(),
+    val carregando: Boolean = false,
+    val erro: String? = null,
 ) {
 
     val dias: List<LocalDate> get() = (0L..6L).map { inicioSemana.plusDays(it) }
 
+    /** `null` enquanto a semana nunca chegou da API — diferente de semana sem serviços. */
+    private val servicosDaSemana: List<ServicoAgendaUi>? get() = semanas[inicioSemana]
+
+    val semanaCarregada: Boolean get() = servicosDaSemana != null
+
     val servicosDoDia: List<ServicoAgendaUi>
-        get() = servicos.filter { it.dia == diaSelecionado }.sortedBy { horarioDeOrdenacao(it) }
+        get() = servicosDe(diaSelecionado).sortedBy { horarioDeOrdenacao(it) }
 
-    private val servicosDaSemana: List<ServicoAgendaUi>
-        get() = servicos.filter { it.dia >= inicioSemana && it.dia <= inicioSemana.plusDays(6) }
+    val totalPrevistoSemana: Double get() = servicosDaSemana.orEmpty().sumOf { it.valorTotal ?: 0.0 }
 
-    val totalPrevistoSemana: Double get() = servicosDaSemana.sumOf { it.valorTotal ?: 0.0 }
-
-    val quantidadeSemana: Int get() = servicosDaSemana.size
+    val quantidadeSemana: Int get() = servicosDaSemana.orEmpty().size
 
     val aguardandoSemana: Int
-        get() = servicosDaSemana.count {
+        get() = servicosDaSemana.orEmpty().count {
             it.status == StatusAgenda.Pendente || it.status == StatusAgenda.AguardandoCliente
         }
 
-    fun servicosDe(dia: LocalDate): List<ServicoAgendaUi> = servicos.filter { it.dia == dia }
+    fun servicosDe(dia: LocalDate): List<ServicoAgendaUi> =
+        servicosDaSemana.orEmpty().filter { it.dia == dia }
 
     private fun horarioDeOrdenacao(servico: ServicoAgendaUi): String =
         servico.inicioIso ?: servico.horarioPreferidoIso.orEmpty()
 }
 
-class AgendaViewModel : ViewModel() {
+class AgendaViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val tokenStore = TokenStore.getInstance(application)
+    private val repository = OrcamentoRepository(tokenStore)
 
     private val hoje = LocalDate.now()
 
@@ -117,13 +130,16 @@ class AgendaViewModel : ViewModel() {
     )
     val estado: StateFlow<AgendaUi> = _estado.asStateFlow()
 
-    init {
-        carregarAgenda()
-    }
+    private var busca: Job? = null
+
+    fun abrirTela() = carregarSemana(_estado.value.inicioSemana)
 
     fun selecionarDia(dia: LocalDate) {
-        if (_estado.value.diaSelecionado == dia) return
-        _estado.update { it.copy(diaSelecionado = dia, inicioSemana = inicioDaSemanaDe(dia)) }
+        val atual = _estado.value
+        if (atual.diaSelecionado == dia) return
+        val inicio = inicioDaSemanaDe(dia)
+        _estado.update { it.copy(diaSelecionado = dia, inicioSemana = inicio) }
+        carregarSemana(inicio)
     }
 
     fun semanaAnterior() = trocarSemana(-1)
@@ -131,146 +147,59 @@ class AgendaViewModel : ViewModel() {
     fun proximaSemana() = trocarSemana(1)
 
     fun irParaHoje() {
-        _estado.update { it.copy(diaSelecionado = hoje, inicioSemana = inicioDaSemanaDe(hoje)) }
+        val inicio = inicioDaSemanaDe(hoje)
+        _estado.update { it.copy(diaSelecionado = hoje, inicioSemana = inicio) }
+        carregarSemana(inicio)
     }
 
+    /** Recarrega a semana visível ignorando o cache — usado no "tentar novamente" e ao voltar à tela. */
+    fun recarregar() = carregarSemana(_estado.value.inicioSemana, forcar = true)
+
     private fun trocarSemana(semanas: Long) {
-        _estado.update { atual ->
-            val novoInicio = atual.inicioSemana.plusWeeks(semanas)
-            val deslocamento = atual.diaSelecionado.toEpochDay() - atual.inicioSemana.toEpochDay()
-            atual.copy(
-                inicioSemana = novoInicio,
-                diaSelecionado = novoInicio.plusDays(deslocamento),
-            )
+        val atual = _estado.value
+        val novoInicio = atual.inicioSemana.plusWeeks(semanas)
+        val deslocamento = atual.diaSelecionado.toEpochDay() - atual.inicioSemana.toEpochDay()
+        _estado.update {
+            it.copy(inicioSemana = novoInicio, diaSelecionado = novoInicio.plusDays(deslocamento))
+        }
+        carregarSemana(novoInicio)
+    }
+
+    private fun carregarSemana(inicio: LocalDate, forcar: Boolean = false) {
+        busca?.cancel()
+        if (!forcar && _estado.value.semanas.containsKey(inicio)) {
+            _estado.update { it.copy(carregando = false, erro = null) }
+            return
+        }
+        _estado.update { it.copy(carregando = true, erro = null) }
+        busca = viewModelScope.launch {
+            repository.listarAgenda(inicio.toString())
+                .onSuccess { porDia ->
+                    val servicos = porDia.flatMap { (data, itens) ->
+                        val dia = runCatching { LocalDate.parse(data) }.getOrNull()
+                            ?: return@flatMap emptyList()
+                        itens.mapNotNull { it.paraAgenda(dia) }
+                    }
+                    _estado.update {
+                        it.copy(
+                            semanas = it.semanas + (inicio to servicos),
+                            carregando = false,
+                            erro = null,
+                        )
+                    }
+                }
+                .onFailure { erro ->
+                    _estado.update {
+                        it.copy(carregando = false, erro = erro.message ?: ERRO_GENERICO)
+                    }
+                }
         }
     }
 
-    private fun carregarAgenda() {
-        val servicos = agendaMockada(hoje).mapNotNull { it.paraAgenda() }
-        _estado.update { it.copy(servicos = servicos) }
-    }
-
     private companion object {
+        const val ERRO_GENERICO = "Algo deu errado. Tente novamente."
+
         fun inicioDaSemanaDe(dia: LocalDate): LocalDate =
             dia.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     }
-}
-
-/* ---------------------------- Dados mockados ---------------------------- */
-
-private fun agendaMockada(hoje: LocalDate): List<OrcamentoListagemProfissionalRS> {
-    fun quando(dia: LocalDate, hora: String) = "${dia}T$hora"
-
-    val ontem = hoje.minusDays(1)
-    val amanha = hoje.plusDays(1)
-    val depois = hoje.plusDays(2)
-
-    return listOf(
-        OrcamentoListagemProfissionalRS(
-            id = 1,
-            idServico = 11,
-            nomeUsuario = "Marina Alves",
-            avaliacaoUsuario = 4.8,
-            categoria = "Elétrica",
-            descricao = "Instalação elétrica",
-            distanciaKm = 3.2,
-            bairro = "Vila Mariana",
-            dataHoraCriacao = quando(ontem, "08:10"),
-            horarioPreferido = quando(hoje, "09:00"),
-            inicioProposto = quando(hoje, "09:00"),
-            fimProposto = quando(hoje, "11:00"),
-            valorTotal = 320.0,
-            status = "aprovado",
-        ),
-        OrcamentoListagemProfissionalRS(
-            id = 2,
-            idServico = 12,
-            nomeUsuario = "Rafael Lima",
-            avaliacaoUsuario = 5.0,
-            categoria = "Hidráulica",
-            descricao = "Manutenção hidráulica",
-            distanciaKm = 7.8,
-            bairro = "Moema",
-            dataHoraCriacao = quando(ontem, "12:40"),
-            horarioPreferido = quando(hoje, "14:00"),
-            inicioProposto = quando(hoje, "14:00"),
-            fimProposto = quando(hoje, "15:30"),
-            valorTotal = 180.0,
-            status = "aprovado",
-        ),
-        OrcamentoListagemProfissionalRS(
-            id = 3,
-            idServico = 13,
-            nomeUsuario = "Julia Costa",
-            avaliacaoUsuario = 4.9,
-            categoria = "Elétrica",
-            descricao = "Reparo de tomadas",
-            distanciaKm = 2.4,
-            bairro = "Pinheiros",
-            dataHoraCriacao = quando(hoje, "07:05"),
-            horarioPreferido = quando(hoje, "17:00"),
-            status = "pendente",
-        ),
-        OrcamentoListagemProfissionalRS(
-            id = 4,
-            idServico = 14,
-            nomeUsuario = "Bruno Tavares",
-            avaliacaoUsuario = 4.9,
-            categoria = "Elétrica",
-            descricao = "Revisão de fiação",
-            distanciaKm = 4.3,
-            bairro = "Perdizes",
-            dataHoraCriacao = quando(ontem.minusDays(2), "09:00"),
-            horarioPreferido = quando(ontem, "10:00"),
-            inicioProposto = quando(ontem, "10:00"),
-            fimProposto = quando(ontem, "12:30"),
-            valorTotal = 410.0,
-            status = "concluido",
-        ),
-        OrcamentoListagemProfissionalRS(
-            id = 5,
-            idServico = 15,
-            nomeUsuario = "Carla Souza",
-            avaliacaoUsuario = 4.7,
-            categoria = "Elétrica",
-            descricao = "Troca de disjuntores",
-            distanciaKm = 5.1,
-            bairro = "Tatuapé",
-            dataHoraCriacao = quando(hoje, "10:20"),
-            horarioPreferido = quando(amanha, "08:00"),
-            inicioProposto = quando(amanha, "08:00"),
-            fimProposto = quando(amanha, "09:30"),
-            valorTotal = 260.0,
-            status = "orcamento_final",
-        ),
-        OrcamentoListagemProfissionalRS(
-            id = 6,
-            idServico = 16,
-            nomeUsuario = "Diego Martins",
-            avaliacaoUsuario = 4.6,
-            categoria = "Hidráulica",
-            descricao = "Troca de registro",
-            distanciaKm = 6.0,
-            bairro = "Santana",
-            dataHoraCriacao = quando(hoje, "11:00"),
-            horarioPreferido = quando(depois, "13:00"),
-            inicioProposto = quando(depois, "13:00"),
-            fimProposto = quando(depois, "14:00"),
-            valorTotal = 390.0,
-            status = "aprovado",
-        ),
-        OrcamentoListagemProfissionalRS(
-            id = 7,
-            idServico = 17,
-            nomeUsuario = "Helena Prado",
-            avaliacaoUsuario = 5.0,
-            categoria = "Elétrica",
-            descricao = "Instalação de chuveiro",
-            distanciaKm = 1.9,
-            bairro = "Itaim Bibi",
-            dataHoraCriacao = quando(hoje, "11:30"),
-            horarioPreferido = quando(depois, "16:00"),
-            status = "pendente",
-        ),
-    )
 }
