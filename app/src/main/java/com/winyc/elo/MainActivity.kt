@@ -13,9 +13,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -79,6 +81,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.winyc.elo.backend.notificacao.RegistroDispositivo
 import com.winyc.elo.backend.security.TokenStore
 import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.auth.AutenticacaoScreen
@@ -87,6 +90,7 @@ import com.winyc.elo.telas.cliente.MeusOrcamentosScreen
 import com.winyc.elo.telas.cliente.PerfilProfissionalScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
 import com.winyc.elo.telas.cliente.VitrineScreen
+import com.winyc.elo.telas.componentes.AvisosPush
 import com.winyc.elo.telas.onboarding.OnboardingScreen
 import com.winyc.elo.telas.profissional.AgendaScreen
 import com.winyc.elo.telas.profissional.OrcamentosScreen
@@ -213,174 +217,185 @@ private fun EloApp() {
         if (emModoPro) R.string.modo_bloqueado_cliente else R.string.modo_bloqueado_pro,
     )
 
+    val sair: () -> Unit = {
+        escopo.launch {
+            RegistroDispositivo.desativar(appContext)
+            tokenStore.limpar()
+        }
+    }
+
     EloTheme(context = context) {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                if (emModoPro && !telaCheia) ModoProBanner()
-            },
-            bottomBar = {
-                if (!semAbas) {
-                    Column {
-                        if (!logado && !balaoDispensado) {
-                            BalaoDeslogado(
-                                onEntrar = { navController.navigate(EloScreen.Auth.route) },
-                                onDispensar = { balaoDispensado = true },
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background,
+                snackbarHost = { SnackbarHost(snackbarHostState) },
+                topBar = {
+                    if (emModoPro && !telaCheia) ModoProBanner()
+                },
+                bottomBar = {
+                    if (!semAbas) {
+                        Column {
+                            if (!logado && !balaoDispensado) {
+                                BalaoDeslogado(
+                                    onEntrar = { navController.navigate(EloScreen.Auth.route) },
+                                    onDispensar = { balaoDispensado = true },
+                                )
+                            }
+                            EloNavigationBar(
+                                itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
+                                currentRoute = currentRoute,
+                                onNavigate = { navController.navegarParaAba(it) },
+                                toggleLabelRes = if (emModoPro) R.string.cliente else R.string.profissional,
+                                toggleIcon = if (emModoPro) Icons.Outlined.Person else Icons.Outlined.WorkOutline,
+                                toggleBloqueado = toggleBloqueado,
+                                onToggle = {
+                                    if (toggleBloqueado) {
+                                        escopo.launch { snackbarHostState.showSnackbar(msgBloqueio) }
+                                    } else {
+                                        val destino = if (emModoPro) EloScreen.Inicio else EloScreen.Painel
+                                        navController.trocarDeModo(destino)
+                                    }
+                                },
                             )
                         }
-                        EloNavigationBar(
-                            itens = if (emModoPro) PROFISSIONAL_ITENS else CLIENTE_ITENS,
-                            currentRoute = currentRoute,
-                            onNavigate = { navController.navegarParaAba(it) },
-                            toggleLabelRes = if (emModoPro) R.string.cliente else R.string.profissional,
-                            toggleIcon = if (emModoPro) Icons.Outlined.Person else Icons.Outlined.WorkOutline,
-                            toggleBloqueado = toggleBloqueado,
-                            onToggle = {
-                                if (toggleBloqueado) {
-                                    escopo.launch { snackbarHostState.showSnackbar(msgBloqueio) }
-                                } else {
-                                    val destino = if (emModoPro) EloScreen.Inicio else EloScreen.Painel
-                                    navController.trocarDeModo(destino)
+                    }
+                },
+            ) { contentPadding ->
+                NavHost(
+                    navController = navController,
+                    startDestination = startDestination,
+                    modifier = Modifier
+                        .padding(contentPadding)
+                        .then(if (telaCheia) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
+                    enterTransition = {
+                        slideInHorizontally(animationSpec = tween(300)) { it / 3 } + fadeIn(tween(300))
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(animationSpec = tween(250)) { -it / 3 } + fadeOut(tween(200))
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(animationSpec = tween(300)) { -it / 3 } + fadeIn(tween(300))
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(animationSpec = tween(250)) { it / 3 } + fadeOut(tween(200))
+                    },
+                ) {
+                    composable(EloScreen.Inicio.route) {
+                        InicioScreen(
+                            onAbrirPerfil = { proId, nome, servicoId ->
+                                navController.abrirPerfilProfissional(nome, proId, servicoId)
+                            },
+                            onIrParaEnderecos = {
+                                abrirEnderecos = true
+                                navController.navegarParaAba(EloScreen.Perfil)
+                            },
+                            perfil = perfil,
+                            usuarioVm = usuarioVm,
+                        )
+                    }
+                    composable(EloScreen.Vitrine.route) {
+                        VitrineScreen(
+                            logado = logado,
+                            onAbrirPerfil = { proId, nome, categoriaId ->
+                                navController.abrirPerfilProfissional(nome, proId = proId, categoriaId = categoriaId)
+                            },
+                            onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
+                        )
+                    }
+                    composable(EloScreen.MeusOrcamentos.route) {
+                        MeusOrcamentosScreen(
+                            logado = logado,
+                            onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
+                        )
+                    }
+                    composable(EloScreen.Perfil.route) {
+                        PerfilScreen(
+                            logado = logado,
+                            perfil = perfil,
+                            usuarioVm = usuarioVm,
+                            abrirEnderecos = abrirEnderecos,
+                            onEnderecosAbertos = { abrirEnderecos = false },
+                            onAbrirLogin = { navController.navigate(EloScreen.Auth.route) },
+                            onSair = sair,
+                        )
+                    }
+                    composable(
+                        EloScreen.PerfilProfissional.route,
+                        arguments = listOf(
+                            navArgument("nome") { type = NavType.StringType },
+                            navArgument("proId") { type = NavType.LongType; defaultValue = -1L },
+                            navArgument("servicoId") { type = NavType.LongType; defaultValue = -1L },
+                            navArgument("categoriaId") { type = NavType.LongType; defaultValue = -1L },
+                        ),
+                    ) { entry ->
+                        val nome = entry.arguments?.getString("nome").orEmpty()
+                        val proId = entry.arguments?.getLong("proId") ?: -1L
+                        val servicoId = entry.arguments?.getLong("servicoId") ?: -1L
+                        val categoriaId = entry.arguments?.getLong("categoriaId") ?: -1L
+                        val userId = perfil?.id ?: -1L
+                        PerfilProfissionalScreen(
+                            nome = nome,
+                            proId = proId,
+                            servicoId = servicoId.takeIf { it > 0 },
+                            categoriaId = categoriaId.takeIf { it > 0 },
+                            logado = logado,
+                            onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
+                            onVoltar = { navController.popBackStack() },
+                            onIrParaInicio = {
+                                if (!navController.popBackStack(EloScreen.Inicio.route, inclusive = false)) {
+                                    navController.navegarParaAba(EloScreen.Inicio)
+                                }
+                            },
+                            onVerOrcamentos = { navController.navegarParaAba(EloScreen.MeusOrcamentos) },
+                            onIrParaEnderecos = {
+                                abrirEnderecos = true
+                                navController.navegarParaAba(EloScreen.Perfil)
+                            },
+                            userId = userId
+                        )
+                    }
+
+                    composable(EloScreen.Painel.route) { PainelScreen(onAbrirAgenda = { navController.navigate(EloScreen.Agenda.route) }, onAbrirOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },) }
+                    composable(EloScreen.Agenda.route) {
+                        AgendaScreen(
+                            onIrParaOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },
+                            onVoltar = {
+                                if (!navController.popBackStack()) {
+                                    navController.navegarParaAba(EloScreen.Painel)
                                 }
                             },
                         )
                     }
-                }
-            },
-        ) { contentPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = startDestination,
-                modifier = Modifier
-                    .padding(contentPadding)
-                    .then(if (telaCheia) Modifier else Modifier.padding(start = 10.dp, end = 10.dp)),
-                enterTransition = {
-                    slideInHorizontally(animationSpec = tween(300)) { it / 3 } + fadeIn(tween(300))
-                },
-                exitTransition = {
-                    slideOutHorizontally(animationSpec = tween(250)) { -it / 3 } + fadeOut(tween(200))
-                },
-                popEnterTransition = {
-                    slideInHorizontally(animationSpec = tween(300)) { -it / 3 } + fadeIn(tween(300))
-                },
-                popExitTransition = {
-                    slideOutHorizontally(animationSpec = tween(250)) { it / 3 } + fadeOut(tween(200))
-                },
-            ) {
-                composable(EloScreen.Inicio.route) {
-                    InicioScreen(
-                        onAbrirPerfil = { proId, nome, servicoId ->
-                            navController.abrirPerfilProfissional(nome, proId, servicoId)
-                        },
-                        onIrParaEnderecos = {
-                            abrirEnderecos = true
-                            navController.navegarParaAba(EloScreen.Perfil)
-                        },
-                        perfil = perfil,
-                        usuarioVm = usuarioVm,
-                    )
-                }
-                composable(EloScreen.Vitrine.route) {
-                    VitrineScreen(
-                        logado = logado,
-                        onAbrirPerfil = { proId, nome, categoriaId ->
-                            navController.abrirPerfilProfissional(nome, proId = proId, categoriaId = categoriaId)
-                        },
-                        onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
-                    )
-                }
-                composable(EloScreen.MeusOrcamentos.route) {
-                    MeusOrcamentosScreen(
-                        logado = logado,
-                        onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
-                    )
-                }
-                composable(EloScreen.Perfil.route) {
-                    PerfilScreen(
-                        logado = logado,
-                        perfil = perfil,
-                        usuarioVm = usuarioVm,
-                        abrirEnderecos = abrirEnderecos,
-                        onEnderecosAbertos = { abrirEnderecos = false },
-                        onAbrirLogin = { navController.navigate(EloScreen.Auth.route) },
-                        onSair = { escopo.launch { tokenStore.limpar() } },
-                    )
-                }
-                composable(
-                    EloScreen.PerfilProfissional.route,
-                    arguments = listOf(
-                        navArgument("nome") { type = NavType.StringType },
-                        navArgument("proId") { type = NavType.LongType; defaultValue = -1L },
-                        navArgument("servicoId") { type = NavType.LongType; defaultValue = -1L },
-                        navArgument("categoriaId") { type = NavType.LongType; defaultValue = -1L },
-                    ),
-                ) { entry ->
-                    val nome = entry.arguments?.getString("nome").orEmpty()
-                    val proId = entry.arguments?.getLong("proId") ?: -1L
-                    val servicoId = entry.arguments?.getLong("servicoId") ?: -1L
-                    val categoriaId = entry.arguments?.getLong("categoriaId") ?: -1L
-                    val userId = perfil?.id ?: -1L
-                    PerfilProfissionalScreen(
-                        nome = nome,
-                        proId = proId,
-                        servicoId = servicoId.takeIf { it > 0 },
-                        categoriaId = categoriaId.takeIf { it > 0 },
-                        logado = logado,
-                        onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
-                        onVoltar = { navController.popBackStack() },
-                        onIrParaInicio = {
-                            if (!navController.popBackStack(EloScreen.Inicio.route, inclusive = false)) {
-                                navController.navegarParaAba(EloScreen.Inicio)
-                            }
-                        },
-                        onVerOrcamentos = { navController.navegarParaAba(EloScreen.MeusOrcamentos) },
-                        onIrParaEnderecos = {
-                            abrirEnderecos = true
-                            navController.navegarParaAba(EloScreen.Perfil)
-                        },
-                        userId = userId
-                    )
-                }
+                    composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
+                    composable(EloScreen.Publicar.route) { PublicarScreen() }
+                    composable(EloScreen.PerfilPro.route) {
+                        PerfilProScreen(
+                            sessao = perfil,
+                            onSair = sair,
+                        )
+                    }
 
-                composable(EloScreen.Painel.route) { PainelScreen(onAbrirAgenda = { navController.navigate(EloScreen.Agenda.route) }, onAbrirOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },) }
-                composable(EloScreen.Agenda.route) {
-                    AgendaScreen(
-                        onIrParaOrcamentos = { navController.navegarParaAba(EloScreen.Orcamentos) },
-                        onVoltar = {
-                            if (!navController.popBackStack()) {
-                                navController.navegarParaAba(EloScreen.Painel)
-                            }
-                        },
-                    )
-                }
-                composable(EloScreen.Orcamentos.route) { OrcamentosScreen() }
-                composable(EloScreen.Publicar.route) { PublicarScreen() }
-                composable(EloScreen.PerfilPro.route) {
-                    PerfilProScreen(
-                        sessao = perfil,
-                        onSair = { escopo.launch { tokenStore.limpar() } },
-                    )
-                }
+                    composable(EloScreen.Onboarding.route) {
+                        OnboardingScreen(
+                            onConcluir = {
+                                prefs.edit { putBoolean(KEY_ONBOARDING, true) }
+                                navController.navigate(EloScreen.Inicio.route) {
+                                    popUpTo(EloScreen.Onboarding.route) { inclusive = true }
+                                }
+                            },
+                        )
+                    }
 
-                composable(EloScreen.Onboarding.route) {
-                    OnboardingScreen(
-                        onConcluir = {
-                            prefs.edit { putBoolean(KEY_ONBOARDING, true) }
-                            navController.navigate(EloScreen.Inicio.route) {
-                                popUpTo(EloScreen.Onboarding.route) { inclusive = true }
-                            }
-                        },
-                    )
-                }
-
-                composable(EloScreen.Auth.route) {
-                    AutenticacaoScreen(
-                        onSair = { navController.popBackStack() },
-                        onAutenticar = { navController.popBackStack() },
-                    )
+                    composable(EloScreen.Auth.route) {
+                        AutenticacaoScreen(
+                            onSair = { navController.popBackStack() },
+                            onAutenticar = { navController.popBackStack() },
+                        )
+                    }
                 }
             }
+
+            AvisosPush(logado = logado, modifier = Modifier.align(Alignment.TopCenter))
         }
     }
 }

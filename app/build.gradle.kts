@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 private val propriedadesLocais: Properties = Properties().apply {
@@ -100,6 +101,10 @@ dependencies {
     implementation(libs.tink.android)
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.installations)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

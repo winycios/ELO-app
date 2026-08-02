@@ -434,6 +434,12 @@
         <item quantity="other">%1$d serviços</item>
     </plurals>
 
+
+    <string name="notificacao_canal_id" translatable="false">elo_avisos</string>
+    <string name="notificacao_canal_nome">Avisos do elo</string>
+    <string name="notificacao_canal_descricao">Orçamentos, agendamentos e novidades dos seus serviços.</string>
+    <string name="notificacao_fechar_cd">Fechar aviso</string>
+
     <!-- Painel do profissional -->
     <string name="painel_sua_agenda">Sua agenda</string>
     <plurals name="painel_servicos_hoje">

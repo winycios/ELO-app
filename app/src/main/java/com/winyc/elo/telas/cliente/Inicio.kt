@@ -337,7 +337,7 @@ private fun HomeConteudo(
                 SecaoCarrossel(
                     icone = Icons.Outlined.AutoAwesome,
                     titulo = "Recomendados para você",
-                    subtitulo = "Profissionais top avaliados perto de você",
+                    subtitulo = "Selecionados com base na sua busca, localização e reputação.",
                     profissionais = home.recomendados,
                     carregando = home.carregando,
                     erro = home.erro,
