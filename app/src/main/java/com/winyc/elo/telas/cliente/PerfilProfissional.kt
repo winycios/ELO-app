@@ -3,7 +3,9 @@ package com.winyc.elo.telas.cliente
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,6 +52,9 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Reviews
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SentimentNeutral
+import androidx.compose.material.icons.outlined.SentimentSatisfiedAlt
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.outlined.WorkspacePremium
@@ -110,6 +116,7 @@ import com.winyc.elo.backend.model.estimativa.ResumoAvaliacoesRS
 import com.winyc.elo.backend.model.estimativa.ServicoOferecidoRS
 import com.winyc.elo.backend.model.estimativa.pontos
 import com.winyc.elo.backend.model.orcamento.DiaHorariosRS
+import com.winyc.elo.backend.viewModel.ComentariosAvaliacaoUi
 import com.winyc.elo.backend.viewModel.EnderecosUi
 import com.winyc.elo.backend.viewModel.HorariosUi
 import com.winyc.elo.backend.viewModel.OrcamentoViewModel
@@ -168,6 +175,19 @@ fun PerfilProfissionalScreen(
 
     val servicos = dados?.servicosOferecidos.orEmpty()
     val nomeExibicao = dados?.profissional?.nome?.takeIf { it.isNotBlank() } ?: nome
+
+    // A lista completa de comentários é buscada por categoria geral.
+    val categoriaGeralId = remember(dados) {
+        dados?.servicoSelecionado?.categoria?.categoriaGeralId
+            ?: servicos.firstNotNullOfOrNull { it.categoria?.categoriaGeralId }
+    }
+    val comentariosUi by vm.comentarios.collectAsStateWithLifecycle()
+
+    LaunchedEffect(verTodasAvaliacoes, proId, categoriaGeralId) {
+        if (verTodasAvaliacoes && proId > 0 && categoriaGeralId != null) {
+            vm.carregarComentarios(proId, categoriaGeralId)
+        }
+    }
 
     // Só quem está logado pode iniciar um orçamento; deslogado vê o convite.
     val iniciarOrcamento = {
@@ -235,7 +255,13 @@ fun PerfilProfissionalScreen(
         verTodasAvaliacoes -> AvaliacoesScreen(
             nome = nomeExibicao,
             resumo = dados.resumoAvaliacoes,
-            avaliacoes = dados.ultimasAvaliacoes,
+            iniciais = dados.ultimasAvaliacoes,
+            ui = comentariosUi,
+            onTentarNovamente = {
+                if (proId > 0 && categoriaGeralId != null) {
+                    vm.carregarComentarios(proId, categoriaGeralId, forcar = true)
+                }
+            },
             onVoltar = { verTodasAvaliacoes = false },
             modifier = modifier,
         )
@@ -955,7 +981,7 @@ private fun SecaoAvaliacoes(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
-            if (avaliacoes.size > 2) {
+            if (avaliacoes.size > 2 || quantidade > 2) {
                 Text(
                     "Ver todas",
                     style = MaterialTheme.typography.labelLarge,
@@ -1126,14 +1152,64 @@ private fun BarraContratar(
 
 /* ---------------------------- Tela: todas as avaliações ---------------------------- */
 
+/** Recorte por sentimento da nota, usado nos filtros e no selo do card. */
+private enum class Sentimento(val rotulo: String) {
+    POSITIVO("Positivo"),
+    NEUTRO("Neutro"),
+    NEGATIVO("Negativo"),
+}
+
+private fun sentimentoDe(nota: Int?): Sentimento = when {
+    nota == null -> Sentimento.NEUTRO
+    nota >= 4 -> Sentimento.POSITIVO
+    nota == 3 -> Sentimento.NEUTRO
+    else -> Sentimento.NEGATIVO
+}
+
+@Composable
+private fun corDe(sentimento: Sentimento): Color = when (sentimento) {
+    Sentimento.POSITIVO -> Verde
+    Sentimento.NEUTRO -> EloTheme.colors.avaliacao
+    Sentimento.NEGATIVO -> MaterialTheme.colorScheme.error
+}
+
+private fun iconeDe(sentimento: Sentimento): ImageVector = when (sentimento) {
+    Sentimento.POSITIVO -> Icons.Outlined.SentimentSatisfiedAlt
+    Sentimento.NEUTRO -> Icons.Outlined.SentimentNeutral
+    Sentimento.NEGATIVO -> Icons.Outlined.SentimentDissatisfied
+}
+
 @Composable
 private fun AvaliacoesScreen(
     nome: String,
     resumo: ResumoAvaliacoesRS?,
-    avaliacoes: List<AvaliacaoRS>,
+    iniciais: List<AvaliacaoRS>,
+    ui: ComentariosAvaliacaoUi,
+    onTentarNovamente: () -> Unit,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Enquanto a lista completa não chega (ou se ela falhar), mostra as do perfil.
+    // A data vem em ISO, então a ordenação por texto já deixa as mais recentes no topo.
+    val avaliacoes = remember(ui.avaliacoes, iniciais) {
+        ui.avaliacoes.ifEmpty { iniciais }
+            .sortedWith(compareByDescending(nullsFirst<String>()) { it.dataCriacao })
+    }
+    var filtro by rememberSaveable { mutableStateOf<Sentimento?>(null) }
+
+    val contagens = remember(avaliacoes) {
+        avaliacoes.groupingBy { sentimentoDe(it.nota) }.eachCount()
+    }
+    val distribuicao = remember(avaliacoes) {
+        avaliacoes.groupingBy { (it.nota ?: 0).coerceIn(1, 5) }.eachCount()
+    }
+    val filtradas = remember(avaliacoes, filtro) {
+        filtro?.let { alvo -> avaliacoes.filter { sentimentoDe(it.nota) == alvo } } ?: avaliacoes
+    }
+
+    val media = resumo?.media ?: avaliacoes.mapNotNull { it.nota }.average().takeIf { !it.isNaN() }
+    val quantidade = maxOf(resumo?.quantidade ?: 0, avaliacoes.size)
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -1164,66 +1240,341 @@ private fun AvaliacoesScreen(
             )
         }
 
+        if (ui.carregando && avaliacoes.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Column
+        }
+
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (resumo != null && (resumo.quantidade ?: 0) > 0) {
-                item { CardResumoAvaliacoes(resumo) }
+            if (quantidade > 0) {
+                item {
+                    CardResumoAvaliacoes(
+                        media = media,
+                        quantidade = quantidade,
+                        percentualPositivas = resumo?.percentualPositivas,
+                        distribuicao = distribuicao,
+                    )
+                }
             }
-            if (avaliacoes.isEmpty()) {
-                item { AvaliacoesVazio() }
-            } else {
-                items(avaliacoes, key = { it.id }) { CardAvaliacao(it) }
+
+            if (ui.erro != null) {
+                item { AvisoComentarios(mensagem = ui.erro, onTentarNovamente = onTentarNovamente) }
+            }
+
+            if (avaliacoes.isNotEmpty()) {
+                item {
+                    FiltrosAvaliacoes(
+                        total = avaliacoes.size,
+                        contagens = contagens,
+                        selecionado = filtro,
+                        onSelecionar = { filtro = it },
+                    )
+                }
+            }
+
+            when {
+                avaliacoes.isEmpty() -> item { AvaliacoesVazio() }
+                filtradas.isEmpty() -> item { FiltroSemResultado(filtro) }
+                else -> items(filtradas, key = { it.id }) { CardAvaliacaoDetalhada(it) }
+            }
+
+            if (ui.carregando && avaliacoes.isNotEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CardResumoAvaliacoes(resumo: ResumoAvaliacoesRS) {
+private fun CardResumoAvaliacoes(
+    media: Double?,
+    quantidade: Int,
+    percentualPositivas: Double?,
+    distribuicao: Map<Int, Int>,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    formatarNota(resumo.media ?: 0.0),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Estrelas((resumo.media ?: 0.0).toInt())
-                Text(
-                    "${resumo.quantidade ?: 0} avaliações",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        media?.let { formatarNota(it) } ?: "—",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Estrelas((media ?: 0.0).toInt())
+                    Text(
+                        "$quantidade ${if (quantidade == 1) "avaliação" else "avaliações"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(20.dp))
+                BarrasDistribuicao(
+                    distribuicao = distribuicao,
+                    modifier = Modifier.weight(1f),
                 )
             }
-            Spacer(Modifier.width(20.dp))
-            resumo.percentualPositivas?.let {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "${it.toInt()}% positivas",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Verde,
+            percentualPositivas?.let {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.SentimentSatisfiedAlt,
+                        null,
+                        tint = Verde,
+                        modifier = Modifier.size(16.dp),
                     )
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        "com base nas avaliações recebidas",
+                        "${it.toInt()}% das avaliações são positivas",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         }
+    }
+}
+
+/** Barras de 5 a 1 estrelas, proporcionais à nota mais frequente. */
+@Composable
+private fun BarrasDistribuicao(distribuicao: Map<Int, Int>, modifier: Modifier = Modifier) {
+    val maior = distribuicao.values.maxOrNull() ?: 0
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        (5 downTo 1).forEach { nota ->
+            val total = distribuicao[nota] ?: 0
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    nota.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(12.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    if (maior > 0 && total > 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(total.toFloat() / maior)
+                                .height(8.dp)
+                                .clip(CircleShape)
+                                .background(EloTheme.colors.avaliacao),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FiltrosAvaliacoes(
+    total: Int,
+    contagens: Map<Sentimento, Int>,
+    selecionado: Sentimento?,
+    onSelecionar: (Sentimento?) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ChipFiltro(
+            rotulo = "Todas",
+            quantidade = total,
+            icone = null,
+            cor = MaterialTheme.colorScheme.primary,
+            selecionado = selecionado == null,
+            onClick = { onSelecionar(null) },
+        )
+        Sentimento.entries.forEach { sentimento ->
+            ChipFiltro(
+                rotulo = sentimento.rotulo,
+                quantidade = contagens[sentimento] ?: 0,
+                icone = iconeDe(sentimento),
+                cor = corDe(sentimento),
+                selecionado = selecionado == sentimento,
+                onClick = { onSelecionar(if (selecionado == sentimento) null else sentimento) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChipFiltro(
+    rotulo: String,
+    quantidade: Int,
+    icone: ImageVector?,
+    cor: Color,
+    selecionado: Boolean,
+    onClick: () -> Unit,
+) {
+    val fundo = if (selecionado) cor else MaterialTheme.colorScheme.surface
+    val conteudo = if (selecionado) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(fundo)
+            .then(
+                if (selecionado) Modifier
+                else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icone?.let {
+            Icon(it, null, tint = conteudo, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(rotulo, style = MaterialTheme.typography.labelLarge, color = conteudo)
+        Spacer(Modifier.width(4.dp))
+        Text(
+            "($quantidade)",
+            style = MaterialTheme.typography.labelMedium,
+            color = conteudo.copy(alpha = 0.8f),
+        )
+    }
+}
+
+@Composable
+private fun CardAvaliacaoDetalhada(avaliacao: AvaliacaoRS) {
+    val sentimento = sentimentoDe(avaliacao.nota)
+    val cor = corDe(sentimento)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AvatarPerfil(
+                    nome = avaliacao.avaliador.orEmpty().ifBlank { "Cliente" },
+                    fotoUrl = avaliacao.fotoAvaliador,
+                    tamanho = 40.dp,
+                    fonte = MaterialTheme.typography.labelMedium,
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        avaliacao.avaliador.orEmpty().ifBlank { "Cliente" },
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    formatarDataAvaliacao(avaliacao.dataCriacao)?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Estrelas(avaliacao.nota ?: 0)
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    sentimento.rotulo,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cor,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(cor.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
+            if (!avaliacao.comentario.isNullOrBlank()) {
+                Text(
+                    avaliacao.comentario,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FiltroSemResultado(filtro: Sentimento?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Reviews,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            "Nenhuma avaliação ${filtro?.rotulo?.lowercase() ?: ""} por aqui.".trim(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Falha ao carregar a lista completa: as avaliações do perfil seguem visíveis. */
+@Composable
+private fun AvisoComentarios(mensagem: String, onTentarNovamente: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            mensagem,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        TextButton(onClick = onTentarNovamente) { Text("Tentar novamente") }
     }
 }
 
@@ -2383,6 +2734,15 @@ private fun montarDataHora(dataIso: String, horaIso: String): String =
     runCatching {
         LocalDateTime.of(LocalDate.parse(dataIso), LocalTime.parse(horaIso)).toString()
     }.getOrDefault("${dataIso}T$horaIso")
+
+/** `2026-07-31T01:29:45.282` (ou só a data) vira `31/07/2026`. */
+private fun formatarDataAvaliacao(dataIso: String?): String? {
+    if (dataIso.isNullOrBlank()) return null
+    val data = runCatching { LocalDateTime.parse(dataIso).toLocalDate() }
+        .recoverCatching { LocalDate.parse(dataIso.take(10)) }
+        .getOrNull() ?: return null
+    return "%02d/%02d/%d".format(data.dayOfMonth, data.monthValue, data.year)
+}
 
 private fun abrevDiaSemana(dataIso: String): String =
     runCatching { DIAS_SEMANA_ABREV[LocalDate.parse(dataIso).dayOfWeek.value - 1] }.getOrDefault("")

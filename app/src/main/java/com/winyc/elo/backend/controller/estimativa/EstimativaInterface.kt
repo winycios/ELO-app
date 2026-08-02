@@ -1,5 +1,6 @@
 package com.winyc.elo.backend.controller.estimativa
 
+import com.winyc.elo.backend.model.estimativa.AvaliacaoRS
 import com.winyc.elo.backend.model.estimativa.ProfissionalServicoRS
 import retrofit2.Call
 import retrofit2.http.GET
@@ -25,4 +26,11 @@ interface EstimativaInterface {
         @Path("id") profissionalId: Long,
         @Query("categoriaId") categoriaId: Long,
     ): Call<ProfissionalServicoRS>
+
+    /** Todos os comentários da categoria geral (além dos três exibidos no perfil). */
+    @GET(PATH + "profissional/{id}/detalhes/comentarios")
+    fun buscarComentarios(
+        @Path("id") profissionalId: Long,
+        @Query("categoriaId") categoriaGeralId: Long,
+    ): Call<List<AvaliacaoRS>>
 }

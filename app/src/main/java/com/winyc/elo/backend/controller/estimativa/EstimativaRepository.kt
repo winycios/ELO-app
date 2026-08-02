@@ -2,6 +2,7 @@ package com.winyc.elo.backend.controller.estimativa
 
 import com.google.gson.Gson
 import com.winyc.elo.backend.model.ApiError
+import com.winyc.elo.backend.model.estimativa.AvaliacaoRS
 import com.winyc.elo.backend.model.estimativa.ProfissionalServicoRS
 import com.winyc.elo.backend.retroFit.RetroFitService
 import com.winyc.elo.backend.security.TokenStore
@@ -27,6 +28,10 @@ class EstimativaRepository(
 
     suspend fun buscarPorCategoria(profissionalId: Long, categoriaId: Long): Result<ProfissionalServicoRS> =
         executar { verificaErro(api.buscarPorCategoria(profissionalId, categoriaId).execute()) }
+
+    /** Lista completa de comentários da categoria geral (tela "todas as avaliações"). */
+    suspend fun buscarComentarios(profissionalId: Long, categoriaGeralId: Long): Result<List<AvaliacaoRS>> =
+        executar { verificaErro(api.buscarComentarios(profissionalId, categoriaGeralId).execute()) }
 
     private suspend fun <T> executar(bloco: () -> T): Result<T> =
         withContext(Dispatchers.IO) { runCatching(bloco) }

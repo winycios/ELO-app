@@ -67,6 +67,7 @@ data class AvaliacaoRS(
     val fotoAvaliador: String? = null,
     val nota: Int? = null,
     val comentario: String? = null,
+    val dataCriacao: String? = null,
 )
 
 /** Quebra os pontos principais (texto separado por `;` ou `,`) em itens. */
