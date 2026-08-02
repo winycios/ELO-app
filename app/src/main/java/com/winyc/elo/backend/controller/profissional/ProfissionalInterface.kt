@@ -1,6 +1,7 @@
 package com.winyc.elo.backend.controller.profissional
 
 import com.winyc.elo.backend.model.CursorPageRS
+import com.winyc.elo.backend.model.profissional.ProfissionalDashboardRS
 import com.winyc.elo.backend.model.profissional.ProfissionalRS
 import com.winyc.elo.backend.model.profissional.ProfissionalUpdateRQ
 import com.winyc.elo.backend.model.servico.ServicoCreateRQ
@@ -23,6 +24,9 @@ interface ProfissionalInterface {
     companion object {
         private const val PATH = "profissional/"
     }
+
+    @GET(PATH + "dashboard")
+    fun buscarDashboard(): Call<ProfissionalDashboardRS>
 
     @GET(PATH + "perfil")
     fun buscarPerfil(): Call<ProfissionalRS>
