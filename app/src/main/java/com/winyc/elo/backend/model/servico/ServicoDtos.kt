@@ -29,6 +29,7 @@ data class ServicoCategoriaRS(
 
 data class ServicoImagemRS(
     val idServicoImagem: Long? = null,
+    val chave: String? = null,
     val url: String? = null,
     val ordem: Int? = null,
 )
@@ -61,6 +62,6 @@ data class ServicoDisponibilidadeCreateRQ(
 
 data class ServicoImagemCreateRQ(
     val id: Long? = null,
-    val url: String,
+    val chaveImagem: String,
     val ordem: Int,
 )

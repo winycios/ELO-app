@@ -89,7 +89,7 @@ class OrcamentoViewModel(application: Application) : AndroidViewModel(applicatio
         descricao: String,
         dtPreferidoSolicitado: String,
         idEndereco: Long?,
-        imagens: List<String> = emptyList(),
+        chavesImagens: List<String> = emptyList(),
     ) {
         if (_envio.value.enviando || servicoId <= 0) return
         _envio.update { it.copy(enviando = true, erro = null) }
@@ -98,7 +98,7 @@ class OrcamentoViewModel(application: Application) : AndroidViewModel(applicatio
                 OrcamentoCreateRQ(
                     idServico = servicoId,
                     descricao = descricao.trim(),
-                    orcamentoImagemCreateRQList = imagens,
+                    chavesImagens = chavesImagens,
                     dtPreferidoSolicitado = dtPreferidoSolicitado,
                     idEndereco = idEndereco,
                 ),

@@ -6,7 +6,7 @@ data class ProfissionalRS(
     val qtRespostaGeral: Int? = null,
     val stDisponivel: Boolean? = null,
     val apresentacao: String? = null,
-    val uriPerfil: String? = null,
+    val urlPerfil: String? = null,
     val dsEspecialidades: String? = null,
     val areaAtendimentoRS: AreaAtendimentoRS? = null,
 )
@@ -23,7 +23,7 @@ data class AreaAtendimentoRS(
 
 data class ProfissionalUpdateRQ(
     val apresentacao: String?,
-    val uriPerfil: String?,
+    val chaveImagem: String?,
     val especialidades: String?,
     val areaAtendimentoUpdateRQ: AreaAtendimentoUpdateRQ,
 )

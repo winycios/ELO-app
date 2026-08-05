@@ -308,8 +308,8 @@
     <!-- Editar perfil público -->
     <string name="pro_editar_sub">Visível para todos os clientes</string>
     <string name="pro_nome_apoio">O nome é gerenciado na sua conta</string>
-    <string name="pro_url_foto">URL da foto</string>
-    <string name="pro_url_foto_hint">https://…</string>
+    <string name="pro_foto_perfil">Foto do perfil</string>
+    <string name="pro_foto_perfil_dica">Toque na câmera para escolher uma foto da galeria.</string>
     <string name="pro_bio">Bio / Apresentação</string>
     <string name="pro_bio_hint">Conte sobre sua experiência e especialidades…</string>
     <string name="pro_area_hint">Ex: São Paulo - Zona Oeste (até 10 km)</string>
@@ -439,6 +439,12 @@
     <string name="notificacao_canal_nome">Avisos do elo</string>
     <string name="notificacao_canal_descricao">Orçamentos, agendamentos e novidades dos seus serviços.</string>
     <string name="notificacao_fechar_cd">Fechar aviso</string>
+
+    <!-- Seleção e envio de imagens -->
+    <string name="imagem_adicionar">Adicionar</string>
+    <string name="imagem_remover">Remover imagem</string>
+    <string name="imagem_erro_envio">Não foi possível enviar a imagem. Tente novamente.</string>
+    <string name="imagem_enviando">Enviando imagem…</string>
 
     <!-- Painel do profissional -->
     <string name="painel_sua_agenda">Sua agenda</string>

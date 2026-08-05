@@ -50,6 +50,6 @@ data class PublicacaoCreateRQ(
 )
 
 data class PublicacaoImagemRQ(
-    val urlImagem: String,
+    val chaveImagem: String,
     val nrOrdem: Int,
 )

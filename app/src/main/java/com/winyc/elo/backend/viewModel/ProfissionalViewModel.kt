@@ -87,6 +87,7 @@ class ProfissionalViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             repository.salvarPerfil(dto)
                 .onSuccess { rs ->
+                    rs.urlPerfil?.let { tokenStore.atualizarFotoPerfil(it, ehProfissional = true) }
                     _estado.update { it.copy(salvandoPerfil = false, perfil = rs) }
                     onResultado(true)
                 }

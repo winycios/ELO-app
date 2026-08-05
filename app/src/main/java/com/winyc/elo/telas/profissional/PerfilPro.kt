@@ -140,7 +140,7 @@ private fun ProfissionalRS.paraPerfilPublico(
     }
     return base.copy(
         nome = sessao?.nome?.takeIf { it.isNotBlank() } ?: base.nome,
-        fotoUrl = uriPerfil?.takeIf { it.isNotBlank() }
+        fotoUrl = urlPerfil?.takeIf { it.isNotBlank() }
             ?: sessao?.urlPerfilPro?.takeIf { it.isNotBlank() } ?: base.fotoUrl,
         bio = apresentacao.orEmpty(),
         area = area,

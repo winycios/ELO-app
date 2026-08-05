@@ -32,7 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
@@ -96,19 +95,26 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import com.winyc.elo.R
 import com.winyc.elo.backend.model.categoria.CategoriaRS
+import com.winyc.elo.backend.model.imagem.EscopoImagem
 import com.winyc.elo.backend.model.profissional.AreaAtendimentoUpdateRQ
 import com.winyc.elo.backend.model.profissional.ProfissionalUpdateRQ
 import com.winyc.elo.backend.model.servico.ServicoCreateRQ
 import com.winyc.elo.backend.model.servico.ServicoDisponibilidadeCreateRQ
+import com.winyc.elo.backend.model.servico.ServicoImagemCreateRQ
 import com.winyc.elo.backend.model.servico.ServicoListaRS
 import com.winyc.elo.backend.model.servico.ServicoRS
 import com.winyc.elo.backend.viewModel.ProfissionalUi
 import com.winyc.elo.backend.viewModel.ProfissionalViewModel
-import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.GradeImagens
+import com.winyc.elo.telas.componentes.ImagemFormulario
+import com.winyc.elo.telas.componentes.SeletorAvatar
+import com.winyc.elo.telas.componentes.rememberEstadoImagens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
+
+private const val MAX_IMAGENS_SERVICO = 3
 
 @OptIn(ExperimentalMaterial3Api::class)
 private fun fecharSheet(scope: CoroutineScope, sheetState: SheetState, aoFim: () -> Unit) {
@@ -117,9 +123,9 @@ private fun fecharSheet(scope: CoroutineScope, sheetState: SheetState, aoFim: ()
     }
 }
 
-private fun PerfilPublico.paraUpdateDTO() = ProfissionalUpdateRQ(
+private fun PerfilPublico.paraUpdateDTO(chaveImagem: String?) = ProfissionalUpdateRQ(
     apresentacao = bio.trim().take(200),
-    uriPerfil = fotoUrl.trim().take(200),
+    chaveImagem = chaveImagem?.takeIf { it.isNotBlank() },
     especialidades = tags.joinToString("; ").take(200),
     areaAtendimentoUpdateRQ = AreaAtendimentoUpdateRQ(
         nrLatitude = area.latitude,
@@ -185,7 +191,7 @@ private fun FormularioEditarPerfil(
 ) {
     val estado by vm.estado.collectAsStateWithLifecycle()
     var nome by rememberSaveable { mutableStateOf(perfil.nome) }
-    var fotoUrl by rememberSaveable { mutableStateOf(perfil.fotoUrl) }
+    var chaveImagem by rememberSaveable { mutableStateOf<String?>(null) }
     var bio by rememberSaveable { mutableStateOf(perfil.bio) }
     var area by remember { mutableStateOf(perfil.area) }
     val tags = remember { mutableStateListOf<String>().apply { addAll(perfil.tags) } }
@@ -209,7 +215,7 @@ private fun FormularioEditarPerfil(
         ) {
             Spacer(Modifier.size(2.dp))
 
-            // Foto: preview (iniciais) + URL.
+            // Foto do perfil público: preview + seleção pela galeria.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -218,29 +224,25 @@ private fun FormularioEditarPerfil(
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AvatarPerfil(
+                SeletorAvatar(
                     nome = nome,
-                    fotoUrl = null,
-                    tamanho = 56.dp,
+                    urlAtual = perfil.fotoUrl.takeIf { it.isNotBlank() },
+                    tamanho = 64.dp,
                     fonte = MaterialTheme.typography.titleLarge,
+                    onChave = { chaveImagem = it },
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        stringResource(R.string.pro_url_foto),
+                        stringResource(R.string.pro_foto_perfil),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.size(4.dp))
-                    OutlinedTextField(
-                        value = fotoUrl,
-                        onValueChange = { fotoUrl = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.pro_url_foto_hint)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        colors = coresCampo(),
+                    Text(
+                        stringResource(R.string.pro_foto_perfil_dica),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -281,12 +283,11 @@ private fun FormularioEditarPerfil(
                 onClick = {
                     val atualizado = perfil.copy(
                         nome = nome.trim(),
-                        fotoUrl = fotoUrl.trim(),
                         bio = bio.trim(),
                         area = area,
                         tags = tags.toList(),
                     )
-                    vm.salvarPerfil(atualizado.paraUpdateDTO()) { ok ->
+                    vm.salvarPerfil(atualizado.paraUpdateDTO(chaveImagem)) { ok ->
                         if (ok) {
                             onSalvar(atualizado)
                             fecharSheet(scope, sheetState, onFechar)
@@ -699,9 +700,7 @@ private fun FormServico(
     onVoltar: () -> Unit,
     onSalvar: (ServicoCreateRQ) -> Unit,
 ) {
-    val context = LocalContext.current
     val editando = detalhe != null
-    val adicionarLabel = stringResource(R.string.pro_adicionar)
 
     val especificas = remember(categorias) {
         categorias.flatMap { it.categoriaEspecificaList }
@@ -731,6 +730,15 @@ private fun FormServico(
             detalhe?.dsTag?.split(';', ',')?.map { it.trim() }?.filter { it.isNotBlank() }
                 ?.let { addAll(it) }
         }
+    }
+    val imagens = rememberEstadoImagens(maximo = MAX_IMAGENS_SERVICO, chaveReinicio = detalhe?.id) {
+        detalhe?.servicoImagemRSList.orEmpty()
+            .sortedBy { it.ordem ?: 0 }
+            .mapNotNull { rs -> rs.chave?.takeIf { it.isNotBlank() }?.let { it to rs.url } }
+            .take(MAX_IMAGENS_SERVICO)
+            .mapIndexed { indice, (chave, url) ->
+                ImagemFormulario(id = indice.toLong(), url = url, chave = chave)
+            }
     }
     val dias = remember(detalhe) {
         DiaSemana.entries.map { DiaEstado(it) }.also { lista ->
@@ -762,7 +770,7 @@ private fun FormServico(
 
     val podeSalvar = idGeral != null && idEspecifica != null && descricao.isNotBlank() &&
             precoValido && (tempoExpe.toIntOrNull() ?: -1) >= 0 && tipoExec != null &&
-            disponibilidadeValida && !salvando
+            disponibilidadeValida && !salvando && !imagens.enviando
 
     Column(modifier = Modifier.fillMaxHeight()) {
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -866,16 +874,7 @@ private fun FormServico(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                repeat(3) {
-                    SlotImagem(
-                        onClick = {
-                            Toast.makeText(context, adicionarLabel, Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
+            GradeImagens(estado = imagens, escopo = EscopoImagem.SERVICO)
             Text(
                 stringResource(R.string.pro_imagens_dica),
                 style = MaterialTheme.typography.bodySmall,
@@ -935,7 +934,9 @@ private fun FormServico(
                                         )
                                     }
                                 },
-                            servicoImagemCreateRQList = emptyList(),
+                            servicoImagemCreateRQList = imagens.chaves.mapIndexed { ordem, chave ->
+                                ServicoImagemCreateRQ(chaveImagem = chave, ordem = ordem)
+                            },
                         )
                     )
                 },
@@ -1022,32 +1023,6 @@ private fun ChipEscolha(texto: String, selecionado: Boolean, onClick: () -> Unit
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
-}
-
-@Composable
-private fun SlotImagem(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .height(84.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            Icons.Outlined.AddPhotoAlternate,
-            null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp)
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            stringResource(R.string.pro_adicionar),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
 }
 
 @Composable

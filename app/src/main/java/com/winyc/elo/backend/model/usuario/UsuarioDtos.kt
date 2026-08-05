@@ -3,6 +3,7 @@ package com.winyc.elo.backend.model.usuario
 data class UsuarioRS(
     val id: Long? = null,
     val nome: String? = null,
+    val urlPerfil: String? = null,
     val email: String? = null,
     val telefone: String? = null,
     val telefoneZap: String? = null,
@@ -18,4 +19,5 @@ data class UsuarioEditRQ(
     val email: String,
     val telContato: String,
     val telContatoZap: String,
+    val chaveImagem: String? = null,
 )

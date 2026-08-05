@@ -76,6 +76,7 @@ class UsuarioViewModel(application: Application) : AndroidViewModel(application)
         email: String,
         telContato: String,
         telContatoZap: String,
+        chaveImagem: String? = null,
         onResultado: (Boolean) -> Unit = {},
     ) {
         if (_estado.value.salvando) return
@@ -87,10 +88,12 @@ class UsuarioViewModel(application: Application) : AndroidViewModel(application)
             email = email.trim(),
             telContato = telContato.filter { it.isDigit() },
             telContatoZap = telContatoZap.filter { it.isDigit() }.ifBlank { telContato.filter { it.isDigit() } },
+            chaveImagem = chaveImagem?.takeIf { it.isNotBlank() },
         )
         viewModelScope.launch {
             repository.editarPerfil(dto)
                 .onSuccess { atualizado ->
+                    atualizado.urlPerfil?.let { tokenStore.atualizarFotoPerfil(it) }
                     _estado.update { it.copy(perfil = atualizado, salvando = false) }
                     onResultado(true)
                 }

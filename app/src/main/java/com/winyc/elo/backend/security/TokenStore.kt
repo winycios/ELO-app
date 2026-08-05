@@ -125,6 +125,15 @@ class TokenStore private constructor(context: Context) {
         }
     }
 
+    suspend fun atualizarFotoPerfil(url: String, ehProfissional: Boolean = false) {
+        if (usuarioIdCache == SEM_USUARIO || url.isBlank()) return
+        if (ehProfissional) urlPerfilProCache = url else urlPerfilCache = url
+        atualizarEstado()
+        dataStore.edit { prefs ->
+            prefs[if (ehProfissional) KEY_URL_PERFIL_PRO else KEY_URL_PERFIL] = cifrar(url)
+        }
+    }
+
     /** Apaga a sessão (logout ou refresh que falhou). */
     suspend fun limpar() {
         accessCache = null

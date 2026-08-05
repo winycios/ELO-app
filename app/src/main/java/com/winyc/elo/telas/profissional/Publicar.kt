@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.outlined.Reply
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -59,7 +58,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.winyc.elo.backend.model.imagem.EscopoImagem
 import com.winyc.elo.backend.model.vitrine.ComentarioRS
 import com.winyc.elo.backend.model.vitrine.PublicacaoFeedRS
 import com.winyc.elo.backend.model.vitrine.PublicacaoImagemRQ
@@ -87,6 +86,8 @@ import com.winyc.elo.backend.viewModel.ComentariosPubUi
 import com.winyc.elo.backend.viewModel.ProfissionalViewModel
 import com.winyc.elo.backend.viewModel.PublicacaoViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.GradeImagens
+import com.winyc.elo.telas.componentes.rememberEstadoImagens
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
@@ -285,6 +286,7 @@ private fun SemServicosPublicar() {
 }
 
 private const val MAX_DESCRICAO = 200
+private const val MAX_IMAGENS_PUBLICACAO = 3
 
 @Composable
 private fun ComporPublicacao(
@@ -294,7 +296,7 @@ private fun ComporPublicacao(
 ) {
     var servico by rememberSaveable(servicos) { mutableStateOf(servicos.first().idCategoriaEspecifica) }
     var descricao by rememberSaveable { mutableStateOf("") }
-    val imagensUrl = remember { mutableStateListOf("") }
+    val imagens = rememberEstadoImagens(maximo = MAX_IMAGENS_PUBLICACAO)
 
     val selecionado =
         servicos.firstOrNull { it.idCategoriaEspecifica == servico } ?: servicos.first()
@@ -351,40 +353,27 @@ private fun ComporPublicacao(
                 }
             }
 
-            Text(
-                "Imagens (URL)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            imagensUrl.forEachIndexed { i, url ->
-                ImagemUrlCampo(
-                    url = url,
-                    onUrlChange = { imagensUrl[i] = it },
-                    onRemover = if (imagensUrl.size > 1) {
-                        { imagensUrl.removeAt(i) }
-                    } else null,
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { imagensUrl.add("") }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Outlined.Add,
+                    Icons.Outlined.Image,
                     null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(15.dp)
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    "Adicionar imagem",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    "Fotos do trabalho",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "${imagens.itens.size}/$MAX_IMAGENS_PUBLICACAO",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            GradeImagens(estado = imagens, escopo = EscopoImagem.PUBLICACAO)
 
             TextField(
                 value = descricao,
@@ -438,18 +427,16 @@ private fun ComporPublicacao(
 
             Button(
                 onClick = {
-                    val imagens = imagensUrl
-                        .map { it.trim() }
-                        .filter { it.isNotBlank() }
-                        .mapIndexed { i, u -> PublicacaoImagemRQ(urlImagem = u, nrOrdem = i) }
-                    onPublicar(selecionado.idCategoriaEspecifica, descricao, imagens) {
+                    val enviadas = imagens.chaves.mapIndexed { ordem, chave ->
+                        PublicacaoImagemRQ(chaveImagem = chave, nrOrdem = ordem)
+                    }
+                    onPublicar(selecionado.idCategoriaEspecifica, descricao, enviadas) {
                         descricao = ""
-                        imagensUrl.clear()
-                        imagensUrl.add("")
+                        imagens.limpar()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = descricao.isNotBlank() && !publicando,
+                enabled = descricao.isNotBlank() && !publicando && !imagens.enviando,
             ) {
                 if (publicando) {
                     CircularProgressIndicator(
@@ -462,62 +449,6 @@ private fun ComporPublicacao(
                     Spacer(Modifier.width(8.dp))
                     Text("Publicar na Vitrine")
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ImagemUrlCampo(url: String, onUrlChange: (String) -> Unit, onRemover: (() -> Unit)?) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (url.isBlank()) {
-                Icon(
-                    Icons.Outlined.Image,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
-                )
-            } else {
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-        TextField(
-            value = url,
-            onValueChange = onUrlChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("https://…") },
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-        )
-        if (onRemover != null) {
-            IconButton(onClick = onRemover) {
-                Icon(
-                    Icons.Outlined.Close,
-                    "Remover imagem",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
             }
         }
     }

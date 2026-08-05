@@ -26,7 +26,8 @@ data class FaixaTrabalhoRS(
 data class OrcamentoCreateRQ(
     val idServico: Long,
     val descricao: String,
-    val orcamentoImagemCreateRQList: List<String> = emptyList(),
+    /** Até 3 chaves devolvidas pelo upload no escopo `orcamento`. */
+    val chavesImagens: List<String> = emptyList(),
     /** Data/hora preferida em ISO local, ex.: `2026-07-26T09:00`*/
     val dtPreferidoSolicitado: String,
     val idEndereco: Long? = null,

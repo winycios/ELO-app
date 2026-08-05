@@ -5,6 +5,7 @@ import com.winyc.elo.backend.controller.auth.AuthInterface
 import com.winyc.elo.backend.controller.busca.BuscaInterface
 import com.winyc.elo.backend.controller.categoria.CategoriaInterface
 import com.winyc.elo.backend.controller.estimativa.EstimativaInterface
+import com.winyc.elo.backend.controller.imagem.ImagemInterface
 import com.winyc.elo.backend.controller.notificacao.NotificacaoInterface
 import com.winyc.elo.backend.controller.orcamento.OrcamentoInterface
 import com.winyc.elo.backend.controller.profissional.ProfissionalInterface
@@ -86,6 +87,9 @@ object RetroFitService {
 
     fun notificacaoApi(tokenStore: TokenStore): NotificacaoInterface =
         retrofitAutenticado(tokenStore).create(NotificacaoInterface::class.java)
+
+    fun imagemApi(tokenStore: TokenStore): ImagemInterface =
+        retrofitAutenticado(tokenStore).create(ImagemInterface::class.java)
 
     // Público, mas usa o token quando presente (para calcular a distância).
     fun estimativaApi(tokenStore: TokenStore): EstimativaInterface =

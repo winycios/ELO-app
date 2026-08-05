@@ -45,7 +45,6 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Shield
@@ -97,6 +96,7 @@ import com.winyc.elo.backend.security.PerfilSessao
 import com.winyc.elo.backend.viewModel.UsuarioUi
 import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.SeletorAvatar
 import com.winyc.elo.telas.componentes.formatarTelefone
 
 /* ============================ Cores de apoio ============================ */
@@ -263,7 +263,7 @@ private fun PerfilLogado(
     val nome = dados?.nome?.takeIf { it.isNotBlank() }
         ?: perfil?.nome?.takeIf { it.isNotBlank() }
         ?: ""
-    val fotoUrl = perfil?.urlPerfil
+    val fotoUrl = dados?.urlPerfil?.takeIf { it.isNotBlank() } ?: perfil?.urlPerfil?.takeIf { it.isNotBlank() }
 
     when (aba) {
         PerfilAba.Menu -> MenuPerfil(
@@ -627,7 +627,7 @@ private fun EditarPerfilScreen(
     fotoUrl: String?,
     salvando: Boolean,
     erro: String?,
-    onSalvar: (String, String, String, String, String, (Boolean) -> Unit) -> Unit,
+    onSalvar: (String, String, String, String, String, String?, (Boolean) -> Unit) -> Unit,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -639,6 +639,7 @@ private fun EditarPerfilScreen(
     var email by rememberSaveable(dados?.email) { mutableStateOf(dados?.email.orEmpty()) }
     var telefone by rememberSaveable(dados?.telefone) { mutableStateOf(dados?.telefone.orEmpty()) }
     var zap by rememberSaveable(dados?.telefoneZap) { mutableStateOf(dados?.telefoneZap.orEmpty()) }
+    var chaveImagem by rememberSaveable { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val msgSalvo = stringResource(R.string.perfil_salvo)
@@ -666,29 +667,13 @@ private fun EditarPerfilScreen(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Box(contentAlignment = Alignment.BottomEnd) {
-                        AvatarPerfil(
-                            nome = nome.ifBlank { nomeSessao },
-                            fotoUrl = fotoUrl,
-                            tamanho = 96.dp,
-                            fonte = MaterialTheme.typography.headlineMedium,
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                                .clickable { },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Outlined.PhotoCamera,
-                                stringResource(R.string.perfil_trocar_foto),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
+                    SeletorAvatar(
+                        nome = nome.ifBlank { nomeSessao },
+                        urlAtual = fotoUrl,
+                        tamanho = 96.dp,
+                        fonte = MaterialTheme.typography.headlineMedium,
+                        onChave = { chaveImagem = it },
+                    )
                 }
             }
 
@@ -744,7 +729,7 @@ private fun EditarPerfilScreen(
             item {
                 Button(
                     onClick = {
-                        onSalvar(nome, sobrenome, email, telefone, zap) { ok ->
+                        onSalvar(nome, sobrenome, email, telefone, zap, chaveImagem) { ok ->
                             if (ok) {
                                 Toast.makeText(context, msgSalvo, Toast.LENGTH_SHORT).show()
                                 onVoltar()

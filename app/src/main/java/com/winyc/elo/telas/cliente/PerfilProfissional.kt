@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Description
@@ -89,12 +88,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -115,6 +110,7 @@ import com.winyc.elo.backend.model.estimativa.ProfissionalDetalhesRS
 import com.winyc.elo.backend.model.estimativa.ResumoAvaliacoesRS
 import com.winyc.elo.backend.model.estimativa.ServicoOferecidoRS
 import com.winyc.elo.backend.model.estimativa.pontos
+import com.winyc.elo.backend.model.imagem.EscopoImagem
 import com.winyc.elo.backend.model.orcamento.DiaHorariosRS
 import com.winyc.elo.backend.viewModel.ComentariosAvaliacaoUi
 import com.winyc.elo.backend.viewModel.EnderecosUi
@@ -122,10 +118,15 @@ import com.winyc.elo.backend.viewModel.HorariosUi
 import com.winyc.elo.backend.viewModel.OrcamentoViewModel
 import com.winyc.elo.backend.viewModel.ProfissionalPerfilViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.EstadoImagens
+import com.winyc.elo.telas.componentes.GradeImagens
+import com.winyc.elo.telas.componentes.rememberEstadoImagens
 import com.winyc.elo.ui.theme.EloTheme
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+
+private const val MAX_IMAGENS_ORCAMENTO = 3
 
 // Cores de apoio (fora do contexto coral/teal, iguais às usadas na home).
 private val Verde = Color(0xFF12A15A)
@@ -1645,6 +1646,7 @@ private fun DetalhesServicoScreen(
     var diaSelecionado by rememberSaveable(servico?.id) { mutableStateOf<String?>(null) }
     var horaSelecionada by rememberSaveable(servico?.id) { mutableStateOf<String?>(null) }
     var enderecoSelecionado by rememberSaveable(servico?.id) { mutableStateOf<Long?>(null) }
+    val imagens = rememberEstadoImagens(maximo = MAX_IMAGENS_ORCAMENTO, chaveReinicio = servico?.id)
 
     // Assim que os endereços chegam, pré-seleciona o principal (ou o primeiro).
     LaunchedEffect(enderecosUi.enderecos) {
@@ -1666,7 +1668,8 @@ private fun DetalhesServicoScreen(
             descricao.isNotBlank() &&
             diaSelecionado != null &&
             horaSelecionada != null &&
-            enderecoSelecionado != null
+            enderecoSelecionado != null &&
+            !imagens.enviando
 
     Column(
         modifier = modifier
@@ -1700,7 +1703,7 @@ private fun DetalhesServicoScreen(
                     )
                 }
             }
-            item { SecaoImagens() }
+            item { SecaoImagens(imagens) }
             item {
                 CalendarioHorarios(
                     servicoValido = servicoValido,
@@ -1736,6 +1739,7 @@ private fun DetalhesServicoScreen(
                         descricao = descricao,
                         dtPreferidoSolicitado = montarDataHora(dia, hora),
                         idEndereco = enderecoSelecionado,
+                        chavesImagens = imagens.chaves,
                     )
                 }
             },
@@ -2200,41 +2204,18 @@ private fun ServicoSelecionadoBanner(servico: ServicoOferecidoRS?, onTrocar: () 
 }
 
 @Composable
-private fun SecaoImagens() {
-    val context = LocalContext.current
+private fun SecaoImagens(imagens: EstadoImagens) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CampoRotulo(Icons.Outlined.Image, "Adicionar imagens")
             Spacer(Modifier.weight(1f))
             Text(
-                "0/3",
+                "${imagens.itens.size}/${imagens.maximo}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .bordaTracejada(MaterialTheme.colorScheme.primary, 12.dp)
-                .clickable { Toast.makeText(context, "Em breve", Toast.LENGTH_SHORT).show() }
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Outlined.AddPhotoAlternate,
-                null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Adicionar até 3 fotos",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
+        GradeImagens(estado = imagens, escopo = EscopoImagem.ORCAMENTO, altura = 96.dp)
         Text(
             "Envie fotos do local ou do problema para ajudar o profissional a entender melhor o serviço.",
             style = MaterialTheme.typography.bodySmall,
@@ -2421,16 +2402,6 @@ private fun RotuloSecao(texto: String) {
     )
 }
 
-private fun Modifier.bordaTracejada(cor: Color, raio: Dp): Modifier = drawBehind {
-    drawRoundRect(
-        color = cor,
-        cornerRadius = CornerRadius(raio.toPx()),
-        style = Stroke(
-            width = 1.5.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f), 0f),
-        ),
-    )
-}
 
 /* ---------------------------- Detalhes rápidos do serviço (bottom sheet) ---------------------------- */
 
