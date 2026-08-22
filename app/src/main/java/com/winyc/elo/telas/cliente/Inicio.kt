@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -63,6 +64,8 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.NearMe
+import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.PestControl
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Plumbing
@@ -81,6 +84,7 @@ import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Window
 import androidx.compose.material.icons.outlined.Work
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -106,6 +110,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -115,6 +120,9 @@ import com.winyc.elo.backend.model.endereco.EnderecoRS
 import com.winyc.elo.backend.model.endereco.linhaEndereco
 import com.winyc.elo.backend.model.search.OrdenacaoBusca
 import com.winyc.elo.backend.model.search.ProfissionalBuscaRS
+import com.winyc.elo.backend.model.search.SeloProfissional
+import com.winyc.elo.backend.model.search.SeloRecomendacao
+import com.winyc.elo.backend.model.search.selosDaLista
 import com.winyc.elo.backend.model.search.servicoDeInteresse
 import com.winyc.elo.backend.security.PerfilSessao
 import com.winyc.elo.backend.viewModel.BuscaViewModel
@@ -123,6 +131,7 @@ import com.winyc.elo.backend.viewModel.CategoriaViewModel
 import com.winyc.elo.backend.viewModel.Localizacao
 import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.expressaoElogio
 import com.winyc.elo.ui.theme.EloTheme
 
 
@@ -147,6 +156,8 @@ private enum class AvaliacaoMinima(val rotulo: String, val minimo: Double) {
 }
 
 private val VerdeDestaque = Color(0xFF12A15A)
+private val AzulDestaque = Color(0xFF2F6BFF)
+private val RoxoDestaque = Color(0xFF8B5CF6)
 
 private val ICONES: Map<String, ImageVector> = mapOf(
     "Bolt" to Icons.Outlined.Bolt,
@@ -339,6 +350,7 @@ private fun HomeConteudo(
                     titulo = "Recomendados para você",
                     subtitulo = "Selecionados com base na sua busca, localização e reputação.",
                     profissionais = home.recomendados,
+                    selos = remember(home.recomendados) { selosDaLista(home.recomendados) },
                     carregando = home.carregando,
                     erro = home.erro,
                     onTentarNovamente = onRecarregarHome,
@@ -353,6 +365,8 @@ private fun HomeConteudo(
                     titulo = "Em alta na sua região",
                     subtitulo = "Populares entre clientes próximos de você",
                     profissionais = home.emAlta,
+                    // Sem selos e sem PLN: este carrossel é só popularidade regional.
+                    selos = emptyMap(),
                     carregando = home.carregando,
                     erro = null, // o erro já é sinalizado no carrossel acima
                     onTentarNovamente = onRecarregarHome,
@@ -669,6 +683,7 @@ private fun SecaoCarrossel(
     titulo: String,
     subtitulo: String,
     profissionais: List<ProfissionalBuscaRS>,
+    selos: Map<Long, SeloProfissional>,
     carregando: Boolean,
     erro: String?,
     onTentarNovamente: () -> Unit,
@@ -709,6 +724,7 @@ private fun SecaoCarrossel(
                     items(profissionais, key = { it.profissionalId }) { pro ->
                         CardProfissionalHome(
                             pro = pro,
+                            selo = selos[pro.profissionalId],
                             emAlta = emAlta,
                             onClick = {
                                 onAbrirPerfil(
@@ -726,7 +742,12 @@ private fun SecaoCarrossel(
 }
 
 @Composable
-private fun CardProfissionalHome(pro: ProfissionalBuscaRS, emAlta: Boolean, onClick: () -> Unit) {
+private fun CardProfissionalHome(
+    pro: ProfissionalBuscaRS,
+    selo: SeloProfissional?,
+    emAlta: Boolean,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = Modifier
             .width(210.dp)
@@ -738,7 +759,8 @@ private fun CardProfissionalHome(pro: ProfissionalBuscaRS, emAlta: Boolean, onCl
         FotoPro(
             fotoUrl = pro.fotoPerfil,
             badgeInicio = pro.servicos.firstOrNull()?.categoriaGeral,
-            emAlta = emAlta
+            emAlta = emAlta,
+            selo = selo?.selo,
         )
         Column(
             modifier = Modifier.padding(12.dp),
@@ -746,43 +768,67 @@ private fun CardProfissionalHome(pro: ProfissionalBuscaRS, emAlta: Boolean, onCl
         ) {
             NomeVerificado(pro.nome)
             LinhaAvaliacao(pro.avaliacao, pro.quantidadeAvaliacoes)
-            pro.precoInicial?.let {
-                Text(
-                    text = stringResource(R.string.a_partir_de, formatarPreco(it)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+            Text(
+                text = pro.precoInicial
+                    ?.let { stringResource(R.string.a_partir_de, formatarPreco(it)) }
+                    ?: "Preço a combinar",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = selo?.let { justificativaDoSelo(it) }.orEmpty(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            RodapeCardHome(pro = pro, emAlta = emAlta)
+        }
+    }
+}
+
+@Composable
+private fun RodapeCardHome(pro: ProfissionalBuscaRS, emAlta: Boolean) {
+    Box(
+        modifier = Modifier.heightIn(min = 24.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        when {
+            emAlta -> pro.distanciaKm?.let { LinhaDistancia(it) }
+
+            pro.servicosConcluidos > 0 -> Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingUp,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
                 )
-            }
-            if (emAlta) {
-                pro.distanciaKm?.let { LinhaDistancia(it) }
-            } else if (pro.servicosConcluidos > 0) {
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.TrendingUp,
-                        null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "${pro.servicosConcluidos} concluídos",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "${pro.servicosConcluidos} concluídos",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
 }
 
 @Composable
-private fun FotoPro(fotoUrl: String?, badgeInicio: String?, emAlta: Boolean = false) {
+private fun FotoPro(
+    fotoUrl: String?,
+    badgeInicio: String?,
+    emAlta: Boolean = false,
+    selo: SeloRecomendacao? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -821,6 +867,16 @@ private fun FotoPro(fotoUrl: String?, badgeInicio: String?, emAlta: Boolean = fa
                 fundo = MaterialTheme.colorScheme.primary,
                 corTexto = MaterialTheme.colorScheme.onPrimary,
                 icone = Icons.Outlined.LocalFireDepartment,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp),
+            )
+        } else if (selo != null) {
+            Pill(
+                texto = selo.rotulo,
+                fundo = corDoSelo(selo),
+                corTexto = Color.White,
+                icone = iconeDoSelo(selo),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(10.dp),
@@ -874,33 +930,35 @@ private fun NomeVerificado(nome: String) {
 /** Estrelas + nº de avaliações; para quem ainda não tem nota, mostra "Novo". */
 @Composable
 private fun LinhaAvaliacao(avaliacao: Double?, numAvaliacoes: Int) {
-    if (avaliacao == null || numAvaliacoes == 0) {
-        Text(
-            text = "Novo na plataforma",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        return
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            Icons.Filled.Star,
-            null,
-            tint = EloTheme.colors.avaliacao,
-            modifier = Modifier.size(15.dp)
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = formatarAvaliacao(avaliacao),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = "($numAvaliacoes)",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Box(modifier = Modifier.heightIn(min = 20.dp), contentAlignment = Alignment.CenterStart) {
+        if (avaliacao == null || numAvaliacoes == 0) {
+            Text(
+                text = "Novo na plataforma",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Star,
+                    null,
+                    tint = EloTheme.colors.avaliacao,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = formatarAvaliacao(avaliacao),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "($numAvaliacoes)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -1044,6 +1102,7 @@ private fun CategoriaScreen(
 ) {
     val estado by buscaVm.categoria.collectAsStateWithLifecycle()
     var filtrosAbertos by rememberSaveable { mutableStateOf(false) }
+    val selos = remember(estado.profissionais) { selosDaLista(estado.profissionais) }
 
     Column(
         modifier = modifier
@@ -1123,6 +1182,7 @@ private fun CategoriaScreen(
                     items(estado.profissionais, key = { it.profissionalId }) { pro ->
                         CardProfissionalBusca(
                             pro = pro,
+                            selo = selos[pro.profissionalId],
                             onClick = {
                                 onAbrirPerfil(
                                     pro.profissionalId,
@@ -1301,7 +1361,11 @@ private fun ChipFiltro(rotulo: String, selecionado: Boolean, onClick: () -> Unit
 
 /** Card de profissional na lista de resultados de uma categoria. */
 @Composable
-private fun CardProfissionalBusca(pro: ProfissionalBuscaRS, onClick: () -> Unit) {
+private fun CardProfissionalBusca(
+    pro: ProfissionalBuscaRS,
+    selo: SeloProfissional?,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1320,6 +1384,14 @@ private fun CardProfissionalBusca(pro: ProfissionalBuscaRS, onClick: () -> Unit)
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                if (selo != null) {
+                    Pill(
+                        texto = selo.selo.rotulo,
+                        fundo = corDoSelo(selo.selo),
+                        corTexto = Color.White,
+                        icone = iconeDoSelo(selo.selo),
+                    )
+                }
                 NomeVerificado(pro.nome)
                 LinhaAvaliacao(pro.avaliacao, pro.quantidadeAvaliacoes)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1332,6 +1404,15 @@ private fun CardProfissionalBusca(pro: ProfissionalBuscaRS, onClick: () -> Unit)
                         Spacer(Modifier.width(10.dp))
                     }
                     pro.distanciaKm?.let { LinhaDistancia(it) }
+                }
+                if (selo != null) {
+                    Text(
+                        text = justificativaDoSelo(selo),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 if (pro.servicos.isNotEmpty()) {
                     Text(
@@ -1373,6 +1454,32 @@ private fun FotoQuadrada(fotoUrl: String?) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+/* ---------------------------- Selos da recomendação ---------------------------- */
+
+@Composable
+private fun corDoSelo(selo: SeloRecomendacao): Color = when (selo) {
+    SeloRecomendacao.MELHOR_ESCOLHA -> MaterialTheme.colorScheme.primary
+    SeloRecomendacao.REQUISITADO -> RoxoDestaque
+    SeloRecomendacao.PERTO_E_POPULAR -> AzulDestaque
+    SeloRecomendacao.TALENTO_DA_REGIAO -> VerdeDestaque
+}
+
+private fun iconeDoSelo(selo: SeloRecomendacao): ImageVector = when (selo) {
+    SeloRecomendacao.MELHOR_ESCOLHA -> Icons.Outlined.WorkspacePremium
+    SeloRecomendacao.REQUISITADO -> Icons.AutoMirrored.Filled.TrendingUp
+    SeloRecomendacao.PERTO_E_POPULAR -> Icons.Outlined.NearMe
+    SeloRecomendacao.TALENTO_DA_REGIAO -> Icons.Outlined.NewReleases
+}
+
+private fun justificativaDoSelo(selo: SeloProfissional): String {
+    val expressoes = selo.aspectos.map { expressaoElogio(it) }
+    return when (expressoes.size) {
+        0 -> selo.selo.justificativa
+        1 -> "Muito elogiado ${expressoes[0]}."
+        else -> "Muito elogiado ${expressoes[0]} e ${expressoes[1]}."
     }
 }
 

@@ -27,6 +27,16 @@ data class ProfissionalBuscaRS(
     val estado: String? = null,
     val bairro: String? = null,
     val servicos: List<ServicoBuscaRS> = emptyList(),
+    val reputacao: ReputacaoBuscaRS? = null,
+)
+
+data class ReputacaoBuscaRS(
+    val comentariosProcessados: Int? = null,
+    val percentualPositivo: Double? = null,
+    val sentimentoMedio: Double? = null,
+    val pontosFortes: List<String> = emptyList(),
+    val pontosFracos: List<String> = emptyList(),
+    val resumo: String? = null,
 )
 
 data class ServicoBuscaRS(

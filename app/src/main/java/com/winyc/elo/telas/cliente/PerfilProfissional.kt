@@ -118,8 +118,11 @@ import com.winyc.elo.backend.viewModel.HorariosUi
 import com.winyc.elo.backend.viewModel.OrcamentoViewModel
 import com.winyc.elo.backend.viewModel.ProfissionalPerfilViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.telas.componentes.BlocoReputacao
 import com.winyc.elo.telas.componentes.EstadoImagens
 import com.winyc.elo.telas.componentes.GradeImagens
+import com.winyc.elo.telas.componentes.ReputacaoUi
+import com.winyc.elo.telas.componentes.paraExibicao
 import com.winyc.elo.telas.componentes.rememberEstadoImagens
 import com.winyc.elo.ui.theme.EloTheme
 import java.time.LocalDate
@@ -176,6 +179,10 @@ fun PerfilProfissionalScreen(
 
     val servicos = dados?.servicosOferecidos.orEmpty()
     val nomeExibicao = dados?.profissional?.nome?.takeIf { it.isNotBlank() } ?: nome
+
+    // Reputação textual do PLN: nula quando o worker ainda não processou
+    // comentários suficientes desse profissional.
+    val reputacao = remember(dados) { dados?.reputacao?.paraExibicao() }
 
     // A lista completa de comentários é buscada por categoria geral.
     val categoriaGeralId = remember(dados) {
@@ -256,6 +263,7 @@ fun PerfilProfissionalScreen(
         verTodasAvaliacoes -> AvaliacoesScreen(
             nome = nomeExibicao,
             resumo = dados.resumoAvaliacoes,
+            reputacao = reputacao,
             iniciais = dados.ultimasAvaliacoes,
             ui = comentariosUi,
             onTentarNovamente = {
@@ -317,6 +325,16 @@ fun PerfilProfissionalScreen(
                         onVerTodos = { escolhendoServico = true },
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
+                }
+
+                if (reputacao != null) {
+                    item {
+                        Spacer(Modifier.height(24.dp))
+                        BlocoReputacao(
+                            reputacao = reputacao,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
                 }
 
                 item {
@@ -1184,6 +1202,7 @@ private fun iconeDe(sentimento: Sentimento): ImageVector = when (sentimento) {
 private fun AvaliacoesScreen(
     nome: String,
     resumo: ResumoAvaliacoesRS?,
+    reputacao: ReputacaoUi?,
     iniciais: List<AvaliacaoRS>,
     ui: ComentariosAvaliacaoUi,
     onTentarNovamente: () -> Unit,
@@ -1261,6 +1280,10 @@ private fun AvaliacoesScreen(
                         distribuicao = distribuicao,
                     )
                 }
+            }
+
+            if (reputacao != null) {
+                item { BlocoReputacao(reputacao) }
             }
 
             if (ui.erro != null) {

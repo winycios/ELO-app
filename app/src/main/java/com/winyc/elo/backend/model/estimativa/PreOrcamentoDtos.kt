@@ -10,6 +10,7 @@ data class ProfissionalServicoRS(
     val servicosOferecidos: List<ServicoOferecidoRS> = emptyList(),
     val resumoAvaliacoes: ResumoAvaliacoesRS? = null,
     val ultimasAvaliacoes: List<AvaliacaoRS> = emptyList(),
+    val reputacao: ReputacaoRS? = null,
 )
 
 data class ProfissionalDetalhesRS(
@@ -58,6 +59,22 @@ data class ResumoAvaliacoesRS(
     val media: Double? = null,
     val quantidade: Int? = null,
     val percentualPositivas: Double? = null,
+)
+
+/**
+ * Reputação textual do profissional, produzida pelo módulo de PLN a partir dos
+ * comentários das avaliações. Vem nula enquanto o worker não tiver processado
+ * nenhum comentário desse profissional — a tela precisa funcionar sem ela.
+ */
+data class ReputacaoRS(
+    val comentariosProcessados: Int? = null,
+    val percentualPositivo: Double? = null,
+    val percentualNeutro: Double? = null,
+    val percentualNegativo: Double? = null,
+    val sentimentoMedio: Double? = null,
+    val pontosFortes: List<String> = emptyList(),
+    val pontosFracos: List<String> = emptyList(),
+    val resumo: String? = null,
 )
 
 data class AvaliacaoRS(

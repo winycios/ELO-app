@@ -25,6 +25,9 @@ object RetroFitService {
     private val BASE_URL = BuildConfig.BASE_URL
     private const val VIA_CEP_URL = "https://viacep.com.br/ws/"
 
+    /** Ligue para ver o JSON completo no logcat durante uma investigação. */
+    private const val LOG_CORPO_HTTP = false
+
     val authApi: AuthInterface by lazy { authRetrofit.create(AuthInterface::class.java) }
 
     private fun OkHttpClient.Builder.timeoutsPadrao() = apply {
@@ -34,13 +37,24 @@ object RetroFitService {
     }
 
     /**
-     * O log de corpo imprime os headers, incluindo `Authorization`, e o payload
-     * do login/refresh — por isso o interceptor só entra no build de debug.
+     * Imprimir o corpo de toda resposta custa caro: serializa o JSON inteiro em
+     * String e joga no logcat na thread da requisição (uma página de busca passa
+     * de 5 KB). Fica em `BASIC` no dia a dia; ligue [LOG_CORPO_HTTP] quando
+     * precisar inspecionar payload.
+     *
+     * O log de corpo também imprime os headers, incluindo `Authorization`, e o
+     * payload do login/refresh — por isso o interceptor só entra em debug.
      */
     private fun OkHttpClient.Builder.logSomenteEmDebug() = apply {
         if (BuildConfig.DEBUG) {
             addInterceptor(
-                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY },
+                HttpLoggingInterceptor().apply {
+                    level = if (LOG_CORPO_HTTP) {
+                        HttpLoggingInterceptor.Level.BODY
+                    } else {
+                        HttpLoggingInterceptor.Level.BASIC
+                    }
+                },
             )
         }
     }
@@ -58,7 +72,26 @@ object RetroFitService {
         .build()
 
     // Endpoints com auth
+    @Volatile
+    private var retrofitAutenticado: Pair<TokenStore, Retrofit>? = null
+
+    /**
+     * Um único cliente autenticado por [TokenStore] (que é singleton no processo).
+     * Antes cada repositório construía o seu: cada `OkHttpClient` tem pool de
+     * conexões e de threads próprios, então nada era reaproveitado e toda tela
+     * pagava handshake novo.
+     */
     fun retrofitAutenticado(tokenStore: TokenStore): Retrofit {
+        retrofitAutenticado?.let { (store, retrofit) ->
+            if (store === tokenStore) return retrofit
+        }
+        return synchronized(this) {
+            retrofitAutenticado?.takeIf { it.first === tokenStore }?.second ?: criarRetrofitAutenticado(tokenStore)
+                .also { retrofitAutenticado = tokenStore to it }
+        }
+    }
+
+    private fun criarRetrofitAutenticado(tokenStore: TokenStore): Retrofit {
         val client = OkHttpClient.Builder()
             .timeoutsPadrao()
             .addInterceptor(AuthInterceptor(tokenStore))
