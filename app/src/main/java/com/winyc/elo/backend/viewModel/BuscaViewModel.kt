@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.winyc.elo.backend.controller.busca.BuscaRepository
 import com.winyc.elo.backend.model.search.OrdenacaoBusca
 import com.winyc.elo.backend.model.search.ProfissionalBuscaRS
+import com.winyc.elo.backend.model.search.SelosDaBusca
+import com.winyc.elo.backend.model.search.selosDaLista
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +26,7 @@ data class Localizacao(val latitude: Double?, val longitude: Double?) {
 data class BuscaHomeUi(
     val recomendados: List<ProfissionalBuscaRS> = emptyList(),
     val emAlta: List<ProfissionalBuscaRS> = emptyList(),
+    val selos: SelosDaBusca = SelosDaBusca.NENHUM,
     val carregando: Boolean = false,
     val atualizando: Boolean = false,
     val erro: String? = null,
@@ -35,6 +38,7 @@ data class BuscaCategoriaUi(
     val titulo: String = "",
     val texto: String? = null,
     val profissionais: List<ProfissionalBuscaRS> = emptyList(),
+    val selos: SelosDaBusca = SelosDaBusca.NENHUM,
     val ordenacao: OrdenacaoBusca = OrdenacaoBusca.RECOMENDADOS,
     val avaliacaoMinima: Double = 0.0,
     val pagina: Int = 0,
@@ -89,9 +93,12 @@ class BuscaViewModel(application: Application) : AndroidViewModel(application) {
             val resRecomendados = recomendados.await()
             val resEmAlta = emAlta.await()
             _home.update { atual ->
+                val recomendadosNovos =
+                    resRecomendados.getOrNull()?.profissionais ?: atual.recomendados
                 atual.copy(
-                    recomendados = resRecomendados.getOrNull()?.profissionais ?: atual.recomendados,
+                    recomendados = recomendadosNovos,
                     emAlta = resEmAlta.getOrNull()?.profissionais ?: atual.emAlta,
+                    selos = selosDaLista(recomendadosNovos),
                     carregando = false,
                     atualizando = false,
                     erro = (resRecomendados.exceptionOrNull() ?: resEmAlta.exceptionOrNull())?.message,
@@ -148,8 +155,10 @@ class BuscaViewModel(application: Application) : AndroidViewModel(application) {
             ).onSuccess { rs ->
                 _categoria.update { atual ->
                     val lista = if (primeiraPagina) rs.profissionais else atual.profissionais + rs.profissionais
+                    val anteriores = if (primeiraPagina) SelosDaBusca.NENHUM else atual.selos
                     atual.copy(
                         profissionais = lista,
+                        selos = selosDaLista(lista, anteriores),
                         pagina = rs.pagina,
                         total = rs.total,
                         temMais = lista.size < rs.total,

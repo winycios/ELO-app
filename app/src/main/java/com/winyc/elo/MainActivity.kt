@@ -87,6 +87,7 @@ import com.winyc.elo.backend.viewModel.UsuarioViewModel
 import com.winyc.elo.telas.auth.AutenticacaoScreen
 import com.winyc.elo.telas.cliente.InicioScreen
 import com.winyc.elo.telas.cliente.MeusOrcamentosScreen
+import com.winyc.elo.backend.model.search.SeloRecomendacao
 import com.winyc.elo.telas.cliente.PerfilProfissionalScreen
 import com.winyc.elo.telas.cliente.PerfilScreen
 import com.winyc.elo.telas.cliente.VitrineScreen
@@ -113,7 +114,7 @@ private enum class EloScreen(val route: String) {
     Vitrine("cliente/vitrine"),
     MeusOrcamentos("cliente/orcamentos"),
     Perfil("cliente/perfil"),
-    PerfilProfissional("cliente/profissional/{nome}?proId={proId}&servicoId={servicoId}&categoriaId={categoriaId}"),
+    PerfilProfissional("cliente/profissional/{nome}?proId={proId}&servicoId={servicoId}&categoriaId={categoriaId}&selo={selo}"),
 
     // Profissional (teal)
     Painel("${PRO_PREFIX}painel"),
@@ -282,8 +283,8 @@ private fun EloApp() {
                 ) {
                     composable(EloScreen.Inicio.route) {
                         InicioScreen(
-                            onAbrirPerfil = { proId, nome, servicoId ->
-                                navController.abrirPerfilProfissional(nome, proId, servicoId)
+                            onAbrirPerfil = { proId, nome, servicoId, selo ->
+                                navController.abrirPerfilProfissional(nome, proId, servicoId, selo = selo)
                             },
                             onIrParaEnderecos = {
                                 abrirEnderecos = true
@@ -326,18 +327,24 @@ private fun EloApp() {
                             navArgument("proId") { type = NavType.LongType; defaultValue = -1L },
                             navArgument("servicoId") { type = NavType.LongType; defaultValue = -1L },
                             navArgument("categoriaId") { type = NavType.LongType; defaultValue = -1L },
+                            navArgument("selo") { type = NavType.StringType; defaultValue = "" },
                         ),
                     ) { entry ->
                         val nome = entry.arguments?.getString("nome").orEmpty()
                         val proId = entry.arguments?.getLong("proId") ?: -1L
                         val servicoId = entry.arguments?.getLong("servicoId") ?: -1L
                         val categoriaId = entry.arguments?.getLong("categoriaId") ?: -1L
+                        // O selo é calculado sobre a lista da busca, então viaja
+                        // com a navegação: a tela do perfil não teria como refazê-lo.
+                        val selo = entry.arguments?.getString("selo")
+                            ?.let { nome -> SeloRecomendacao.entries.firstOrNull { it.name == nome } }
                         val userId = perfil?.id ?: -1L
                         PerfilProfissionalScreen(
                             nome = nome,
                             proId = proId,
                             servicoId = servicoId.takeIf { it > 0 },
                             categoriaId = categoriaId.takeIf { it > 0 },
+                            selo = selo,
                             logado = logado,
                             onPrecisaLogin = { navController.navigate(EloScreen.Auth.route) },
                             onVoltar = { navController.popBackStack() },
@@ -413,9 +420,11 @@ private fun NavController.abrirPerfilProfissional(
     proId: Long = -1L,
     servicoId: Long? = null,
     categoriaId: Long? = null,
+    selo: SeloRecomendacao? = null,
 ) {
     val destino = "${PRO_PERFIL_PREFIX}${Uri.encode(nome)}" +
-        "?proId=$proId&servicoId=${servicoId ?: -1L}&categoriaId=${categoriaId ?: -1L}"
+        "?proId=$proId&servicoId=${servicoId ?: -1L}&categoriaId=${categoriaId ?: -1L}" +
+        "&selo=${selo?.name.orEmpty()}"
     navigate(destino) {
         launchSingleTop = true
     }

@@ -118,7 +118,13 @@ import com.winyc.elo.backend.viewModel.HorariosUi
 import com.winyc.elo.backend.viewModel.OrcamentoViewModel
 import com.winyc.elo.backend.viewModel.ProfissionalPerfilViewModel
 import com.winyc.elo.telas.componentes.AvatarPerfil
+import com.winyc.elo.backend.model.search.SeloProfissional
+import com.winyc.elo.backend.model.search.SeloRecomendacao
+import com.winyc.elo.backend.model.search.criteriosDoSelo
+import com.winyc.elo.backend.model.search.dadosDoSelo
 import com.winyc.elo.telas.componentes.BlocoReputacao
+import com.winyc.elo.telas.componentes.CardSelo
+import com.winyc.elo.telas.componentes.SeloSheet
 import com.winyc.elo.telas.componentes.EstadoImagens
 import com.winyc.elo.telas.componentes.GradeImagens
 import com.winyc.elo.telas.componentes.ReputacaoUi
@@ -151,6 +157,7 @@ fun PerfilProfissionalScreen(
     proId: Long = -1L,
     servicoId: Long? = null,
     categoriaId: Long? = null,
+    selo: SeloRecomendacao? = null,
     onIrParaInicio: () -> Unit = {},
     onVerOrcamentos: () -> Unit = {},
     onIrParaEnderecos: () -> Unit = {},
@@ -176,6 +183,7 @@ fun PerfilProfissionalScreen(
     var sucesso by rememberSaveable(proId) { mutableStateOf(false) }
     var pedindoLogin by rememberSaveable(proId) { mutableStateOf(false) }
     var orcamentoBloqueado by rememberSaveable(proId) { mutableStateOf(false) }
+    var explicandoSelo by rememberSaveable(proId) { mutableStateOf(false) }
 
     val servicos = dados?.servicosOferecidos.orEmpty()
     val nomeExibicao = dados?.profissional?.nome?.takeIf { it.isNotBlank() } ?: nome
@@ -183,6 +191,14 @@ fun PerfilProfissionalScreen(
     // Reputação textual do PLN: nula quando o worker ainda não processou
     // comentários suficientes desse profissional.
     val reputacao = remember(dados) { dados?.reputacao?.paraExibicao() }
+
+    val seloExibido = remember(selo, dados) {
+        selo?.let { SeloProfissional(it, aspectos = dados?.dadosDoSelo()?.aspectos.orEmpty()) }
+    }
+    val criteriosDoSeloExibido = remember(selo, dados) {
+        if (selo == null || dados == null) emptyList()
+        else criteriosDoSelo(selo, dados.dadosDoSelo())
+    }
 
     // A lista completa de comentários é buscada por categoria geral.
     val categoriaGeralId = remember(dados) {
@@ -308,6 +324,18 @@ fun PerfilProfissionalScreen(
                     }
                 }
 
+                if (seloExibido != null) {
+                    item {
+                        CardSelo(
+                            selo = seloExibido,
+                            criterios = criteriosDoSeloExibido,
+                            onComoFunciona = { explicandoSelo = true },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+
                 item {
                     SecaoSobre(
                         apresentacao = profissional?.apresentacao,
@@ -371,6 +399,14 @@ fun PerfilProfissionalScreen(
                 },
             )
         }
+    }
+
+    if (explicandoSelo && seloExibido != null) {
+        SeloSheet(
+            selo = seloExibido,
+            criterios = criteriosDoSeloExibido,
+            onFechar = { explicandoSelo = false },
+        )
     }
 
     if (orcamentoBloqueado) {
